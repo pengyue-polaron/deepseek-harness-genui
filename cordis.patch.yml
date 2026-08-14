@@ -1,0 +1,7 @@
+- insert:
+    - id: genui
+      name: dsh-plugin-genui
+      config:
+        artifactRoot: .dsh/genui
+        routePrefix: /genui
+        maxSourceBytes: 1048576

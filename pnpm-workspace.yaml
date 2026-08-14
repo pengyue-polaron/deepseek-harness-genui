@@ -1,0 +1,9 @@
+packages:
+  - .
+
+allowBuilds:
+  esbuild: true
+
+# Harness release candidates are intentionally consumed immediately in this
+# local integration package.
+minimumReleaseAge: 0

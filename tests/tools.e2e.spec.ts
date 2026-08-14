@@ -1,0 +1,161 @@
+import { createServer } from 'node:http'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { Context } from '@deepseek-ai/cordis'
+import type { Agent } from '@deepseek-ai/dsh-agent'
+import { CallId } from '@deepseek-ai/dsh-llm'
+import { SessionId } from '@deepseek-ai/dsh-session'
+import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
+import ToolRuntime from '@deepseek-ai/dsh-tools'
+import { ArtifactRegistry } from '../src/artifacts/registry.ts'
+import { DesignStore } from '../src/designs/store.ts'
+import { CapabilityStore } from '../src/runtime/capabilities.ts'
+import { createHttpRuntime } from '../src/runtime/server.ts'
+import { registerGenuiTools } from '../src/tools.ts'
+
+describe('GenUI Harness tool lifecycle', () => {
+  let ctx: Context
+  let root: string
+  let registry: ArtifactRegistry
+  let agent: Agent
+  let closeServer: () => Promise<void>
+  let callCounter = 0
+  let lastRenderedContent: unknown
+
+  beforeAll(async () => {
+    ctx = new Context()
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    root = await mkdtemp(join(tmpdir(), 'dsh-genui-tools-'))
+    registry = new ArtifactRegistry(root, 128 * 1024)
+    await registry.init()
+    const designs = new DesignStore(join(root, '.designs'))
+    await designs.init()
+    agent = { id: SessionId('genui-tools-e2e'), ctx } as unknown as Agent
+
+    const capabilities = new CapabilityStore()
+    const runtime = createHttpRuntime(ctx, registry, capabilities, '/genui')
+    const server = createServer((req, res) => {
+      runtime.handler(req, res).catch((error: unknown) => {
+        res.writeHead(500)
+        res.end(error instanceof Error ? error.message : String(error))
+      })
+    })
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject)
+      server.listen(0, '127.0.0.1', resolve)
+    })
+    const address = server.address()
+    if (address === null || typeof address === 'string') throw new Error('test HTTP server did not bind a TCP port')
+    registerGenuiTools(ctx, registry, designs, capabilities, '/genui', `http://127.0.0.1:${address.port}`)
+    closeServer = () => new Promise<void>((resolve, reject) => server.close(error => error === undefined ? resolve() : reject(error)))
+  }, 60_000)
+
+  afterAll(async () => {
+    await closeServer?.()
+    await ctx?.fiber.dispose()
+    if (root !== undefined) await rm(root, { recursive: true, force: true })
+  })
+
+  async function execute(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const result = await ctx.tools.execute({
+      callId: CallId(`genui-e2e-${++callCounter}`),
+      name,
+      arguments: args,
+      agent,
+      signal: AbortSignal.timeout(30_000),
+    })
+    if (result.isError) throw result.error
+    lastRenderedContent = result.content
+    return result.value as Record<string, unknown>
+  }
+
+  it('repairs an initial failure, updates, inspects, and rolls back', async () => {
+    const created = await execute('genui_create', {
+      artifact_id: 'tool-flow',
+      title: 'Tool flow',
+      summary: 'Intentionally broken initial candidate.',
+      requirements: ['Show the current status'],
+      capabilities: [],
+      files: [{ path: 'src/main.tsx', content: 'const broken =' }],
+    })
+    expect(created).toMatchObject({ artifact_id: 'tool-flow', status: 'failed' })
+    expect(created.message).toContain('using this failed version as the base')
+    expect(lastRenderedContent).toEqual(expect.arrayContaining([
+      expect.objectContaining({ text: expect.stringContaining('Do not call genui_create again') }),
+    ]))
+
+    const repaired = await execute('genui_update', {
+      artifact_id: 'tool-flow',
+      base_version_id: created.version_id,
+      summary: 'Repair the initial source.',
+      patches: [{
+        path: 'src/main.tsx',
+        content: `import React from 'react'
+import { createRoot } from 'react-dom/client'
+function App() { return <main style={{padding: 24}}>Status: ready</main> }
+createRoot(document.getElementById('root')!).render(<App />)`,
+      }],
+    })
+    expect(repaired).toMatchObject({ artifact_id: 'tool-flow', status: 'ready' })
+    expect(lastRenderedContent).toEqual([{
+      type: 'text',
+      text: 'This result is final and fully checked. Run no more tools and end the turn immediately without adding text. Only if the transport requires nonempty final text, write one neutral 2–5 word handoff in the user\'s language that does not claim completion or make a choice for the user; do not copy a fixed phrase. Never say a page is ready or repeat its title, recommendation, values, sections, controls, schedule, budget, or checklist.',
+    }])
+
+    await registry.updateState('tool-flow', String(agent.id), state => ({ ...state, feedback: { choice: 'quiet route' } }))
+    const submitted = await execute('genui_state_read', { artifact_id: 'tool-flow' })
+    expect(submitted).toMatchObject({ artifact_id: 'tool-flow', values: { feedback: { choice: 'quiet route' } } })
+
+    const updated = await execute('genui_update', {
+      artifact_id: 'tool-flow',
+      base_version_id: repaired.version_id,
+      summary: 'Add an interactive counter.',
+      add_requirements: ['Increment a visible counter'],
+      patches: [{
+        path: 'src/main.tsx',
+        content: `import React, { useState } from 'react'
+import { createRoot } from 'react-dom/client'
+function App() {
+  const [count, setCount] = useState(0)
+  return <main style={{padding: 24}}>Status: ready <button onClick={() => setCount(value => value + 1)}>Count {count}</button></main>
+}
+createRoot(document.getElementById('root')!).render(<App />)`,
+      }],
+    })
+    expect(updated).toMatchObject({ artifact_id: 'tool-flow', status: 'ready' })
+
+    const inspected = await execute('genui_inspect', {
+      artifact_id: 'tool-flow',
+      version_id: updated.version_id,
+    })
+    expect(inspected.version).toMatchObject({ id: updated.version_id, status: 'ready' })
+    expect((inspected.version as { requirements: Array<{ text: string }> }).requirements.map(item => item.text))
+      .toEqual(['Show the current status', 'Increment a visible counter'])
+
+    const rolledBack = await execute('genui_rollback', {
+      artifact_id: 'tool-flow',
+      version_id: repaired.version_id,
+    })
+    expect(rolledBack).toMatchObject({ version_id: repaired.version_id, status: 'ready' })
+    expect((await registry.get('tool-flow')).currentVersionId).toBe(repaired.version_id)
+  }, 60_000)
+
+  it('lists, imports, and exports DESIGN.md profiles', async () => {
+    const listed = await execute('genui_design_list', {})
+    expect(listed.designs).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'notion-calm' }),
+      expect.objectContaining({ id: 'material-expressive' }),
+    ]))
+
+    await execute('genui_design_import', {
+      design_id: 'home-journal',
+      content: '# Home Journal\n\nUse warm paper surfaces and compact handwritten notes.\n',
+    })
+    const exported = await execute('genui_design_export', { design_id: 'home-journal' })
+    expect(exported).toMatchObject({ design_id: 'home-journal', filename: 'DESIGN.md' })
+    expect(exported.content).toContain('warm paper surfaces')
+  })
+})
