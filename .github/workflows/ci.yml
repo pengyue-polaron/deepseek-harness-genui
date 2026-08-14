@@ -15,6 +15,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+          package-manager-cache: false
       - run: npm install --global pnpm@11.17.0
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
