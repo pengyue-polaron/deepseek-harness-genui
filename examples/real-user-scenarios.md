@@ -54,6 +54,20 @@ Acceptance:
 - Persists the scale, viewpoint, and selected target.
 - Translates saved values into natural language on the next turn without exposing internal keys.
 
+## 5. Trace Real Code From the CLI
+
+Design: `notion-calm`
+
+> Explain how a stable local app URL resolves the current ready version in this project and how a user's selection becomes readable on the next Agent turn. Generate a GenUI for this CLI workflow, map every step to the real source file and function, and return a localhost browser URL. I will ask about the path I select afterward.
+
+Acceptance:
+
+- Requires an explicit GenUI request; an ordinary code explanation stays in prose.
+- Grounds every step in code inspected from the current repository.
+- Returns one stable loopback URL without opening the browser automatically.
+- Persists the selected path and reads it on the next turn.
+- Keeps the same URL after a successful update and serves the last-good version after a failed update.
+
 ## Negative Control: Stay With Prose
 
 > Rewrite this notice so it sounds natural: We will have the weekly meeting tomorrow at 3 PM. Please prepare your progress for this week in advance.

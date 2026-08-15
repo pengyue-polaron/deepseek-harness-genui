@@ -78,6 +78,8 @@ describe('GenUI Harness tool lifecycle', () => {
     const created = await execute('genui_create', {
       artifact_id: 'tool-flow',
       title: 'Tool flow',
+      delivery: 'embedded',
+      language: 'en',
       summary: 'Intentionally broken initial candidate.',
       requirements: ['Show the current status'],
       capabilities: [],
@@ -93,6 +95,8 @@ describe('GenUI Harness tool lifecycle', () => {
 
     const repaired = await execute('genui_update', {
       artifact_id: 'tool-flow',
+      delivery: 'embedded',
+      language: 'en',
       base_version_id: created.version_id,
       summary: 'Repair the initial source.',
       patches: [{
@@ -116,6 +120,8 @@ createRoot(document.getElementById('root')!).render(<App />)`,
 
     const updated = await execute('genui_update', {
       artifact_id: 'tool-flow',
+      delivery: 'local-link',
+      language: 'en',
       base_version_id: repaired.version_id,
       summary: 'Add an interactive counter.',
       add_requirements: ['Increment a visible counter'],
@@ -131,7 +137,30 @@ createRoot(document.getElementById('root')!).render(<App />)`,
       }],
     })
     expect(updated).toMatchObject({ artifact_id: created.artifact_id, status: 'ready' })
-    expect(lastConcludesTurn).toBe(true)
+    expect(lastConcludesTurn).toBeUndefined()
+    expect(updated.app_url).toBe(repaired.app_url)
+    expect(lastRenderedContent).toEqual([{
+      type: 'text',
+      text: `Tool flow\n${String(updated.app_url)}`,
+    }])
+    expect(String(updated.app_url)).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/genui\/app\/s-[a-f0-9]{12}-tool-flow\?lang=en#token=/)
+
+    const stableDocument = await fetch(String(updated.app_url)).then(response => response.text())
+    expect(stableDocument).toContain(`data-version-id="${String(updated.version_id)}"`)
+    expect(stableDocument).not.toContain(new URL(String(updated.app_url)).hash.slice(1))
+
+    const rejected = await execute('genui_update', {
+      artifact_id: 'tool-flow',
+      delivery: 'local-link',
+      language: 'en',
+      base_version_id: updated.version_id,
+      summary: 'Reject a broken candidate.',
+      patches: [{ path: 'src/main.tsx', content: 'const broken =' }],
+    })
+    expect(rejected.status).toBe('failed')
+    expect((await registry.get(created.artifact_id as string)).currentVersionId).toBe(updated.version_id)
+    expect(await fetch(String(updated.app_url)).then(response => response.text()))
+      .toContain(`data-version-id="${String(updated.version_id)}"`)
 
     const inspected = await execute('genui_inspect', {
       artifact_id: 'tool-flow',
@@ -144,6 +173,8 @@ createRoot(document.getElementById('root')!).render(<App />)`,
     const rolledBack = await execute('genui_rollback', {
       artifact_id: 'tool-flow',
       version_id: repaired.version_id,
+      delivery: 'embedded',
+      language: 'en',
     })
     expect(rolledBack).toMatchObject({ version_id: repaired.version_id, status: 'ready' })
     expect((await registry.get(created.artifact_id as string)).currentVersionId).toBe(repaired.version_id)
@@ -171,12 +202,12 @@ import { createRoot } from 'react-dom/client'
 createRoot(document.getElementById('root')!).render(<main>Ready</main>)`
     agent = { id: SessionId('first-task'), ctx } as unknown as Agent
     const first = await execute('genui_create', {
-      artifact_id: 'repeated-name', title: 'First', summary: 'First task', requirements: [], capabilities: [],
+      artifact_id: 'repeated-name', title: 'First', delivery: 'embedded', language: 'en', summary: 'First task', requirements: [], capabilities: [],
       files: [{ path: 'src/main.tsx', content: source }],
     })
     agent = { id: SessionId('second-task'), ctx } as unknown as Agent
     const second = await execute('genui_create', {
-      artifact_id: 'repeated-name', title: 'Second', summary: 'Second task', requirements: [], capabilities: [],
+      artifact_id: 'repeated-name', title: 'Second', delivery: 'embedded', language: 'en', summary: 'Second task', requirements: [], capabilities: [],
       files: [{ path: 'src/main.tsx', content: source }],
     })
     expect(first.artifact_id).not.toBe(second.artifact_id)

@@ -82,7 +82,7 @@ export class CapabilityStore {
       artifactId,
       sessionId,
       mode,
-      nonce: randomBytes(16).toString('base64url'),
+      nonce: mode === 'interactive' ? 'task' : randomBytes(16).toString('base64url'),
       ...(mode === 'verification' ? { expiresAt: Date.now() + 5 * 60 * 1000 } : {}),
     })
     return `${payload}.${this.sign(payload)}`

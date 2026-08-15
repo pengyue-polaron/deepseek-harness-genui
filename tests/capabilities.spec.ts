@@ -20,6 +20,7 @@ describe('CapabilityStore', () => {
     const agent = { id: SessionId('durable-session') } as Agent
     const first = await CapabilityStore.persistent(keyPath, () => undefined)
     const token = first.issue('durable-artifact', agent)
+    expect(first.issue('durable-artifact', agent)).toBe(token)
 
     const restored = await CapabilityStore.persistent(keyPath, sessionId => sessionId === String(agent.id) ? agent : undefined)
     expect(restored.resolve(token, 'durable-artifact')).toMatchObject({
@@ -33,6 +34,7 @@ describe('CapabilityStore', () => {
     const agent = { id: SessionId('verification-session') } as Agent
     const store = new CapabilityStore()
     const token = store.issue('candidate', agent, 'verification')
+    expect(store.issue('candidate', agent, 'verification')).not.toBe(token)
     expect(store.resolve(token, 'candidate')?.mode).toBe('verification')
     store.revoke(token)
     expect(store.resolve(token, 'candidate')).toBeUndefined()

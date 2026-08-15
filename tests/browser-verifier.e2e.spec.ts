@@ -6,7 +6,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
+import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
+import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools'
+import { chromium } from 'playwright'
 import { ArtifactRegistry } from '../src/artifacts/registry.ts'
 import { buildArtifact } from '../src/artifacts/builder.ts'
 import { verifyArtifactInBrowser } from '../src/artifacts/browser-verifier.ts'
@@ -22,11 +24,23 @@ describe('sandboxed browser verification', () => {
   let fakeAgent: Agent
   let origin: string
   let previewUrl: string
+  let appUrl: string
   let closeServer: () => Promise<void>
 
   beforeAll(async () => {
     ctx = new Context()
+    await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    ctx.tools.register(defineTool({
+      name: 'test_echo',
+      description: 'Echo a test message.',
+      parameters: { message: { type: 'string', required: true } },
+      output: {
+        schema: { type: 'object', additionalProperties: false, properties: { echoed: { type: 'string', required: true } } },
+        render: (_args, value) => [{ type: 'text', text: value.echoed }],
+      },
+      async execute(args) { return { echoed: args.message } },
+    }))
     root = await mkdtemp(join(tmpdir(), 'dsh-genui-browser-'))
     registry = new ArtifactRegistry(root, 128 * 1024)
     await registry.init()
@@ -77,6 +91,7 @@ createRoot(document.getElementById('root')!).render(<App />)`,
     if (address === null || typeof address === 'string') throw new Error('test HTTP server did not bind a TCP port')
     origin = `http://127.0.0.1:${address.port}`
     previewUrl = `${origin}/genui/preview/${version.artifactId}/${version.id}?lang=en#token=${token}`
+    appUrl = `${origin}/genui/app/${version.artifactId}?lang=en#token=${token}`
     closeServer = () => new Promise<void>((resolve, reject) => server.close(error => error === undefined ? resolve() : reject(error)))
   }, 60_000)
 
@@ -97,6 +112,66 @@ createRoot(document.getElementById('root')!).render(<App />)`,
       'mobile mounted at 390px without horizontal overflow',
     ])
   }, 60_000)
+
+  it('runs the current app at a stable local URL and persists its state', async () => {
+    await registry.updateState('sandbox-state', 'browser-e2e', state => ({ ...state, count: 7 }))
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+      await page.goto(appUrl)
+      await page.frameLocator('#app').locator('#root > *').first().waitFor({ state: 'visible', timeout: 10_000 })
+      expect(await page.locator('#error').isHidden()).toBe(true)
+      await expect.poll(async () => (await registry.readState('sandbox-state', 'browser-e2e'))?.values.count).toBe(8)
+      expect(page.url()).toBe(appUrl)
+    } finally {
+      await browser.close()
+    }
+  }, 30_000)
+
+  it('asks for permission before a stable local app calls a connected tool', async () => {
+    const version = await registry.create({
+      id: 'standalone-permission',
+      title: 'Connected explanation',
+      summary: 'Exercise the standalone permission host.',
+      requirements: ['Ask before using the connected action'],
+      capabilities: [{
+        id: 'echo-message', kind: 'tool', label: 'Read the explanation',
+        reason: 'Load the selected explanation from the connected source.', access: 'read', tool: 'test_echo',
+      }],
+      files: [{
+        path: 'src/main.tsx',
+        content: `import React, { useState } from 'react'
+import { createRoot } from 'react-dom/client'
+import { callTool } from '@dsh-genui/sdk'
+function App() {
+  const [answer, setAnswer] = useState('Waiting')
+  return <main><button onClick={async () => {
+    const value = await callTool('test_echo', { message: 'Connected' }) as { echoed: string }
+    setAnswer(value.echoed)
+  }}>Load explanation</button><p>{answer}</p></main>
+}
+createRoot(document.getElementById('root')!).render(<App />)`,
+      }],
+    })
+    expect((await buildArtifact(version, registry.distPath(version.artifactId, version.id))).ok).toBe(true)
+    await registry.settle(version.artifactId, version.id, {
+      checkedAt: new Date().toISOString(), build: 'passed', browser: 'not-run', diagnostics: [], notes: [],
+    })
+    const token = capabilities.issue(version.artifactId, fakeAgent)
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const page = await browser.newPage()
+      await page.goto(`${origin}/genui/app/${version.artifactId}?lang=en#token=${token}`)
+      const app = page.frameLocator('#app')
+      await app.getByRole('button', { name: 'Load explanation' }).click()
+      await page.getByRole('heading', { name: 'Read the explanation' }).waitFor({ state: 'visible' })
+      await page.getByText('Load the selected explanation from the connected source.').waitFor({ state: 'visible' })
+      await page.getByRole('button', { name: 'Allow' }).click()
+      await app.getByText('Connected').waitFor({ state: 'visible' })
+    } finally {
+      await browser.close()
+    }
+  }, 30_000)
 
   it('rejects visible controls without names and images without alt text', async () => {
     const version = await registry.create({

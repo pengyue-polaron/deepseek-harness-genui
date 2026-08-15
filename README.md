@@ -1,6 +1,6 @@
 # DeepSeek Harness GenUI
 
-[![Version](https://img.shields.io/badge/version-0.10.12-ea8f5a)](package.json)
+[![Version](https://img.shields.io/badge/version-0.11.0-ea8f5a)](package.json)
 [![CI](https://github.com/pengyue-polaron/deepseek-harness-genui/actions/workflows/ci.yml/badge.svg)](https://github.com/pengyue-polaron/deepseek-harness-genui/actions/workflows/ci.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.19-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-202124)](LICENSE)
@@ -42,6 +42,11 @@ A DeepSeek Harness plugin that turns the interactive part of a task into a tempo
       <td>Explains how we infer the galaxy from inside it. The next turn reads the chosen scale, viewpoint, and target in natural language.</td>
       <td><img src="screenshots/v0.10.10-milky-way-canvas.jpg" width="420" alt="A Material Expressive Milky Way scale model beside the saved-state explanation"><br><br>A Material Expressive logarithmic model with face-on, edge-on, and tilted views.</td>
     </tr>
+    <tr>
+      <td><strong>Trace real code from the CLI</strong><br><br>“Explain this project’s version and state flow. Generate a GenUI, map each step to the real source, and return a localhost URL.”</td>
+      <td>Inspects the repository, explains the flow, and returns one stable local URL. The next turn reads the selected failure path; a correction updates the same URL.</td>
+      <td><img src="screenshots/v0.11.0-cli-code-explorer.jpg" width="420" alt="A Notion-style code path explorer opened from a stable local CLI link"><br><br>Notion Calm code-path explorer with persisted selection and source-level evidence.</td>
+    </tr>
   </tbody>
 </table>
 
@@ -50,6 +55,7 @@ These are acceptance prompts, not hard-coded demos. Plain questions, rewriting, 
 ## What It Adds
 
 - Inline, adaptive Canvas, and full-screen surfaces inside the task.
+- Stable localhost links for explicit CLI and terminal requests.
 - Normal multi-file React + TypeScript; no component-tree IR.
 - Task-scoped state that the Agent can read on the next turn.
 - Existing Harness and MCP tools behind first-use permission prompts.
@@ -68,11 +74,13 @@ pnpm run package:plugin
 ```
 
 ```sh
-DSH_HOME=/path/to/dsh-home pnpm dsh plugin --profile web add /absolute/path/to/dsh-plugin-genui-0.10.12.tgz
+DSH_HOME=/path/to/dsh-home pnpm dsh plugin --profile web add /absolute/path/to/dsh-plugin-genui-0.11.0.tgz
 DSH_HOME=/path/to/dsh-home pnpm dsh --profile web
 ```
 
 Add MCP servers to the Harness profile as usual. Generated apps call their exact tool names; credentials stay in the Harness.
+
+For terminal delivery, explicitly ask for a GenUI and a localhost browser URL. The Harness process must remain running while the page is in use. Ordinary coding requests stay in prose and code.
 
 ## Design
 

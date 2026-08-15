@@ -34,6 +34,8 @@ const receiptSchema = {
     version_id: { type: 'string' as const, required: true },
     status: { type: 'string' as const, required: true },
     preview_url: { type: 'string' as const },
+    app_url: { type: 'string' as const },
+    delivery: { type: 'string' as const, required: true },
     message: { type: 'string' as const, required: true },
     diagnostics: diagnosticsSchema,
   },
@@ -45,6 +47,8 @@ interface ToolReceipt {
   version_id: string
   status: string
   preview_url?: string
+  app_url?: string
+  delivery: 'embedded' | 'local-link'
   message: string
   diagnostics?: BuildDiagnostic[]
 }
@@ -52,6 +56,12 @@ interface ToolReceipt {
 function renderReceipt(value: unknown): { type: 'text'; text: string }[] {
   const receipt = value as ToolReceipt
   if (receipt.status === 'ready') {
+    if (receipt.delivery === 'local-link') {
+      return [{
+        type: 'text',
+        text: `${receipt.title}\n${receipt.app_url}`,
+      }]
+    }
     return [{
       type: 'text',
       text: 'This successful result must be the last emitted item. Emit no text and run no tools after it.',
@@ -102,6 +112,8 @@ async function compile(
   previewOrigin: string,
   version: ArtifactVersion,
   agent: Agent,
+  delivery: ToolReceipt['delivery'],
+  language: 'en' | 'zh',
 ): Promise<ToolReceipt> {
   const artifact = await registry.get(version.artifactId)
   const result = await buildArtifact(version, registry.distPath(version.artifactId, version.id))
@@ -119,6 +131,7 @@ async function compile(
       title: artifact.title,
       version_id: settled.id,
       status: settled.status,
+      delivery,
       message: record.currentVersionId === undefined
         ? 'Initial build failed. Repair the reported files with genui_update using this failed version as the base.'
         : 'Candidate build failed. Repair the reported files and call genui_update against the current ready version.',
@@ -142,18 +155,22 @@ async function compile(
       title: artifact.title,
       version_id: settled.id,
       status: settled.status,
+      delivery,
       message: 'Candidate rendered incorrectly in the browser. Repair the diagnostics; the last-known-good version is unchanged.',
       diagnostics: [...result.diagnostics, ...browser.diagnostics],
     }
   }
   const token = capabilities.issue(version.artifactId, agent)
   const previewUrl = `${routePrefix}/preview/${version.artifactId}/${version.id}?lang=en#token=${token}`
+  const appUrl = `${previewOrigin}${routePrefix}/app/${version.artifactId}?lang=${language}#token=${token}`
   return {
     artifact_id: settled.artifactId,
     title: artifact.title,
     version_id: settled.id,
     status: settled.status,
     preview_url: previewUrl,
+    app_url: appUrl,
+    delivery,
     message: 'Artifact compiled, passed desktop/mobile browser checks, and became the last-known-good version.',
     diagnostics: [...result.diagnostics, ...browser.diagnostics],
   }
@@ -193,6 +210,20 @@ interface CapabilityInput {
   url_prefix?: string
   methods?: string[]
 }
+
+const deliverySpec = {
+  type: 'string' as const,
+  required: true,
+  enum: ['embedded', 'local-link'] as const,
+  description: 'Use local-link only when the user explicitly asks for CLI, terminal, localhost, or a browser URL. Otherwise use embedded.',
+} as const
+
+const languageSpec = {
+  type: 'string' as const,
+  required: true,
+  enum: ['en', 'zh'] as const,
+  description: 'The user-facing language of the generated app.',
+} as const
 
 function capabilitiesFromInput(input: CapabilityInput[]): ArtifactCapability[] {
   return input.map(item => item.kind === 'tool'
@@ -284,6 +315,8 @@ export function registerGenuiTools(
     parameters: {
       artifact_id: { type: 'string', required: true, description: 'Stable lowercase kebab-case id within this task.' },
       title: { type: 'string', required: true },
+      delivery: deliverySpec,
+      language: languageSpec,
       summary: { type: 'string', required: true },
       requirements: { type: 'array', items: { type: 'string' }, required: true },
       capabilities: {
@@ -310,8 +343,8 @@ export function registerGenuiTools(
         capabilities: capabilitiesFromInput(args.capabilities as CapabilityInput[]),
         files: args.files as SourceFile[],
       })
-      const receipt = await compile(registry, capabilities, routePrefix, previewOrigin, version, agent)
-      if (receipt.status === 'ready') exec.concludeTurn()
+      const receipt = await compile(registry, capabilities, routePrefix, previewOrigin, version, agent, args.delivery, args.language)
+      if (receipt.status === 'ready' && receipt.delivery === 'embedded') exec.concludeTurn()
       return receipt
     },
   }))
@@ -321,6 +354,8 @@ export function registerGenuiTools(
     description: 'Incrementally update an existing UI artifact. Only send changed, added, or deleted files and retain all still-active requirements.',
     parameters: {
       artifact_id: { type: 'string', required: true },
+      delivery: deliverySpec,
+      language: languageSpec,
       base_version_id: { type: 'string', required: true },
       summary: { type: 'string', required: true },
       patches: {
@@ -359,8 +394,8 @@ export function registerGenuiTools(
         ...(args.supersede_requirements === undefined ? {} : { supersedeRequirements: args.supersede_requirements }),
         ...(args.capabilities === undefined ? {} : { capabilities: capabilitiesFromInput(args.capabilities as CapabilityInput[]) }),
       })
-      const receipt = await compile(registry, capabilities, routePrefix, previewOrigin, version, agent)
-      if (receipt.status === 'ready') exec.concludeTurn()
+      const receipt = await compile(registry, capabilities, routePrefix, previewOrigin, version, agent, args.delivery, args.language)
+      if (receipt.status === 'ready' && receipt.delivery === 'embedded') exec.concludeTurn()
       return receipt
     },
   }))
@@ -418,6 +453,8 @@ export function registerGenuiTools(
     parameters: {
       artifact_id: { type: 'string', required: true },
       version_id: { type: 'string', required: true },
+      delivery: deliverySpec,
+      language: languageSpec,
     },
     output: {
       schema: receiptSchema,
@@ -435,6 +472,8 @@ export function registerGenuiTools(
         version_id: args.version_id,
         status: 'ready',
         preview_url: `${routePrefix}/preview/${artifactId}/${args.version_id}?lang=en#token=${token}`,
+        app_url: `${previewOrigin}${routePrefix}/app/${artifactId}?lang=${args.language}#token=${token}`,
+        delivery: args.delivery,
         message: 'Artifact rolled back to the selected ready version.',
         diagnostics: [],
       }

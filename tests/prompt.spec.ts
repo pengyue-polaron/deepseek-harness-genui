@@ -5,6 +5,7 @@ describe('GenUI system prompt', () => {
   it('keeps user handoffs product-focused without adding another prompt section', () => {
     expect(GENUI_SYSTEM_PROMPT).toContain('even when the user does not ask for an interface')
     expect(GENUI_SYSTEM_PROMPT).toContain('A direct request for an interactive card, simulator, explorable model, or visual control is explicit intent')
+    expect(GENUI_SYSTEM_PROMPT).toContain('In a coding, CLI, terminal, or localhost workflow, require that explicit intent')
     expect(GENUI_SYSTEM_PROMPT).toContain('Never use workspace file, write, edit, shell, or coding tools to create or stage its source, even temporarily')
     expect(GENUI_SYSTEM_PROMPT).toContain('one focused decision or working surface, not a miniature site or dashboard that repeats the answer')
     expect(GENUI_SYSTEM_PROMPT).toContain('normally 3–5 source files including its stylesheet')
@@ -16,9 +17,10 @@ describe('GenUI system prompt', () => {
     expect(GENUI_SYSTEM_PROMPT).toContain('state the main recommendation in 1–3 natural sentences before the call')
     expect(GENUI_SYSTEM_PROMPT).toContain('For input collection, state what information is still missing in 1–2 sentences')
     expect(GENUI_SYSTEM_PROMPT).toContain('never announce a page or list what it will contain')
-    expect(GENUI_SYSTEM_PROMPT).toContain('write the framing prose before the call and put only that part in the card')
-    expect(GENUI_SYSTEM_PROMPT).toContain('must be the last emitted item: run no more tools and emit no text after it')
-    expect(GENUI_SYSTEM_PROMPT).toContain('Never say the card is ready')
+    expect(GENUI_SYSTEM_PROMPT).toContain('write the framing prose before the call and put only that part in the app')
+    expect(GENUI_SYSTEM_PROMPT).toContain('A successful embedded genui_create or genui_update must be the last emitted item')
+    expect(GENUI_SYSTEM_PROMPT).toContain('After a successful local-link result')
+    expect(GENUI_SYSTEM_PROMPT).toContain('Never say the app is ready')
     expect(GENUI_SYSTEM_PROMPT).toContain('never mention GenUI, tools, artifacts, versions, source files, builds, diagnostics, requirement ledgers, device checks, or design profiles')
     expect(GENUI_SYSTEM_PROMPT.indexOf('Keep every genui_* call')).toBeLessThan(GENUI_SYSTEM_PROMPT.indexOf('This is Code First'))
     expect(GENUI_SYSTEM_PROMPT.match(/^## /gm)).toHaveLength(1)
@@ -55,6 +57,8 @@ describe('GenUI system prompt', () => {
     expect(GENUI_BEHAVIOR_PROMPT).toContain('prefer the matching connected MCP tool over a similarly scoped Skill')
     expect(GENUI_BEHAVIOR_PROMPT).toContain('"only", "只用", and "仅根据" create a hard allowlist')
     expect(GENUI_BEHAVIOR_PROMPT).toContain('Never stream working notes, first-person work narration, search commentary, implementation plans, retries, or error repair')
+    expect(GENUI_BEHAVIOR_PROMPT).toContain('Before any read, search, shell, state-read, or inspection call, emit no assistant text')
+    expect(GENUI_BEHAVIOR_PROMPT).toContain('the next action is the final creation or update')
   })
 
   it('honors a Harness default design without changing the automatic default', () => {

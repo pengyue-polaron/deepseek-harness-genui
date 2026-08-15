@@ -11,6 +11,7 @@ import { requestExternal } from './external.ts'
 import {
   capabilityById, capabilityFingerprint, externalCapability, isGranted, permissionView, toolCapability,
 } from './permissions.ts'
+import { ARTIFACT_RUNTIME_VERSION, STANDALONE_RUNTIME, standaloneHtml } from './standalone.ts'
 
 const CSP = [
   "default-src 'none'",
@@ -19,6 +20,7 @@ const CSP = [
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
   "connect-src 'self'",
+  "frame-src 'self'",
   "object-src 'none'",
   "base-uri 'none'",
   "frame-ancestors 'self'",
@@ -34,8 +36,6 @@ const MIME: Record<string, string> = {
   '.jpeg': 'image/jpeg',
   '.webp': 'image/webp',
 }
-
-const ARTIFACT_RUNTIME_VERSION = '0.10.12'
 
 function json(res: ServerResponse, status: number, value: unknown, req?: IncomingMessage): void {
   res.writeHead(status, {
@@ -105,6 +105,33 @@ export function createHttpRuntime(
           return
         }
         const relative = url.pathname.slice(routePrefix.length).split('/').filter(Boolean).map(decodeURIComponent)
+        if (req.method === 'GET' && relative.length === 1 && relative[0] === 'standalone.js') {
+          res.writeHead(200, {
+            'content-type': 'text/javascript; charset=utf-8',
+            'content-security-policy': CSP,
+            'cache-control': 'private, max-age=31536000, immutable',
+            'x-content-type-options': 'nosniff',
+          })
+          res.end(STANDALONE_RUNTIME)
+          return
+        }
+        if (req.method === 'GET' && relative[0] === 'app' && relative.length === 2) {
+          const artifactId = relative[1] ?? ''
+          const language = url.searchParams.get('lang')
+          if (language !== 'en' && language !== 'zh') return json(res, 400, { error: 'app language must be en or zh' })
+          const artifact = await registry.get(artifactId)
+          if (artifact.currentVersionId === undefined) return json(res, 409, { error: 'app has no ready version' })
+          const version = await registry.getVersion(artifactId, artifact.currentVersionId)
+          res.writeHead(200, {
+            'content-type': 'text/html; charset=utf-8',
+            'content-security-policy': CSP,
+            'cache-control': 'no-store',
+            'x-content-type-options': 'nosniff',
+            'referrer-policy': 'no-referrer',
+          })
+          res.end(standaloneHtml(routePrefix, artifactId, version.id, artifact.title, language))
+          return
+        }
         if (relative[0] === 'manage') {
           if (!acceptsManagementRequest(req)) return json(res, 403, { error: 'cross-site management requests are not allowed' })
           if (req.method === 'GET' && relative.length === 2 && relative[1] === 'designs') {
