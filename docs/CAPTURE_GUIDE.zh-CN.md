@@ -56,26 +56,7 @@ screenshots/en/coding-agent-local-link.jpg
 screenshots/en/code-path-explorer.jpg
 ```
 
-## 2. 本地视觉模型筛选
-
-需要 Hugging Face 与 GitHub 连接。设计使用 `ledger-grid`。
-
-中文：
-
-> 我想在一台 24 GB 统一内存的 Mac 上本地运行视觉语言模型，主要处理截图和简单文档。只使用我已经连接的 Hugging Face 和 GitHub 数据，说明内存、许可证和可运行实现上的限制，再帮我保留值得考虑的候选模型。我选完以后会继续问最终建议。
-
-English:
-
-> I want to run a vision-language model locally on a Mac with 24 GB of unified memory, mainly for screenshots and simple documents. Use only the Hugging Face and GitHub sources I already connected. Explain the practical limits around memory, licenses, and runnable implementations, then help me keep the candidates worth considering. I will ask for a final recommendation after I choose.
-
-在界面里保留两个候选项，然后追问：
-
-- 中文：`先读取我保留的候选项，不要重新搜索。根据我的选择给出最终建议。`
-- English: `Read my saved candidates first and do not search again. Recommend one based on my choices.`
-
-截图要同时看到候选清单、已选状态和 Agent 的读回回答。
-
-## 3. 日历时段选择
+## 2. 日历时段选择
 
 需要 Calendar MCP 和真实可用时间。设计使用 `ledger-grid`。
 
@@ -94,7 +75,7 @@ English:
 
 截图前确认界面没有显示私人事件标题。
 
-## 4. 光合作用因果模型
+## 3. 光合作用因果模型
 
 不需要外部工具。设计使用 `field-atlas`。
 
@@ -113,7 +94,7 @@ English:
 
 截图要能看到参数、流动变化和针对当前条件的回答。
 
-## 5. 银河系尺度探索
+## 4. 银河系尺度探索
 
 不需要外部工具。设计使用 `field-atlas`。
 
@@ -139,15 +120,13 @@ English:
 建议文件名：
 
 ```text
-screenshots/zh-CN/local-model-shortlist.jpg
 screenshots/zh-CN/calendar-planner.jpg
 screenshots/zh-CN/photosynthesis-explorer.jpg
 screenshots/zh-CN/milky-way-explorer.jpg
 
-screenshots/en/local-model-shortlist.jpg
 screenshots/en/calendar-planner.jpg
 screenshots/en/photosynthesis-explorer.jpg
 screenshots/en/milky-way-explorer.jpg
 ```
 
-英文四张补齐后，把它们加入英文 README 的场景表；在此之前不要复用中文图。
+英文三张补齐后，把它们加入英文 README 的场景表；在此之前不要复用中文图。

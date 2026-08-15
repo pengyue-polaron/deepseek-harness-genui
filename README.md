@@ -13,10 +13,6 @@ A DeepSeek Harness plugin for temporary, task-specific React apps. The Agent ans
 
 <table>
   <tr>
-    <td><strong>Choose a local model</strong><br><br>Which vision models will actually run on a 24 GB Mac?<br><br>Connected Hugging Face and GitHub results become a filterable shortlist with memory, license, source, and saved selections.</td>
-    <td><img src="screenshots/en/local-model-shortlist.png" width="280" alt="English local vision model shortlist generated from connected Hugging Face and GitHub results"></td>
-  </tr>
-  <tr>
     <td><strong>Pick calendar slots</strong><br><br>Find useful 90-minute writing blocks and create only the confirmed events.<br><br>The app lays real availability side by side, keeps the selection, and asks before writing to the calendar.</td>
     <td><img src="screenshots/en/calendar-planner.png" width="280" alt="English schedule for selecting three writing slots before calendar creation"></td>
   </tr>

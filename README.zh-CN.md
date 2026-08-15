@@ -13,10 +13,6 @@
 
 <table>
   <tr>
-    <td><strong>选择本地模型</strong><br><br>哪些视觉模型能在 24 GB Mac 上实际运行？<br><br>插件把 Hugging Face 和 GitHub 的真实结果整理成可筛选的候选清单，列出内存、许可证、来源，并保存用户的选择。</td>
-    <td><img src="screenshots/zh-CN/local-model-shortlist.jpg" width="280" alt="结合 Hugging Face 和 GitHub 结果生成的本地视觉模型筛选界面"></td>
-  </tr>
-  <tr>
     <td><strong>选择日历时段</strong><br><br>找出合适的 90 分钟写作时间，只创建最终确认的日程。<br><br>页面并列显示真实空闲时间、保留选择，并在写入日历前明确申请授权。</td>
     <td><img src="screenshots/zh-CN/calendar-planner.jpg" width="280" alt="读取真实空闲时间后生成的日历时段选择界面"></td>
   </tr>

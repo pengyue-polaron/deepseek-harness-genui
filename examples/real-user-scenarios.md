@@ -2,20 +2,7 @@
 
 These prompts state the user's goal, not a screen specification. None is hard-coded into the plugin.
 
-## 1. Choose a Local Vision Model
-
-Design: `ledger-grid`
-
-> I want to run a vision-language model locally on a Mac with 24 GB of unified memory, mainly for screenshots and simple documents. Use only the Hugging Face and GitHub sources I already connected. Explain the practical limits around memory, licenses, and runnable implementations, then help me keep the candidates worth considering. I will ask for a final recommendation after I choose.
-
-Acceptance:
-
-- Uses real Hugging Face and GitHub evidence within the discovery budget.
-- Keeps the main recommendation and caveats in prose.
-- Saves filters and selected candidates in the task.
-- Answers the follow-up from saved choices without searching again.
-
-## 2. Find Calendar Time Safely
+## 1. Find Calendar Time Safely
 
 Design: `ledger-grid`
 
@@ -28,7 +15,7 @@ Acceptance:
 - Saves the selected times and reads them back on the next turn.
 - Requests explicit confirmation before writing, then verifies the created events through the same calendar connection.
 
-## 3. Explore What Limits Photosynthesis
+## 2. Explore What Limits Photosynthesis
 
 Design: `field-atlas`
 
@@ -41,7 +28,7 @@ Acceptance:
 - Persists all four controls.
 - Explains the exact saved conditions on the next turn.
 
-## 4. Build an Intuition for the Milky Way
+## 3. Build an Intuition for the Milky Way
 
 Design: `field-atlas`
 
@@ -54,7 +41,7 @@ Acceptance:
 - Persists the scale, viewpoint, and selected target.
 - Translates saved values into natural language on the next turn without exposing internal keys.
 
-## 5. Trace Real Code From the CLI
+## 4. Trace Real Code From the CLI
 
 Design: `editorial-workbench`
 
