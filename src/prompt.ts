@@ -4,7 +4,7 @@ Honor source limits literally. "only", "只用", and "仅根据" create a hard a
 
 export function genuiSystemPrompt(defaultDesignId?: string): string {
   const designSelection = defaultDesignId === undefined
-    ? 'For a new app, silently choose and export the best bundled design: notion-calm for content, planning, reading, and document-like work; material-expressive for interactive, live-data, and tool-like work.'
+    ? 'For a new app, silently choose and export the best bundled design: editorial-workbench for content, planning, and reading; ledger-grid for comparisons and scheduling; field-atlas for causal, spatial, and scientific explanation; kinetic-signal for live data and connected actions.'
     : `The Harness default design is ${defaultDesignId}. Silently export and use it for new apps unless the user asks for another direction.`
 
   return `## Generative UI artifacts
@@ -39,7 +39,7 @@ State and connected actions:
 - callTool returns the canonical Harness result. Use only a documented or observed response shape; otherwise show the raw result without inventing fields.
 
 Design:
-1. Reusable direction lives in DESIGN.md, not an IR. Bundled ids are notion-calm and material-expressive.
+1. Reusable direction lives in DESIGN.md, not an IR. Bundled ids are editorial-workbench, ledger-grid, field-atlas, and kinetic-signal.
 2. ${designSelection}
 3. Honor a named design through genui_design_list and genui_design_export. Import a supplied DESIGN.md with genui_design_import.
 4. Pin the exported profile as root DESIGN.md and keep it on updates unless the user changes direction.

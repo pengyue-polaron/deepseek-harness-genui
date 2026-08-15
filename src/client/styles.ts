@@ -86,7 +86,7 @@ export const cardCss = `
 .dsh-genui-receipt span { min-width: 0; overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; }
 .dsh-genui-receipt button { width: auto; padding: 0 8px; }
 .dsh-genui-pending { padding: 10px 12px; border: 1px solid color-mix(in srgb,currentColor 16%,transparent); border-radius: 10px; color: inherit; font: 12px/1.4 ui-sans-serif,sans-serif; }
-.dsh-genui-card:fullscreen { display: flex; width: 100vw; height: 100vh; border: 0; border-radius: 0; flex-direction: column; background: var(--g-panel); }
+.dsh-genui-card:fullscreen { display: flex; width: 100vw; height: 100dvh; border: 0; border-radius: 0; flex-direction: column; background: var(--g-panel); }
 .dsh-genui-card[data-surface='canvas']:fullscreen { inset: 0; width: 100vw; max-width: none; }
 .dsh-genui-card:fullscreen .dsh-genui-head { padding-top: max(3px,env(safe-area-inset-top)); padding-right: max(5px,env(safe-area-inset-right)); padding-left: max(7px,env(safe-area-inset-left)); }
 .dsh-genui-card:fullscreen .dsh-genui-body { height: auto; min-height: 0; flex: 1; }

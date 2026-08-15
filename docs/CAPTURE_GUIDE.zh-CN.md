@@ -31,7 +31,7 @@ cd /Users/pengyue/Documents/Codex/2026-08-14/benchmark-deepseek-harness-genui-pr
 dsh --profile web
 ```
 
-语言设为 English，设计选 `notion-calm`，新建会话后发送：
+语言设为 English，设计选 `editorial-workbench`，新建会话后发送：
 
 > Explain how a stable local app URL resolves the current ready version in this project and how a user's selection becomes readable on the next Agent turn. Generate a GenUI for this CLI workflow, map every step to the real source file and function, and return a localhost browser URL. I will ask about the path I select afterward.
 
@@ -58,7 +58,7 @@ screenshots/en/code-path-explorer.jpg
 
 ## 2. 本地视觉模型筛选
 
-需要 Hugging Face 与 GitHub 连接。设计使用 `notion-calm`。
+需要 Hugging Face 与 GitHub 连接。设计使用 `ledger-grid`。
 
 中文：
 
@@ -77,7 +77,7 @@ English:
 
 ## 3. 日历时段选择
 
-需要 Calendar MCP 和真实可用时间。设计使用 `notion-calm`。
+需要 Calendar MCP 和真实可用时间。设计使用 `ledger-grid`。
 
 中文：
 
@@ -96,7 +96,7 @@ English:
 
 ## 4. 光合作用因果模型
 
-不需要外部工具。设计使用 `material-expressive`。
+不需要外部工具。设计使用 `field-atlas`。
 
 中文：
 
@@ -115,7 +115,7 @@ English:
 
 ## 5. 银河系尺度探索
 
-不需要外部工具。设计使用 `material-expressive`。
+不需要外部工具。设计使用 `field-atlas`。
 
 中文：
 

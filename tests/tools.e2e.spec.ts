@@ -147,6 +147,8 @@ createRoot(document.getElementById('root')!).render(<App />)`,
 
     const stableDocument = await fetch(String(updated.app_url)).then(response => response.text())
     expect(stableDocument).toContain(`data-version-id="${String(updated.version_id)}"`)
+    expect(stableDocument).toContain('<meta name="theme-color" media="(prefers-color-scheme: light)" content="#faf9f6">')
+    expect(stableDocument).toContain('<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#171717">')
     expect(stableDocument).not.toContain(new URL(String(updated.app_url)).hash.slice(1))
 
     const rejected = await execute('genui_update', {
@@ -183,8 +185,10 @@ createRoot(document.getElementById('root')!).render(<App />)`,
   it('lists, imports, and exports DESIGN.md profiles', async () => {
     const listed = await execute('genui_design_list', {})
     expect(listed.designs).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'notion-calm' }),
-      expect.objectContaining({ id: 'material-expressive' }),
+      expect.objectContaining({ id: 'editorial-workbench' }),
+      expect.objectContaining({ id: 'field-atlas' }),
+      expect.objectContaining({ id: 'kinetic-signal' }),
+      expect.objectContaining({ id: 'ledger-grid' }),
     ]))
 
     await execute('genui_design_import', {

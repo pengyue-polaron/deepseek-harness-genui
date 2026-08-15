@@ -1,8 +1,24 @@
 {
   "name": "dsh-plugin-genui",
   "description": "Code-first generative UI artifacts for DeepSeek Harness",
-  "version": "0.11.1",
+  "version": "0.12.0",
   "private": true,
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "generative-ui",
+    "genui",
+    "mcp",
+    "react"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pengyue-polaron/deepseek-harness-genui.git"
+  },
+  "homepage": "https://github.com/pengyue-polaron/deepseek-harness-genui#readme",
+  "bugs": {
+    "url": "https://github.com/pengyue-polaron/deepseek-harness-genui/issues"
+  },
   "type": "module",
   "packageManager": "pnpm@11.17.0",
   "engines": {
@@ -52,6 +68,8 @@
     "screenshots/zh-CN/milky-way-explorer.jpg",
     "README.md",
     "README.zh-CN.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
     "docs",
     "examples"
   ],

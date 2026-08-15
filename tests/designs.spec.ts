@@ -22,8 +22,10 @@ describe('DesignStore', () => {
   it('installs the maintained presets', async () => {
     const designs = await store()
     expect(await designs.list()).toEqual([
-      { id: 'material-expressive', title: 'Material Expressive' },
-      { id: 'notion-calm', title: 'Notion Calm' },
+      { id: 'editorial-workbench', title: 'Editorial Workbench' },
+      { id: 'field-atlas', title: 'Field Atlas' },
+      { id: 'kinetic-signal', title: 'Kinetic Signal' },
+      { id: 'ledger-grid', title: 'Ledger Grid' },
     ])
   })
 

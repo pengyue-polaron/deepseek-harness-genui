@@ -146,8 +146,10 @@ describe('real MCP artifact bridge', () => {
     expect(zhResponse.status).toBe(200)
     const zhDocument = await zhResponse.text()
     expect(zhDocument).toContain('<html lang="zh">')
-    expect(zhDocument).toContain('app.js?runtime=0.11.1')
+    expect(zhDocument).toContain('app.js?runtime=0.12.0')
     expect(zhDocument).toContain('<meta name="color-scheme" content="light dark">')
+    expect(zhDocument).toContain('<meta name="theme-color" content="#faf9f6" media="(prefers-color-scheme: light)">')
+    expect(zhDocument).toContain('<meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)">')
 
     const missingLanguage = await fetch(`${origin}/genui/preview/mcp-artifact/${versionId}#token=${token}`)
     expect(missingLanguage.status).toBe(400)
@@ -163,8 +165,10 @@ describe('real MCP artifact bridge', () => {
     }
     expect(initial.default_design_id).toBeNull()
     expect(initial.designs).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'notion-calm', builtin: true }),
-      expect.objectContaining({ id: 'material-expressive', builtin: true }),
+      expect.objectContaining({ id: 'editorial-workbench', builtin: true }),
+      expect.objectContaining({ id: 'field-atlas', builtin: true }),
+      expect.objectContaining({ id: 'kinetic-signal', builtin: true }),
+      expect.objectContaining({ id: 'ledger-grid', builtin: true }),
     ]))
 
     const imported = await fetch(`${origin}/genui/manage/designs/import`, {

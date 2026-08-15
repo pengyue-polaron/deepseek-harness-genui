@@ -58,6 +58,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
   const locale = t('locale.code') as 'en' | 'zh'
   const canvasSessionId = String(sessionId)
   const artifactKey = meta?.artifactId ?? `pending:${callId}`
+  const displayTitle = meta?.title || t('app.untitled')
   const primary = usePrimaryArtifactCard(artifactKey, callId, cardElement, meta?.previewUrl !== undefined)
   const canvasOpen = useCanvasArtifact(canvasSessionId, artifactKey)
   const canvasSurface = useCanvasSurface(canvasOpen, cardElement)
@@ -262,7 +263,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
       {canvasOpen ? (
         <button type="button" className="dsh-genui-canvas-placeholder" onClick={() => { void toggleCanvas() }}>
           <ShellIcon name="panel-right" />
-          <strong>{meta.title || t('app.untitled')}</strong>
+          <strong>{displayTitle}</strong>
           <span>{t('app.canvasReturn')}</span>
         </button>
       ) : null}
@@ -275,7 +276,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
             </IconAction>
           )}
           <div className="dsh-genui-name">
-            <h3 id={titleId} className="dsh-genui-title">{meta.title || t('app.untitled')}</h3>
+            <h3 id={titleId} className="dsh-genui-title">{displayTitle}</h3>
           </div>
           {previewUrl === undefined ? null : (
             <div className="dsh-genui-actions">
@@ -322,7 +323,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
         ) : (
           <div id={bodyId} className="dsh-genui-body" hidden={collapsed}>
             <div className="dsh-genui-frame-shell">
-              <iframe ref={frameRef} key={frameKey} className="dsh-genui-frame" title={meta.title} src={previewUrl} sandbox="allow-scripts allow-forms allow-modals allow-downloads" referrerPolicy="no-referrer" onLoad={() => frameRef.current?.contentWindow?.postMessage({ source: 'dsh-genui', type: 'ready-request', artifactId: meta.artifactId, versionId: meta.versionId }, '*')} onError={() => setFrameState('failed')} />
+              <iframe ref={frameRef} key={frameKey} className="dsh-genui-frame" title={displayTitle} src={previewUrl} sandbox="allow-scripts allow-forms allow-modals allow-downloads" referrerPolicy="no-referrer" onLoad={() => frameRef.current?.contentWindow?.postMessage({ source: 'dsh-genui', type: 'ready-request', artifactId: meta.artifactId, versionId: meta.versionId }, '*')} onError={() => setFrameState('failed')} />
               <div className="dsh-genui-loading" hidden={frameState !== 'loading'} role="status" aria-live="polite">{t('app.loading')}</div>
               <div className="dsh-genui-frame-error" hidden={frameState !== 'failed'} role="alert">
                 <div><span>{t('app.loadFailed')}</span><button type="button" className="dsh-genui-button" onClick={() => { setFrameState('loading'); setFrameKey(value => value + 1) }}><ShellIcon name="refresh" />{t('app.reload')}</button></div>
