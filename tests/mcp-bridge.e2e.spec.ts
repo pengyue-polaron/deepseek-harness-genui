@@ -143,7 +143,7 @@ describe('real MCP artifact bridge', () => {
     expect(zhResponse.status).toBe(200)
     const zhDocument = await zhResponse.text()
     expect(zhDocument).toContain('<html lang="zh">')
-    expect(zhDocument).toContain('app.js?runtime=0.8.4')
+    expect(zhDocument).toContain('app.js?runtime=0.9.2')
     expect(zhDocument).toContain('<meta name="color-scheme" content="light dark">')
 
     const missingLanguage = await fetch(`${origin}/genui/preview/mcp-artifact/${versionId}#token=${token}`)
@@ -156,7 +156,7 @@ describe('real MCP artifact bridge', () => {
     const tool = await post('tool', { name: 'mcp__everything__echo', arguments: { message: 'blocked' } }, verificationToken)
     expect(tool).toEqual({ status: 200, value: { content: [], structuredContent: null, verification: true } })
     const external = await post('external', { url: 'https://api.example.com/v1/forecast', method: 'GET' }, verificationToken)
-    expect(external).toEqual({ status: 200, value: { status: 204, headers: {}, body: null, verification: true } })
+    expect(external).toEqual({ status: 200, value: { status: 204, headers: {}, body: 'null', verification: true } })
     const undeclared = await post('tool', { name: 'mcp__everything__get-tiny-image', arguments: {} }, verificationToken)
     expect(undeclared.status).toBe(403)
     expect((await registry.get('mcp-artifact')).states).toEqual({})

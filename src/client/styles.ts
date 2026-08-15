@@ -74,6 +74,7 @@ export const cardCss = `
 .dsh-genui-permission-facts { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
 .dsh-genui-permission-facts span { max-width: 100%; overflow-wrap: anywhere; border: 1px solid var(--g-border); border-radius: 999px; padding: 5px 8px; background: var(--g-panel); color: var(--g-ink); font: 650 10px/1.2 ui-sans-serif,sans-serif; }
 .dsh-genui-permission-copy .dsh-genui-permission-scope { font-size: 10px; }
+.dsh-genui-permission-copy .dsh-genui-permission-queue { margin-top: 7px; color: var(--g-ink); font-size: 10px; font-weight: 650; }
 .dsh-genui-permission-copy .dsh-genui-permission-error { margin-top: 8px; color: var(--g-danger); }
 .dsh-genui-permission-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
 .dsh-genui-error { padding: 16px; color: var(--g-danger); font: 13px/1.45 ui-sans-serif,sans-serif; overflow-wrap: anywhere; }
@@ -108,7 +109,7 @@ export const cardCss = `
   .dsh-genui-permission-actions .dsh-genui-button { min-height: 42px; flex: 1; }
 }
 @container (max-width: 420px) {
-  .dsh-genui-fullscreen { display: none; }
+  .dsh-genui-card[data-surface='inline'] .dsh-genui-fullscreen { display: none; }
   .dsh-genui-canvas-action { width: auto; gap: 6px; padding: 0 10px; border-radius: 9px; background: var(--g-ink); color: var(--g-panel-raised); }
   .dsh-genui-canvas-action:hover { background: color-mix(in srgb,var(--g-ink) 88%,transparent); color: var(--g-panel-raised); }
   .dsh-genui-open-label { display: inline; }

@@ -9,6 +9,7 @@ import { canvasController, useCanvasArtifact, useCanvasSurface } from './canvas.
 import { ShellIcon } from './icons.tsx'
 import { artifactCardLedger, usePrimaryArtifactCard } from './ledger.ts'
 import { en, NS, zh } from './locales.ts'
+import { enqueuePermission, settlePermission } from './permission-queue.ts'
 import { isGenuiReadyMessage } from './readiness.ts'
 import { cardCss } from './styles.ts'
 import { readMeta } from './types.ts'
@@ -48,6 +49,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
   const permissionDialogRef = useRef<HTMLElement>(null)
   const permissionDenyRef = useRef<HTMLButtonElement>(null)
   const permissionPendingRef = useRef(false)
+  const permissionQueueRef = useRef<PermissionRequest[]>([])
   const bodyId = useId()
   const titleId = useId()
   const permissionTitleId = `${titleId}-permission`
@@ -64,9 +66,10 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
   const [collapsed, setCollapsed] = useState(false)
   const [frameState, setFrameState] = useState<'loading' | 'ready' | 'failed'>('loading')
   const [frameKey, setFrameKey] = useState(0)
-  const [permissionRequest, setPermissionRequest] = useState<PermissionRequest>()
+  const [permissionQueue, setPermissionQueue] = useState<PermissionRequest[]>([])
   const [permissionPending, setPermissionPending] = useState(false)
   const [permissionError, setPermissionError] = useState<string>()
+  const permissionRequest = permissionQueue[0]
 
   const announce = (message: string) => {
     setNotice(message)
@@ -120,7 +123,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
         || (permission.kind !== 'tool' && permission.kind !== 'external')
         || (permission.access !== 'read' && permission.access !== 'write')) return
       setPermissionError(undefined)
-      setPermissionRequest({
+      const request: PermissionRequest = {
         requestId: value.requestId,
         permission: {
           id: permission.id,
@@ -131,6 +134,11 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
           ...(typeof permission.destination === 'string' ? { destination: permission.destination } : {}),
           ...(Array.isArray(permission.methods) ? { methods: permission.methods.filter(item => typeof item === 'string') as string[] } : {}),
         },
+      }
+      setPermissionQueue(current => {
+        const next = enqueuePermission(current, request)
+        permissionQueueRef.current = next
+        return next
       })
     }
     window.addEventListener('message', receive)
@@ -138,7 +146,8 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
   }, [meta?.artifactId, meta?.versionId])
 
   useEffect(() => {
-    setPermissionRequest(undefined)
+    permissionQueueRef.current = []
+    setPermissionQueue([])
     setPermissionError(undefined)
   }, [meta?.versionId])
 
@@ -153,8 +162,10 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
     const keydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !permissionPendingRef.current) {
         event.preventDefault()
-        frameRef.current?.contentWindow?.postMessage({ source: 'dsh-genui', type: 'permission-result', requestId: permissionRequest.requestId, granted: false }, '*')
-        setPermissionRequest(undefined)
+        const settled = settlePermission(permissionQueueRef.current, permissionRequest.permission.id)
+        settled.answered.forEach(request => answerPermission(request.requestId, false))
+        permissionQueueRef.current = settled.remaining
+        setPermissionQueue(settled.remaining)
         setPermissionError(undefined)
         return
       }
@@ -220,8 +231,10 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
 
   const denyPermission = () => {
     if (permissionRequest === undefined || permissionPending) return
-    answerPermission(permissionRequest.requestId, false)
-    setPermissionRequest(undefined)
+    const settled = settlePermission(permissionQueueRef.current, permissionRequest.permission.id)
+    settled.answered.forEach(request => answerPermission(request.requestId, false))
+    permissionQueueRef.current = settled.remaining
+    setPermissionQueue(settled.remaining)
     setPermissionError(undefined)
   }
 
@@ -231,8 +244,10 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
     setPermissionError(undefined)
     try {
       await grantPermission(meta, meta.versionId, permissionRequest.permission.id)
-      answerPermission(permissionRequest.requestId, true)
-      setPermissionRequest(undefined)
+      const settled = settlePermission(permissionQueueRef.current, permissionRequest.permission.id)
+      settled.answered.forEach(request => answerPermission(request.requestId, true))
+      permissionQueueRef.current = settled.remaining
+      setPermissionQueue(settled.remaining)
     } catch {
       setPermissionError(t('permission.failed'))
     } finally {
@@ -289,6 +304,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
                   {permissionRequest.permission.methods?.length ? <span>{t('permission.methods')} {permissionRequest.permission.methods.join(' / ')}</span> : null}
                 </div>
                 <p className="dsh-genui-permission-scope">{t('permission.scope')}</p>
+                {permissionQueue.length > 1 ? <p className="dsh-genui-permission-queue">{t('permission.queued', { count: permissionQueue.length - 1 })}</p> : null}
                 {permissionError === undefined ? null : <p className="dsh-genui-permission-error" role="alert">{permissionError}</p>}
               </div>
               <div className="dsh-genui-permission-actions">

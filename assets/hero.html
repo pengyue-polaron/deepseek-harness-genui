@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DeepSeek Harness GenUI</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 1600px; height: 900px; margin: 0; overflow: hidden; }
+    body {
+      position: relative;
+      background:
+        radial-gradient(circle at 18% 14%, rgba(235, 140, 90, .19), transparent 30%),
+        radial-gradient(circle at 87% 79%, rgba(81, 145, 128, .14), transparent 33%),
+        #0d0f0f;
+      color: #f4f0e8;
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+    }
+    body::before {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.026) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.026) 1px, transparent 1px);
+      background-size: 44px 44px;
+      content: "";
+      mask-image: linear-gradient(to bottom, black, transparent 82%);
+    }
+    .brand { position: absolute; z-index: 3; top: 58px; left: 72px; display: flex; align-items: center; gap: 12px; }
+    .mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 11px; background: #eb8c5a; color: #14110f; font-size: 17px; font-weight: 800; }
+    .brand strong { font-size: 14px; letter-spacing: .13em; text-transform: uppercase; }
+    .brand span { color: #aaa8a1; font-size: 12px; letter-spacing: .08em; }
+    .copy { position: absolute; z-index: 3; top: 139px; left: 72px; width: 470px; }
+    h1 { margin: 0; font-size: 66px; font-weight: 650; letter-spacing: -.055em; line-height: .98; text-wrap: balance; }
+    h1 em { color: #ed9a69; font-family: "Iowan Old Style", Georgia, serif; font-weight: 500; }
+    .lede { width: 430px; margin: 25px 0 0; color: #b7b4ac; font-size: 18px; line-height: 1.55; text-wrap: pretty; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 25px; }
+    .chip { border: 1px solid rgba(255,255,255,.13); border-radius: 999px; padding: 8px 12px; background: rgba(255,255,255,.045); color: #d7d3cb; font-size: 12px; font-weight: 600; }
+    .shot { position: absolute; z-index: 2; overflow: hidden; border: 1px solid rgba(255,255,255,.16); border-radius: 20px; background: #151616; box-shadow: 0 30px 90px rgba(0,0,0,.46); }
+    .shot::before { position: absolute; z-index: 2; top: 0; right: 0; left: 0; height: 32px; background: linear-gradient(to bottom, rgba(13,15,15,.24), transparent); content: ""; pointer-events: none; }
+    .shot img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .concept { top: 68px; right: 65px; width: 975px; height: 610px; transform: rotate(.35deg); }
+    .concept img { object-position: 50% 50%; }
+    .tools { bottom: 61px; left: 72px; width: 650px; height: 366px; transform: rotate(-.45deg); }
+    .tools img { object-position: 50% 50%; }
+    .caption { position: absolute; z-index: 4; display: flex; align-items: center; gap: 9px; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; padding: 9px 13px; background: rgba(16,18,18,.84); box-shadow: 0 8px 30px rgba(0,0,0,.25); color: #e8e4dc; font-size: 12px; font-weight: 650; backdrop-filter: blur(12px); }
+    .caption i { width: 7px; height: 7px; border-radius: 50%; background: #eb8c5a; box-shadow: 0 0 0 4px rgba(235,140,90,.12); }
+    .cap-concept { top: 96px; right: 91px; }
+    .cap-tools { bottom: 385px; left: 96px; }
+    .footer { position: absolute; z-index: 5; right: 70px; bottom: 54px; display: grid; justify-items: end; gap: 7px; }
+    .footer strong { color: #efebe3; font-size: 15px; letter-spacing: .03em; }
+    .footer span { color: #85837e; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="brand"><span class="mark">G</span><strong>DeepSeek Harness GenUI</strong><span>0.9.2</span></div>
+  <section class="copy">
+    <h1>Make the useful part <em>interactive.</em></h1>
+    <p class="lede">Disposable React apps that can use connected tools, remember choices, and stay inside the conversation.</p>
+    <div class="chips"><span class="chip">Inline + Canvas</span><span class="chip">Task state</span><span class="chip">Scoped permissions</span></div>
+  </section>
+  <figure class="shot concept"><img src="../screenshots/v0.8.5-bayes-canvas.png" width="1440" height="900" alt="An interactive probability explainer open beside a conversation"></figure>
+  <div class="caption cap-concept"><i></i>A difficult idea, made explorable</div>
+  <figure class="shot tools"><img src="../screenshots/v0.9.0-live-sources.png" width="1280" height="720" alt="A live GitHub and Hugging Face shortlist inside the Harness"></figure>
+  <div class="caption cap-tools"><i></i>Live tools, with permission</div>
+  <footer class="footer"><strong>CODE FIRST · TOOL AWARE · TASK SCOPED</strong><span>React · TypeScript · MCP · Playwright</span></footer>
+</body>
+</html>

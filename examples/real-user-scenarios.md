@@ -32,6 +32,30 @@ Answer the misconception directly in prose. The useful interactive part is a sma
 
 Give a short coordination recommendation, then collect only the missing booking inputs in a focused surface. After submission, the next Agent turn must read the saved answers instead of guessing or asking for them again.
 
+## Triage a connected work queue
+
+> Look at the open issues in my GitHub project and help me choose what should make the next small release. I care about user impact, effort, and regressions. Do not change anything until I confirm the shortlist.
+
+Read through the connected GitHub tool once, then make the shortlist interactive. Ask only for read permission while exploring. If the user later applies labels or a milestone, request the narrow write permission at that moment and read the result back from GitHub.
+
+## Find a meeting time, then act
+
+> Find 3 good times for a 45-minute design review with Mia and Leon next week. I prefer afternoons, but avoid placing it next to another long meeting. Let me compare the trade-offs before booking.
+
+Use connected calendar availability to present a small comparison, preserving the selected slot in task state. Reading calendars and creating the event are separate permissions. Never book from an initial card load or selection click; wait for an explicit confirmation.
+
+## Explore evidence from several sources
+
+> Compare the main claims in these papers with the latest model cards I can access. I want to see which evidence supports each claim and flag the uncertain ones for follow-up.
+
+Keep the synthesis in prose. Use a compact evidence surface only for source-linked comparison, uncertainty flags, and the user's follow-up list. Fetch each requested source once and preserve provenance; do not fan out into keyword sweeps.
+
+## Monitor a genuinely live operation
+
+> Show me the status of the release I just started. I need to see each stage, refresh it while I watch, and stop if the health check fails.
+
+Use a connected deployment tool and request read access before monitoring. Poll only while the surface is visible, at a service-appropriate interval, and stop on unmount or a terminal state. A stop or rollback action requires a separate write permission and explicit confirmation.
+
 ## Stay with prose
 
 > Rewrite this notice so it sounds natural: We will have the weekly meeting tomorrow at 3 PM. Please prepare your progress for this week in advance.

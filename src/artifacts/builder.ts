@@ -22,6 +22,7 @@ const SDK_SOURCE = String.raw`
 import { useCallback, useEffect, useState } from 'react'
 
 const permissionWaiters = new Map()
+const inFlightRequests = new Map()
 
 addEventListener('message', (event) => {
   if (event.source !== parent || event.data?.source !== 'dsh-genui' || event.data?.type !== 'permission-result') return
@@ -49,7 +50,7 @@ const askPermission = (permission) => new Promise((resolve) => {
   parent.postMessage({ source: 'dsh-genui', type: 'permission-request', requestId, artifactId, versionId, permission }, '*')
 })
 
-const request = async (action, body, mayAsk = true) => {
+const sendRequest = async (action, body, mayAsk) => {
   const { apiBase, token, versionId } = runtime()
   const response = await fetch(apiBase + '/' + action, {
     method: 'POST',
@@ -60,10 +61,21 @@ const request = async (action, body, mayAsk = true) => {
   if (!response.ok && mayAsk && value.code === 'approval_required' && value.permission) {
     const granted = await askPermission(value.permission)
     if (!granted) throw new Error('Permission was not granted')
-    return request(action, body, false)
+    return sendRequest(action, body, false)
   }
   if (!response.ok) throw new Error(value.error || ('GenUI request failed: ' + response.status))
   return value
+}
+
+const request = (action, body) => {
+  const key = action + ':' + JSON.stringify(body)
+  const current = inFlightRequests.get(key)
+  if (current) return current
+  const pending = sendRequest(action, body, true).finally(() => {
+    setTimeout(() => inFlightRequests.delete(key), 250)
+  })
+  inFlightRequests.set(key, pending)
+  return pending
 }
 
 export const artifactContext = () => {

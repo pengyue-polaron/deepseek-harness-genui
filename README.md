@@ -1,25 +1,26 @@
 # DeepSeek Harness GenUI
 
+[![Version](https://img.shields.io/badge/version-0.9.2-ea8f5a)](package.json)
 [![CI](https://github.com/pengyue-polaron/deepseek-harness-genui/actions/workflows/ci.yml/badge.svg)](https://github.com/pengyue-polaron/deepseek-harness-genui/actions/workflows/ci.yml)
-![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22.19-339933?logo=nodedotjs&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-202124)
+[![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.19-339933?logo=nodedotjs&logoColor=white)](package.json)
+[![License](https://img.shields.io/badge/license-MIT-202124)](LICENSE)
 
-Temporary interactive apps for DeepSeek Harness. The Agent writes ordinary React and TypeScript when interaction improves the task; the plugin builds, checks, and renders the result inside the conversation.
+![DeepSeek Harness GenUI](assets/hero.png)
 
-## What it does
+Disposable, tool-aware React apps inside a DeepSeek Harness conversation. The Agent keeps the answer in chat and makes only the part that benefits from interaction into an app.
 
-- Keeps simple questions and rewriting in prose.
-- Renders one focused app Inline, in an adaptive Canvas, or full screen.
-- Persists user choices for the next turn in the same task.
-- Reuses connected Harness tools after a clear, task-scoped permission request.
-- Builds every candidate in a sandbox and keeps the last working version.
-- Accepts reusable visual direction through `DESIGN.md`.
+## What it adds
 
-There is no component-tree IR and no provider adapter layer. Generated apps are normal multi-file React projects, while GitHub, Hugging Face, Google Maps, and internal services remain Harness-level tools.
+- Inline, adaptive Canvas, and full-screen surfaces.
+- Normal multi-file React + TypeScript; no component-tree IR.
+- Task-scoped state that the Agent can read on the next turn.
+- MCP and public HTTPS access behind clear, first-use permission prompts.
+- Sandboxed builds with desktop, mobile, dark-mode, overflow, motion, and accessibility checks.
+- Reusable visual direction through `DESIGN.md`.
 
 ## Install
 
-Requirements: Node.js `^22.19.0 || >=24`, pnpm 11, DeepSeek Harness, and Playwright Chromium.
+Requires Node.js `^22.19.0 || >=24`, pnpm 11, DeepSeek Harness, and Playwright Chromium.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -27,32 +28,34 @@ pnpm exec playwright install chromium
 pnpm run package:plugin
 ```
 
-From the DeepSeek Harness checkout:
-
 ```sh
-DSH_HOME=/path/to/dsh-home pnpm dsh plugin --profile web add /absolute/path/to/dsh-plugin-genui-0.8.4.tgz
+DSH_HOME=/path/to/dsh-home pnpm dsh plugin --profile web add /absolute/path/to/dsh-plugin-genui-0.9.2.tgz
 DSH_HOME=/path/to/dsh-home pnpm dsh --profile web
 ```
 
-The bundled patch stores artifacts under `.dsh/genui` and serves them at `/genui`. Add MCP servers to the Harness profile; generated apps call their exact tool names without plugin-specific adapters.
+Add MCP servers to the Harness profile. Generated apps call their exact tool names; credentials never enter generated source or app state.
 
-## Scenarios
+## Stack
 
-| Request | Expected behavior |
+| Layer | Choice |
 | --- | --- |
-| Plan a constrained family outing | Compare the few real trade-offs and save the decision. |
-| “Make an interactive weather card” | Ask for forecast access, then compare and refresh live data. |
-| Shortlist GUI models and repositories | Search connected Hugging Face and GitHub tools with separate read permissions. |
-| Explain a difficult scientific idea | Keep the explanation in chat and make only the causal relationship interactive. |
-| Rewrite a meeting notice | Return prose; do not create an app. |
+| Host | DeepSeek Harness + Cordis |
+| App code | React 18 + TypeScript |
+| Build | esbuild |
+| Isolation | sandboxed iframe + capability tokens |
+| Verification | Playwright + Vitest |
+| Tools | Harness/MCP calls + approved public HTTPS |
+| State | task-scoped artifact state, 7-day inactivity expiry |
 
-The full acceptance prompts are in [`examples/real-user-scenarios.md`](examples/real-user-scenarios.md).
+## Good fits
 
-## Runtime
+- Compare a small set of plans, products, models, or time slots.
+- Explore a difficult scientific relationship with one manipulable model.
+- Collect missing inputs during a longer Agent task and resume later.
+- Search, filter, and shortlist live data from connected tools.
+- Monitor a live operation, then ask separately before any write action.
 
-Generated apps can use `useArtifactState`, `reportResult`, `callTool`, `watchTool`, and `requestExternal` from the virtual `@dsh-genui/sdk` module. Tool access is declared per app and approved on first use. Public HTTP access is limited to declared, credential-free HTTPS prefixes; credentials stay in Harness.
-
-Task state and grants expire after 7 inactive days. Source versions are immutable, failed candidates never replace the current app, and browser checks cover desktop, mobile, light, dark, reduced motion, overflow, and basic accessible naming.
+Plain questions, rewriting, and straightforward explanations stay in prose. See [`examples/real-user-scenarios.md`](examples/real-user-scenarios.md) for acceptance prompts.
 
 ## Development
 
@@ -61,7 +64,5 @@ pnpm run typecheck
 pnpm test
 pnpm run package:plugin
 ```
-
-## License
 
 MIT

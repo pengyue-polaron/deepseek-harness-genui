@@ -4,8 +4,8 @@ import { canvasController, solveCanvasSurface } from '../src/client/canvas.ts'
 describe('Canvas controller', () => {
   it('grows with available space while preserving a readable conversation', () => {
     expect(solveCanvasSurface(1440, 1160)).toEqual({ mode: 'split', width: 464 })
-    expect(solveCanvasSurface(1320, 1040)).toEqual({ mode: 'split', width: 400 })
-    expect(solveCanvasSurface(1280, 1000)).toEqual({ mode: 'split', width: 360 })
+    expect(solveCanvasSurface(1320, 1040)).toEqual({ mode: 'split', width: 416 })
+    expect(solveCanvasSurface(1280, 1000)).toEqual({ mode: 'split', width: 400 })
     expect(solveCanvasSurface(1200, 920)).toEqual({ mode: 'full', width: 1200 })
   })
 

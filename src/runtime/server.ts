@@ -34,7 +34,7 @@ const MIME: Record<string, string> = {
   '.webp': 'image/webp',
 }
 
-const ARTIFACT_RUNTIME_VERSION = '0.8.4'
+const ARTIFACT_RUNTIME_VERSION = '0.9.2'
 
 function json(res: ServerResponse, status: number, value: unknown, req?: IncomingMessage): void {
   res.writeHead(status, {
@@ -203,7 +203,7 @@ export function createHttpRuntime(
             const requested = externalCapability(version, target, method)
             if (requested === undefined) return json(res, 403, { code: 'capability_not_declared', error: 'this app did not declare access to that service' }, req)
             if (capability.mode === 'verification') {
-              return json(res, 200, { status: 204, headers: {}, body: null, verification: true }, req)
+              return json(res, 200, { status: 204, headers: {}, body: 'null', verification: true }, req)
             }
             const record = await registry.get(artifactId)
             if (!isGranted(record, capability.sessionId, requested)) {

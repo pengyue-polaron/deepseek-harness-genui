@@ -4,6 +4,11 @@ import { isIP } from 'node:net'
 
 const MAX_RESPONSE_BYTES = 1024 * 1024
 const SAFE_REQUEST_HEADERS = new Set(['accept', 'content-type'])
+const SAFE_RESPONSE_HEADERS = [
+  'content-type', 'etag', 'last-modified', 'cache-control', 'retry-after',
+  'x-ratelimit-limit', 'x-ratelimit-remaining', 'x-ratelimit-reset', 'x-ratelimit-resource', 'x-ratelimit-used',
+] as const
+export const EXTERNAL_USER_AGENT = 'dsh-plugin-genui'
 
 function isPrivateAddress(address: string): boolean {
   const normalized = address.toLowerCase()
@@ -44,7 +49,20 @@ export interface ExternalRequestInput {
 export interface ExternalResponse {
   status: number
   headers: Record<string, string>
-  body: unknown
+  body: string
+}
+
+export function buildExternalHeaders(input: ExternalRequestInput): Record<string, string> {
+  const headers: Record<string, string> = {
+    accept: 'application/json, text/plain;q=0.9, */*;q=0.5',
+    'user-agent': EXTERNAL_USER_AGENT,
+  }
+  for (const [name, value] of Object.entries(input.headers ?? {})) {
+    const normalized = name.toLowerCase()
+    if (!SAFE_REQUEST_HEADERS.has(normalized) || typeof value !== 'string') continue
+    headers[normalized] = value
+  }
+  return headers
 }
 
 export async function requestExternal(input: ExternalRequestInput, signal: AbortSignal): Promise<ExternalResponse> {
@@ -53,12 +71,7 @@ export async function requestExternal(input: ExternalRequestInput, signal: Abort
     throw new Error('external requests require a credential-free HTTPS URL')
   }
   const resolved = await publicAddress(url.hostname)
-  const headers: Record<string, string> = { accept: 'application/json, text/plain;q=0.9, */*;q=0.5' }
-  for (const [name, value] of Object.entries(input.headers ?? {})) {
-    const normalized = name.toLowerCase()
-    if (!SAFE_REQUEST_HEADERS.has(normalized) || typeof value !== 'string') continue
-    headers[normalized] = value
-  }
+  const headers = buildExternalHeaders(input)
   let payload: string | undefined
   if (input.body !== undefined) {
     if (typeof input.body === 'string') payload = input.body
@@ -95,17 +108,12 @@ export async function requestExternal(input: ExternalRequestInput, signal: Abort
       })
       response.on('end', () => {
         const text = Buffer.concat(chunks).toString('utf8')
-        const contentType = String(response.headers['content-type'] ?? '')
-        let responseBody: unknown = text
-        if (contentType.includes('application/json')) {
-          try { responseBody = JSON.parse(text) as unknown } catch { responseBody = text }
-        }
         const responseHeaders: Record<string, string> = {}
-        for (const name of ['content-type', 'etag', 'last-modified', 'cache-control']) {
+        for (const name of SAFE_RESPONSE_HEADERS) {
           const value = response.headers[name]
           if (typeof value === 'string') responseHeaders[name] = value
         }
-        resolve({ status: response.statusCode ?? 502, headers: responseHeaders, body: responseBody })
+        resolve({ status: response.statusCode ?? 502, headers: responseHeaders, body: text })
       })
     })
     req.on('error', reject)
