@@ -1,9 +1,14 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-language="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DeepSeek Harness GenUI</title>
+  <script>
+    const language = new URLSearchParams(location.search).get('lang') === 'zh-CN' ? 'zh-CN' : 'en'
+    document.documentElement.lang = language
+    document.documentElement.dataset.language = language
+  </script>
   <style>
     * { box-sizing: border-box; }
     html, body { width: 1280px; height: 720px; margin: 0; overflow: hidden; }
@@ -26,6 +31,11 @@
       content: "";
       mask-image: linear-gradient(to right, black, transparent 68%);
     }
+    [data-copy], [data-shot] { display: none; }
+    html[data-language="en"] [data-copy="en"],
+    html[data-language="en"] [data-shot="en"],
+    html[data-language="zh-CN"] [data-copy="zh-CN"],
+    html[data-language="zh-CN"] [data-shot="zh-CN"] { display: block; }
     .brand {
       position: absolute;
       z-index: 2;
@@ -59,6 +69,7 @@
       left: 50px;
       width: 345px;
     }
+    html[data-language="zh-CN"] .copy { width: 400px; }
     h1 {
       margin: 0;
       color: #f5f1e9;
@@ -73,6 +84,13 @@
       font-family: "Iowan Old Style", Georgia, serif;
       font-weight: 500;
     }
+    html[data-language="zh-CN"] h1 {
+      font-family: "Songti SC", "STSong", serif;
+      font-size: 46px;
+      font-weight: 600;
+      letter-spacing: -.045em;
+      line-height: 1.12;
+    }
     .lede {
       width: 310px;
       margin: 25px 0 0;
@@ -86,7 +104,6 @@
       z-index: 2;
       top: 124px;
       right: 40px;
-      display: block;
       width: 836px;
       height: 470px;
       overflow: hidden;
@@ -95,20 +112,39 @@
       box-shadow: 0 34px 90px rgba(0,0,0,.52);
       object-fit: cover;
     }
+    html[data-language="zh-CN"] .screenshot {
+      top: 80px;
+      right: 130px;
+      width: 342px;
+      height: 560px;
+    }
   </style>
 </head>
 <body>
   <div class="brand"><span class="mark">G</span>DeepSeek Harness GenUI</div>
-  <section class="copy">
+  <section class="copy" data-copy="en">
     <h1>Ask in words.<br>Decide in an <em>interface.</em></h1>
-    <p class="lede">The Agent explains in chat, then opens the part worth interacting with beside it.</p>
+    <p class="lede">The Agent keeps the answer in chat and opens the part worth interacting with.</p>
+  </section>
+  <section class="copy" data-copy="zh-CN">
+    <h1>一句话提需求，<br>在<em>界面</em>里做决定。</h1>
+    <p class="lede">回答留在对话里，适合操作的部分直接变成界面。</p>
   </section>
   <img
     class="screenshot"
-    src="../screenshots/v0.10.7-calendar-canvas.jpg"
+    data-shot="en"
+    src="../screenshots/en/code-path-explorer.jpg"
     width="1280"
     height="720"
-    alt="DeepSeek Harness conversation beside a generated calendar selection interface"
+    alt="An interactive code-path explorer generated from a coding task"
+  >
+  <img
+    class="screenshot"
+    data-shot="zh-CN"
+    src="../screenshots/zh-CN/calendar-app.jpg"
+    width="440"
+    height="720"
+    alt="对话旁生成的日历时段选择界面"
   >
 </body>
 </html>
