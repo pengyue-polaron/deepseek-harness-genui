@@ -7,7 +7,9 @@ English | [简体中文](README.zh-CN.md)
 
 <img src="assets/hero-en.png" width="1280" alt="A user asks a coding question and DeepSeek Harness returns prose with an interactive code-path explorer">
 
-A DeepSeek Harness plugin for temporary, task-specific React apps. The Agent answers in prose and adds an interface only when the user needs to explore, compare, configure, or act.
+A DeepSeek Harness plugin for temporary, task-specific React apps. The Agent answers in prose and adds an interface only when the user needs to explore, compare, configure, or act. Each app is created for the task and opens ready to use.
+
+> **Interaction loop:** The Agent creates an app → the user clicks, selects, types, or drags → the result returns to the task → the next Agent turn continues from it. The user does not have to translate the interaction back into prose.
 
 ## In Use
 
@@ -37,7 +39,7 @@ The same app can sit inside the answer or open beside the conversation.
 | <img src="screenshots/en/code-path-inline.png" width="620" alt="An interactive code path shown inline in a DeepSeek Harness conversation"> | <img src="screenshots/en/code-path-canvas.png" width="620" alt="The DeepSeek Harness sidebar, conversation, and code-path explorer visible together in the right-side Canvas"> |
 | A compact control or focused choice. | More room without covering the conversation. |
 
-State follows the app across Inline, Canvas, full screen, localhost, and later Agent turns.
+Inline, Canvas, full screen, and localhost share one task state. Actions in any view return to the task for later Agent turns to read directly.
 
 ## CLI Example
 
@@ -62,7 +64,8 @@ The terminal profile returns a localhost app. A follow-up can refer to the path 
 
 1. The Agent keeps the explanation in the conversation and creates one focused interface when interaction adds value.
 2. It writes React + TypeScript, declares the exact tools or public HTTPS routes it needs, then the plugin builds and checks the app.
-3. User input is saved to the task. Later turns read it directly, and later edits update the same app without replacing a working version with a failed one.
+3. Clicks, selections, text input, and control values are saved to the task. Later turns read the result directly; the user does not have to restate in prose what they expressed through the app.
+4. Later edits update the same app without replacing a working version with a failed one.
 
 Connected tools and APIs ask before first use. The app card shows current access and lets the user remove it. Credentials stay in the Harness.
 

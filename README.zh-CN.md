@@ -7,7 +7,9 @@
 
 <img src="assets/hero-zh-CN.png" width="1280" alt="用户提出代码问题，DeepSeek Harness 返回文字解释和交互式代码路径界面">
 
-一个为 DeepSeek Harness 提供临时任务页面的插件。Agent 用文字回答问题，只在用户确实需要探索、比较、配置或执行操作时加入交互界面。
+一个为 DeepSeek Harness 提供临时任务页面的插件。Agent 用文字回答问题，只在用户确实需要探索、比较、配置或执行操作时加入交互界面。页面随任务生成，打开即可使用。
+
+> **交互闭环：** Agent 创建页面 → 用户点选、填写或拖动 → 结果写回当前任务 → Agent 下一轮直接继续。用户不必把刚才的操作重新描述成文字。
 
 ## 真实场景
 
@@ -37,7 +39,7 @@
 | <img src="screenshots/zh-CN/photosynthesis-inline.png" width="620" alt="在 DeepSeek Harness 对话中内联显示的光合作用交互模型"> | <img src="screenshots/zh-CN/photosynthesis-canvas-current.png" width="620" alt="DeepSeek Harness 会话侧边栏、对话区和右侧光合作用 Canvas 同时可见"> |
 | 适合紧凑的控制项或聚焦选择。 | 提供更大空间，同时保留对话。 |
 
-Inline、Canvas、全屏、本地页面和 Agent 后续轮次共享同一份任务状态。
+Inline、Canvas、全屏和本地页面共享同一份任务状态。用户在任意视图里的操作都会回到当前任务，供 Agent 后续轮次直接读取。
 
 ## CLI 示例
 
@@ -62,7 +64,8 @@ Inline、Canvas、全屏、本地页面和 Agent 后续轮次共享同一份任�
 
 1. Agent 把解释留在对话里，只在交互有实际价值时创建一个聚焦页面。
 2. 它编写 React + TypeScript，声明需要的准确工具或公开 HTTPS 范围；插件负责构建和检查页面。
-3. 用户输入保存到当前任务。后续轮次直接读取这些状态，后续修改更新同一个页面，失败的修改不会替换正常版本。
+3. 点击、选择、输入和控制项数值保存到当前任务。后续轮次直接读取这些结果；用户通过界面表达的内容不需要再翻译成文字。
+4. 后续修改更新同一个页面，失败的修改不会替换正常版本。
 
 连接工具和 API 首次使用前会申请授权。页面卡片会显示当前访问权限，用户可以随时收回。凭据始终留在 Harness 中。
 
