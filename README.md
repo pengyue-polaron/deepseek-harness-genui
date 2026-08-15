@@ -22,6 +22,11 @@ A DeepSeek Harness plugin that turns the interactive part of a task into a tempo
 
 Plain questions, rewriting, summaries, and simple lists stay in prose.
 
+| Interactive concept | Source-grounded code path |
+| --- | --- |
+| <img src="screenshots/en/photosynthesis-explorer.png" width="420" alt="Interactive photosynthesis model with controls for light, carbon dioxide, temperature, and stomatal opening"> | <img src="screenshots/en/code-path-inline.png" width="620" alt="Source-grounded code path generated inside a DeepSeek Harness conversation"> |
+| Change conditions and see the limiting step move. | Inspect the real files and functions behind a project path. |
+
 ## CLI Example
 
 The CLI path uses the same plugin. An explicit GenUI request returns a local app; a later turn reads the interaction instead of asking the user to repeat it.
@@ -48,7 +53,7 @@ The same app starts Inline with the answer. Open it in Canvas when the task need
 
 | Inline | Canvas |
 | --- | --- |
-| <img src="screenshots/en/code-path-inline.png" width="620" alt="An interactive code path shown inline in a DeepSeek Harness conversation"> | <img src="screenshots/en/code-path-explorer.jpg" width="620" alt="The same code-path explorer opened in the adaptive right-side Canvas"> |
+| <img src="screenshots/en/code-path-inline.png" width="620" alt="An interactive code path shown inline in a DeepSeek Harness conversation"> | <img src="screenshots/en/code-path-canvas.png" width="620" alt="The DeepSeek Harness sidebar, conversation, and code-path explorer visible together in the right-side Canvas"> |
 | Best for a focused choice, control group, or small visual. | Best for deeper exploration while the conversation remains visible. |
 
 Both modes share the same task state. Full-screen and stable localhost delivery are available when needed.

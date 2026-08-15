@@ -22,6 +22,16 @@
 
 普通问答、文字改写、摘要和简单列表只返回文字。
 
+| 工具结果筛选 | 真实操作配置 |
+| --- | --- |
+| <img src="screenshots/zh-CN/local-model-shortlist.jpg" width="420" alt="结合 Hugging Face 和 GitHub 结果生成的本地视觉模型筛选界面"> | <img src="screenshots/zh-CN/calendar-planner.jpg" width="420" alt="读取真实空闲时间后生成的日历时段选择界面"> |
+| 筛选、比较并保留真正可运行的模型。 | 选择时段，确认后才写入日历。 |
+
+| 因果关系探索 | 空间尺度理解 |
+| --- | --- |
+| <img src="screenshots/zh-CN/photosynthesis-explorer.jpg" width="420" alt="可以改变条件的光合作用瓶颈模型"> | <img src="screenshots/zh-CN/milky-way-explorer.jpg" width="420" alt="可以缩放和切换视角的银河系尺度模型"> |
+| 改变条件，直接观察限制步骤如何转移。 | 从太阳附近逐步建立银河系尺度感。 |
+
 ## CLI 示例
 
 CLI 使用同一个插件。明确要求 GenUI 后，Harness 会返回本地页面；下一轮可以直接读取页面里的操作，不需要用户重新描述。
@@ -48,7 +58,7 @@ CLI 使用同一个插件。明确要求 GenUI 后，Harness 会返回本地页�
 
 | Inline | Canvas |
 | --- | --- |
-| <img src="screenshots/zh-CN/photosynthesis-inline.png" width="620" alt="在 DeepSeek Harness 对话中内联显示的光合作用交互模型"> | <img src="screenshots/zh-CN/photosynthesis-canvas-current.png" width="620" alt="在右侧自适应 Canvas 中打开的同一个光合作用模型"> |
+| <img src="screenshots/zh-CN/photosynthesis-inline.png" width="620" alt="在 DeepSeek Harness 对话中内联显示的光合作用交互模型"> | <img src="screenshots/zh-CN/photosynthesis-canvas-current.png" width="620" alt="DeepSeek Harness 会话侧边栏、对话区和右侧光合作用 Canvas 同时可见"> |
 | 适合一个聚焦选择、一组控制或小型可视化。 | 适合在保留对话的同时进行更深入的探索。 |
 
 两种模式共享同一份任务状态。需要时还可以全屏打开，或通过稳定的 localhost 地址访问。
