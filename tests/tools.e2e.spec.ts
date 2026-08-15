@@ -131,7 +131,7 @@ createRoot(document.getElementById('root')!).render(<App />)`,
 import { createRoot } from 'react-dom/client'
 function App() {
   const [count, setCount] = useState(0)
-  return <main style={{padding: 24}}>Status: ready <button onClick={() => setCount(value => value + 1)}>Count {count}</button></main>
+  return <main style={{padding: 24}}>Status: ready <button data-genui-primary-action onClick={() => setCount(value => value + 1)}>Count {count}</button></main>
 }
 createRoot(document.getElementById('root')!).render(<App />)`,
       }],

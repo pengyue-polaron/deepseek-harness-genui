@@ -77,6 +77,18 @@ export const cardCss = `
 .dsh-genui-permission-copy .dsh-genui-permission-queue { margin-top: 7px; color: var(--g-ink); font-size: 10px; font-weight: 650; }
 .dsh-genui-permission-copy .dsh-genui-permission-error { margin-top: 8px; color: var(--g-danger); }
 .dsh-genui-permission-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+.dsh-genui-access { width: min(480px,100%); border: 1px solid var(--g-border); border-radius: 16px; padding: 18px; background: var(--g-panel-raised); box-shadow: 0 20px 60px rgba(20,18,14,.18); }
+.dsh-genui-access-head { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 14px; }
+.dsh-genui-access-head h4 { margin: 1px 0 5px; color: var(--g-ink); font: 700 16px/1.25 ui-sans-serif,sans-serif; text-wrap: balance; }
+.dsh-genui-access-head p { margin: 0; color: var(--g-muted); font: 12px/1.45 ui-sans-serif,sans-serif; text-wrap: pretty; }
+.dsh-genui-access-list { display: grid; gap: 8px; margin: 16px 0; }
+.dsh-genui-access-row { display: flex; min-width: 0; align-items: center; gap: 12px; border: 1px solid var(--g-border); border-radius: 11px; padding: 10px; background: var(--g-panel); }
+.dsh-genui-access-row > div { display: grid; min-width: 0; flex: 1; gap: 3px; }
+.dsh-genui-access-row strong { color: var(--g-ink); font: 650 12px/1.3 ui-sans-serif,sans-serif; overflow-wrap: anywhere; }
+.dsh-genui-access-row span { color: var(--g-muted); font: 11px/1.4 ui-sans-serif,sans-serif; overflow-wrap: anywhere; }
+.dsh-genui-access-row .dsh-genui-button { flex: none; }
+.dsh-genui-access-row .dsh-genui-access-state { flex: none; color: var(--g-muted); font-weight: 650; }
+.dsh-genui-access > .dsh-genui-permission-error { margin: 0 0 10px; color: var(--g-danger); font: 11px/1.4 ui-sans-serif,sans-serif; }
 .dsh-genui-error { padding: 16px; color: var(--g-danger); font: 13px/1.45 ui-sans-serif,sans-serif; overflow-wrap: anywhere; }
 .dsh-genui-receipt-shell { --g-border: rgba(37,40,44,.12); --g-panel-raised: #fff; --g-ink: #252422; --g-muted: #77736d; --g-hover: rgba(37,36,34,.065); --g-focus: #b94e32; --g-success: #287553; --g-danger: #a84235; position: relative; color-scheme: light dark; }
 .dsh-genui-receipt { display: flex; min-height: 38px; align-items: center; gap: 8px; padding: 4px 7px 4px 10px; border: 1px solid var(--g-border); border-radius: 10px; background: var(--g-panel-raised); color: var(--g-muted); font: 11px/1.25 ui-sans-serif,sans-serif; }
@@ -106,6 +118,9 @@ export const cardCss = `
   .dsh-genui-body { height: min(390px,48dvh); min-height: 240px; }
   .dsh-genui-permission-backdrop { inset: 48px 0 0; align-items: end; padding: 10px; }
   .dsh-genui-permission { width: 100%; border-radius: 18px; padding: 16px; }
+  .dsh-genui-access { width: 100%; border-radius: 18px; padding: 16px; }
+  .dsh-genui-access-row { align-items: stretch; flex-direction: column; }
+  .dsh-genui-access-row .dsh-genui-button { min-height: 40px; }
   .dsh-genui-permission-actions .dsh-genui-button { min-height: 42px; flex: 1; }
 }
 @container (max-width: 420px) {

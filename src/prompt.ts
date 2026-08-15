@@ -56,6 +56,7 @@ Product quality:
 - Use one primary task and at most two sections in Inline view. Prefer progressive disclosure to dense reports. Curate a few useful valid choices instead of rendering every possibility.
 - For conceptual explanations, build one manipulable causal or spatial model with one control group, one main visual, and one changing takeaway. Keep definitions and caveats in the conversation. Use 3D only when spatial structure requires it.
 - Provide clear loading, empty, error, and success states. Use semantic controls, accessible names, visible keyboard focus, labeled inputs, image alt text, reduced-motion behavior, responsive layout, and light and dark color schemes.
+- If the app has interactive controls, mark exactly one main control with data-genui-primary-action. Activating it must change visible state or invoke an SDK action; use the main slider or selector when there is no button.
 - Write concrete, natural copy for the user's situation. Avoid generic slogans, invented metrics, fake testimonials, implementation terms, forced three-part lists, repeated conclusions, excessive em dashes, and stock phrases such as "not just X, but Y", "unlock", "elevate", "seamless", or "revolutionize". Remove any sentence that does not help the user understand or act.
 
 After the user-facing explanation or recommendation, emit no ordinary text until genui_* succeeds. End on the successful embedded app or the exact local app URL.`

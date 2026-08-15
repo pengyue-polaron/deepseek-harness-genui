@@ -114,9 +114,27 @@ describe('real MCP artifact bridge', () => {
     expect(pending).toMatchObject({ status: 403, value: { code: 'approval_required', permission: { id: 'echo-service' } } })
     const grant = await post('permission/grant', { capability_id: 'echo-service' }, token)
     expect(grant).toMatchObject({ status: 200, value: { granted: true } })
+    const listed = await post('permission/list', {}, token)
+    expect(listed).toMatchObject({
+      status: 200,
+      value: { permissions: expect.arrayContaining([expect.objectContaining({ id: 'echo-service', granted: true })]) },
+    })
     const result = await call('mcp__everything__echo', { message: 'Code First' })
     expect(result.status).toBe(200)
     expect(result.value).toMatchObject({ content: [{ type: 'text', text: 'Echo: Code First' }] })
+  })
+
+  it('revokes access from the task host', async () => {
+    await post('permission/grant', { capability_id: 'echo-service' }, token)
+    const revoked = await post('permission/revoke', { capability_id: 'echo-service' }, token)
+    expect(revoked).toEqual({ status: 200, value: { revoked: true } })
+    const listed = await post('permission/list', {}, token)
+    expect(listed).toMatchObject({
+      status: 200,
+      value: { permissions: expect.arrayContaining([expect.objectContaining({ id: 'echo-service', granted: false })]) },
+    })
+    const result = await call('mcp__everything__echo', { message: 'blocked again' })
+    expect(result).toMatchObject({ status: 403, value: { code: 'approval_required' } })
   })
 
   it('round-trips structured arithmetic through the real MCP process', async () => {
@@ -146,7 +164,7 @@ describe('real MCP artifact bridge', () => {
     expect(zhResponse.status).toBe(200)
     const zhDocument = await zhResponse.text()
     expect(zhDocument).toContain('<html lang="zh">')
-    expect(zhDocument).toContain('app.js?runtime=0.12.0')
+    expect(zhDocument).toContain('app.js?runtime=0.12.1')
     expect(zhDocument).toContain('<meta name="color-scheme" content="light dark">')
     expect(zhDocument).toContain('<meta name="theme-color" content="#faf9f6" media="(prefers-color-scheme: light)">')
     expect(zhDocument).toContain('<meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)">')

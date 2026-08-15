@@ -1,8 +1,9 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { ArtifactRegistry } from '../src/artifacts/registry.ts'
+import { MAX_VERSIONS_PER_ARTIFACT, TASK_TTL_MS } from '../src/lifecycle.ts'
 
 const roots: string[] = []
 
@@ -86,5 +87,63 @@ describe('ArtifactRegistry', () => {
     })
     await expect(store.update({ id: 'stale-app', baseVersionId: first.id, summary: 'stale update', patches: [] }))
       .rejects.toThrow(`base version is stale; expected ${repaired.id}`)
+  })
+
+  it('removes artifacts after the task lifetime', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-genui-test-'))
+    roots.push(root)
+    const store = new ArtifactRegistry(root, 128 * 1024)
+    await store.init()
+    await store.create({ id: 'expired-app', title: 'Expired', summary: 'initial', requirements: [], capabilities: [], files: initialFiles })
+    const recordPath = join(root, 'expired-app', 'artifact.json')
+    const record = JSON.parse(await readFile(recordPath, 'utf8')) as { updatedAt: string }
+    record.updatedAt = new Date(Date.now() - TASK_TTL_MS - 1).toISOString()
+    await writeFile(recordPath, `${JSON.stringify(record, null, 2)}\n`)
+
+    await new ArtifactRegistry(root, 128 * 1024).init()
+
+    await expect(store.get('expired-app')).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('keeps only the newest 20 versions including the active version', async () => {
+    const store = await registry()
+    let version = await store.create({ id: 'long-task', title: 'Long task', summary: 'initial', requirements: [], capabilities: [], files: initialFiles })
+    const firstVersionId = version.id
+    await store.settle('long-task', version.id, {
+      checkedAt: new Date().toISOString(), build: 'passed', browser: 'not-run', diagnostics: [], notes: [],
+    })
+    for (let index = 0; index < MAX_VERSIONS_PER_ARTIFACT + 2; index += 1) {
+      version = await store.update({
+        id: 'long-task', baseVersionId: version.id, summary: `update ${index}`,
+        patches: [{ path: 'src/App.tsx', content: `export const App = () => ${index}` }],
+      })
+      await store.settle('long-task', version.id, {
+        checkedAt: new Date().toISOString(), build: 'passed', browser: 'not-run', diagnostics: [], notes: [],
+      })
+    }
+
+    const record = await store.get('long-task')
+    expect(record.versions).toHaveLength(MAX_VERSIONS_PER_ARTIFACT)
+    expect(record.currentVersionId).toBe(version.id)
+    expect(record.latestVersionId).toBe(version.id)
+    await expect(store.getVersion('long-task', firstVersionId)).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('lists active grants and lets the task revoke them', async () => {
+    const store = await registry()
+    await store.create({ id: 'permission-app', title: 'Permission', summary: 'initial', requirements: [], capabilities: [], files: initialFiles })
+    await store.grantCapability('permission-app', 'session-a', 'calendar-write', {
+      fingerprint: 'fingerprint', grantedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    })
+    await store.grantCapability('permission-app', 'session-a', 'expired', {
+      fingerprint: 'expired', grantedAt: new Date(0).toISOString(), expiresAt: new Date(0).toISOString(),
+    })
+
+    expect(await store.readGrants('permission-app', 'session-a')).toEqual({
+      'calendar-write': expect.objectContaining({ fingerprint: 'fingerprint' }),
+    })
+    expect(await store.revokeCapability('permission-app', 'session-a', 'calendar-write')).toBe(true)
+    expect(await store.revokeCapability('permission-app', 'session-a', 'calendar-write')).toBe(false)
+    expect(await store.readGrants('permission-app', 'session-a')).toEqual({})
   })
 })

@@ -3,7 +3,8 @@ import { extname } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { CallId } from '@deepseek-ai/dsh-llm'
 import type { Context } from '@deepseek-ai/cordis'
-import { TASK_STATE_TTL_MS, type ArtifactRegistry } from '../artifacts/registry.ts'
+import type { ArtifactRegistry } from '../artifacts/registry.ts'
+import { TASK_TTL_MS } from '../lifecycle.ts'
 import { safeJoin } from '../artifacts/paths.ts'
 import type { DesignStore } from '../designs/store.ts'
 import type { CapabilityStore } from './capabilities.ts'
@@ -250,9 +251,28 @@ export function createHttpRuntime(
             await registry.grantCapability(artifactId, capability.sessionId, requested.id, {
               fingerprint: capabilityFingerprint(requested),
               grantedAt: new Date().toISOString(),
-              expiresAt: new Date(Date.now() + TASK_STATE_TTL_MS).toISOString(),
+              expiresAt: new Date(Date.now() + TASK_TTL_MS).toISOString(),
             })
             json(res, 200, { granted: true, permission: permissionView(requested) }, req)
+            return
+          }
+          if (action === 'permission/list') {
+            if (typeof input.version_id !== 'string') throw new Error('version_id is required')
+            const version = await registry.getVersion(artifactId, input.version_id)
+            const grants = capability.mode === 'verification' ? {} : await registry.readGrants(artifactId, capability.sessionId)
+            json(res, 200, {
+              permissions: version.capabilities.map(item => ({
+                ...permissionView(item),
+                granted: grants[item.id]?.fingerprint === capabilityFingerprint(item),
+              })),
+            }, req)
+            return
+          }
+          if (action === 'permission/revoke') {
+            if (capability.mode === 'verification') return json(res, 403, { error: 'permissions cannot be changed during verification' }, req)
+            if (typeof input.capability_id !== 'string') throw new Error('capability_id is required')
+            const revoked = await registry.revokeCapability(artifactId, capability.sessionId, input.capability_id)
+            json(res, 200, { revoked }, req)
             return
           }
           if (action === 'tool') {

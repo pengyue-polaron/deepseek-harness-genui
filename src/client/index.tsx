@@ -4,7 +4,7 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type { PropsLocale, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-import { grantPermission, previewUrlForLocale } from './api.ts'
+import { grantPermission, listPermissions, previewUrlForLocale, revokePermission } from './api.ts'
 import { canvasController, useCanvasArtifact, useCanvasSurface } from './canvas.ts'
 import { DesignSettingsCard } from './design-settings.tsx'
 import { ShellIcon } from './icons.tsx'
@@ -14,7 +14,7 @@ import { enqueuePermission, settlePermission } from './permission-queue.ts'
 import { isGenuiReadyMessage } from './readiness.ts'
 import { cardCss } from './styles.ts'
 import { readMeta } from './types.ts'
-import type { GenuiMeta, PermissionRequest } from './types.ts'
+import type { GenuiMeta, PermissionRequest, PermissionStatus } from './types.ts'
 
 interface GenuiToolViewProps extends ToolCallViewProps, PropsLocale<'genui'> {}
 
@@ -51,10 +51,14 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
   const permissionDenyRef = useRef<HTMLButtonElement>(null)
   const permissionPendingRef = useRef(false)
   const permissionQueueRef = useRef<PermissionRequest[]>([])
+  const accessDialogRef = useRef<HTMLElement>(null)
+  const accessCloseRef = useRef<HTMLButtonElement>(null)
   const bodyId = useId()
   const titleId = useId()
   const permissionTitleId = `${titleId}-permission`
   const permissionDescriptionId = `${titleId}-permission-description`
+  const accessTitleId = `${titleId}-access`
+  const accessDescriptionId = `${titleId}-access-description`
   const locale = t('locale.code') as 'en' | 'zh'
   const canvasSessionId = String(sessionId)
   const artifactKey = meta?.artifactId ?? `pending:${callId}`
@@ -71,6 +75,10 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
   const [permissionQueue, setPermissionQueue] = useState<PermissionRequest[]>([])
   const [permissionPending, setPermissionPending] = useState(false)
   const [permissionError, setPermissionError] = useState<string>()
+  const [permissions, setPermissions] = useState<PermissionStatus[]>()
+  const [accessOpen, setAccessOpen] = useState(false)
+  const [accessPending, setAccessPending] = useState<string>()
+  const [accessError, setAccessError] = useState<string>()
   const permissionRequest = permissionQueue[0]
 
   const announce = (message: string) => {
@@ -96,6 +104,20 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
   useEffect(() => {
     setFrameState('loading')
   }, [previewUrl, meta?.versionId])
+
+  useEffect(() => {
+    if (meta === undefined || previewUrl === undefined) {
+      setPermissions(undefined)
+      return
+    }
+    let active = true
+    void listPermissions(meta, meta.versionId).then(result => {
+      if (active) setPermissions(result.permissions)
+    }, () => {
+      if (active) setPermissions(undefined)
+    })
+    return () => { active = false }
+  }, [meta?.artifactId, meta?.versionId, previewUrl])
 
   useEffect(() => {
     if (meta === undefined || previewUrl === undefined) return
@@ -159,6 +181,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
 
   useEffect(() => {
     if (permissionRequest === undefined) return
+    setAccessOpen(false)
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
     const focusFrame = window.requestAnimationFrame(() => permissionDenyRef.current?.focus())
     const keydown = (event: KeyboardEvent) => {
@@ -191,6 +214,37 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
       previousFocus?.focus({ preventScroll: true })
     }
   }, [permissionRequest?.requestId])
+
+  useEffect(() => {
+    if (!accessOpen) return
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
+    const focusFrame = window.requestAnimationFrame(() => accessCloseRef.current?.focus())
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && accessPending === undefined) {
+        event.preventDefault()
+        setAccessOpen(false)
+        return
+      }
+      if (event.key !== 'Tab') return
+      const buttons = [...(accessDialogRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])]
+      if (buttons.length === 0) return
+      const first = buttons[0]
+      const last = buttons.at(-1)
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last?.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first?.focus()
+      }
+    }
+    document.addEventListener('keydown', keydown)
+    return () => {
+      window.cancelAnimationFrame(focusFrame)
+      document.removeEventListener('keydown', keydown)
+      previousFocus?.focus({ preventScroll: true })
+    }
+  }, [accessOpen, accessPending])
 
   if (!('kind' in block)) return <div className="dsh-genui-pending">{t('app.building')}</div>
   if (meta === undefined) return <span hidden />
@@ -247,6 +301,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
     setPermissionError(undefined)
     try {
       await grantPermission(meta, meta.versionId, permissionRequest.permission.id)
+      setPermissions(current => current?.map(item => item.id === permissionRequest.permission.id ? { ...item, granted: true } : item))
       const settled = settlePermission(permissionQueueRef.current, permissionRequest.permission.id)
       settled.answered.forEach(request => answerPermission(request.requestId, true))
       permissionQueueRef.current = settled.remaining
@@ -255,6 +310,32 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
       setPermissionError(t('permission.failed'))
     } finally {
       setPermissionPending(false)
+    }
+  }
+
+  const openAccess = async () => {
+    setAccessOpen(true)
+    setAccessError(undefined)
+    try {
+      const result = await listPermissions(meta, meta.versionId)
+      setPermissions(result.permissions)
+    } catch {
+      setAccessError(t('access.failed'))
+    }
+  }
+
+  const removeAccess = async (capabilityId: string) => {
+    if (accessPending !== undefined) return
+    setAccessPending(capabilityId)
+    setAccessError(undefined)
+    try {
+      await revokePermission(meta, capabilityId)
+      setPermissions(current => current?.map(item => item.id === capabilityId ? { ...item, granted: false } : item))
+      announce(t('access.revoked'))
+    } catch {
+      setAccessError(t('access.failed'))
+    } finally {
+      setAccessPending(undefined)
     }
   }
 
@@ -280,6 +361,11 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
           </div>
           {previewUrl === undefined ? null : (
             <div className="dsh-genui-actions">
+              {permissions?.length ? (
+                <IconAction label={t('access.open')} onClick={() => { void openAccess() }}>
+                  <ShellIcon name="shield" />
+                </IconAction>
+              ) : null}
               <IconAction className="dsh-genui-canvas-action" label={canvasOpen ? t('action.closeCanvas') : t('action.openCanvas')} onClick={() => { void toggleCanvas() }}>
                 <ShellIcon name={canvasOpen ? 'panel-right-close' : 'panel-right'} />
                 <span className="dsh-genui-open-label">{canvasOpen ? t('action.closeCanvas') : t('app.open')}</span>
@@ -313,6 +399,39 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
               <div className="dsh-genui-permission-actions">
                 <button ref={permissionDenyRef} type="button" className="dsh-genui-button" disabled={permissionPending} onClick={denyPermission}>{t('permission.deny')}</button>
                 <button type="button" className="dsh-genui-button dsh-genui-button--strong" disabled={permissionPending} onClick={() => { void allowPermission() }}>{permissionPending ? t('permission.allowing') : t('permission.allow')}</button>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {!accessOpen || permissionRequest !== undefined ? null : (
+          <div className="dsh-genui-permission-backdrop">
+            <section ref={accessDialogRef} className="dsh-genui-access" role="dialog" aria-modal="true" aria-labelledby={accessTitleId} aria-describedby={accessDescriptionId}>
+              <div className="dsh-genui-access-head">
+                <div className="dsh-genui-permission-mark"><ShellIcon name="shield" /></div>
+                <div>
+                  <h4 id={accessTitleId}>{t('access.title')}</h4>
+                  <p id={accessDescriptionId}>{t('access.description')}</p>
+                </div>
+              </div>
+              <div className="dsh-genui-access-list">
+                {permissions?.map(item => (
+                  <div className="dsh-genui-access-row" key={item.id}>
+                    <div>
+                      <strong>{item.label}</strong>
+                      <span>{item.reason}</span>
+                    </div>
+                    {item.granted ? (
+                      <button type="button" className="dsh-genui-button" disabled={accessPending !== undefined} onClick={() => { void removeAccess(item.id) }}>
+                        {accessPending === item.id ? t('access.revoking') : t('access.revoke')}
+                      </button>
+                    ) : <span className="dsh-genui-access-state">{t('access.notAllowed')}</span>}
+                  </div>
+                ))}
+              </div>
+              {accessError === undefined ? null : <p className="dsh-genui-permission-error" role="alert">{accessError}</p>}
+              <div className="dsh-genui-permission-actions">
+                <button ref={accessCloseRef} type="button" className="dsh-genui-button dsh-genui-button--strong" disabled={accessPending !== undefined} onClick={() => setAccessOpen(false)}>{t('access.close')}</button>
               </div>
             </section>
           </div>

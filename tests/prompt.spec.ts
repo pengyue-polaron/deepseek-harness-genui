@@ -26,6 +26,7 @@ describe('GenUI system prompt', () => {
     expect(GENUI_SYSTEM_PROMPT).toContain('Pin the exported profile as root DESIGN.md')
     expect(GENUI_SYSTEM_PROMPT).toContain('one control group, one main visual, and one changing takeaway')
     expect(GENUI_SYSTEM_PROMPT).toContain('Use semantic controls, accessible names, visible keyboard focus')
+    expect(GENUI_SYSTEM_PROMPT).toContain('mark exactly one main control with data-genui-primary-action')
   })
 
   it('keeps the prompt compact enough to remain legible to the model', () => {

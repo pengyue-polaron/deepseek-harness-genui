@@ -26,6 +26,21 @@ export async function verifyArtifactInBrowser(url: string): Promise<BrowserVerif
     try {
       await frame.locator('#root > *').first().waitFor({ state: 'visible', timeout: 10_000 })
 
+      const surfaceSnapshot = () => frame.locator('html').evaluate((element) => {
+        const visible = (candidate: Element): boolean => {
+          const style = getComputedStyle(candidate)
+          const rect = candidate.getBoundingClientRect()
+          return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) !== 0
+            && rect.width > 0 && rect.height > 0
+        }
+        const controls = [...document.querySelectorAll('input, select, textarea')].filter(visible).map(candidate => {
+          if (candidate instanceof HTMLInputElement) return { value: candidate.value, checked: candidate.checked }
+          if (candidate instanceof HTMLSelectElement) return { value: candidate.value, selectedIndex: candidate.selectedIndex }
+          return { value: (candidate as HTMLTextAreaElement).value }
+        })
+        return JSON.stringify({ html: element.querySelector('#root')?.innerHTML ?? '', controls })
+      })
+
       const inspectSurface = async (label: string, accessibility = false) => {
         const report = await frame.locator('html').evaluate((element, includeAccessibility) => {
           const visible = (candidate: Element): boolean => {
@@ -80,6 +95,70 @@ export async function verifyArtifactInBrowser(url: string): Promise<BrowserVerif
       }
 
       await inspectSurface('light desktop', true)
+
+      const primary = await frame.locator('html').evaluate((_, interactiveSelector) => {
+        const visible = (candidate: Element): boolean => {
+          const style = getComputedStyle(candidate)
+          const rect = candidate.getBoundingClientRect()
+          return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) !== 0
+            && rect.width > 0 && rect.height > 0
+        }
+        const controls = [...document.querySelectorAll(interactiveSelector)].filter(visible)
+        const marked = [...document.querySelectorAll('[data-genui-primary-action]')].filter(visible)
+        return {
+          controls: controls.length,
+          marked: marked.length,
+          markedInteractive: marked.length === 1 && marked[0]?.matches(interactiveSelector),
+        }
+      }, 'button, a[href], input:not([type="hidden"]), select, textarea, summary, [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="switch"]')
+
+      if (primary.controls > 0) {
+        if (primary.marked !== 1) {
+          diagnostics.push({ severity: 'error', text: `interactive app must have exactly one visible data-genui-primary-action control; found ${primary.marked}` })
+        } else if (!primary.markedInteractive) {
+          diagnostics.push({ severity: 'error', text: 'data-genui-primary-action must be placed on an interactive control' })
+        } else {
+          const before = await surfaceSnapshot()
+          let sdkActionObserved = false
+          const observeAction = (request: { url(): string }) => {
+            if (/\/(?:tool|external|state\/write)$/.test(new URL(request.url()).pathname)) sdkActionObserved = true
+          }
+          page.on('request', observeAction)
+          const action = frame.locator('[data-genui-primary-action]:visible')
+          const control = await action.evaluate(element => ({
+            tag: element.tagName.toLowerCase(),
+            type: element instanceof HTMLInputElement ? element.type : '',
+          }))
+          if (control.tag === 'select') {
+            const values = await action.locator('option').evaluateAll(options => options.map(option => (option as HTMLOptionElement).value))
+            const next = values[1]
+            if (next !== undefined) await action.selectOption(next)
+          } else if (control.tag === 'textarea' || (control.tag === 'input' && ['text', 'search', 'email', 'url', 'tel'].includes(control.type))) {
+            await action.fill('Verification input')
+          } else if (control.tag === 'input' && ['range', 'number'].includes(control.type)) {
+            await action.evaluate((element) => {
+              const input = element as HTMLInputElement
+              const current = Number(input.value)
+              const min = input.min === '' ? 0 : Number(input.min)
+              const max = input.max === '' ? current + 2 : Number(input.max)
+              const step = input.step === '' || input.step === 'any' ? 1 : Number(input.step)
+              input.value = String(current + step <= max ? current + step : Math.max(min, current - step))
+              input.dispatchEvent(new Event('input', { bubbles: true }))
+              input.dispatchEvent(new Event('change', { bubbles: true }))
+            })
+          } else {
+            await action.click()
+          }
+          let changed = false
+          for (let attempt = 0; attempt < 20 && !changed && !sdkActionObserved; attempt += 1) {
+            await page.waitForTimeout(100)
+            changed = await surfaceSnapshot() !== before
+          }
+          page.off('request', observeAction)
+          if (changed || sdkActionObserved) notes.push('primary interaction changed the app or invoked a verified action')
+          else diagnostics.push({ severity: 'error', text: 'data-genui-primary-action did not change visible app state or invoke a verified action' })
+        }
+      }
 
       await page.emulateMedia({ colorScheme: 'dark' })
       await frame.locator('#root > *').first().waitFor({ state: 'visible', timeout: 5_000 })

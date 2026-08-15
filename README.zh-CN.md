@@ -7,77 +7,72 @@
 
 <img src="assets/hero-zh-CN.png" width="1280" alt="用户提出代码问题，DeepSeek Harness 返回文字解释和交互式代码路径界面">
 
-一个 DeepSeek Harness 插件，把任务里适合操作的部分变成临时 React 页面。回答留在对话里；只有操作界面确实比继续读文字更有效时，才生成界面。
-
-**提出需求 → 阅读回答 → 操作界面 → 带着保存的状态继续聊**
+一个为 DeepSeek Harness 提供临时任务页面的插件。Agent 用文字回答问题，只在用户确实需要探索、比较、配置或执行操作时加入交互界面。
 
 ## 真实场景
 
 <table>
   <tr>
-    <td><strong>比较真实工具结果</strong><br><br>结合已连接的 Hugging Face 和 GitHub，找出能在 24 GB Mac 上实际运行的视觉模型。<br><br>对话保留内存、许可证和实现限制；界面负责筛选、比较证据和保存候选清单。</td>
+    <td><strong>选择本地模型</strong><br><br>哪些视觉模型能在 24 GB Mac 上实际运行？<br><br>插件把 Hugging Face 和 GitHub 的真实结果整理成可筛选的候选清单，列出内存、许可证、来源，并保存用户的选择。</td>
     <td><img src="screenshots/zh-CN/local-model-shortlist.jpg" width="280" alt="结合 Hugging Face 和 GitHub 结果生成的本地视觉模型筛选界面"></td>
   </tr>
   <tr>
-    <td><strong>配置一次真实操作</strong><br><br>找出少量合适的 90 分钟写作时段，只创建最终确认的日程。<br><br>对话保留推荐理由和隐私边界；界面让时间可选择，并在写入前申请授权。</td>
+    <td><strong>选择日历时段</strong><br><br>找出合适的 90 分钟写作时间，只创建最终确认的日程。<br><br>页面并列显示真实空闲时间、保留选择，并在写入日历前明确申请授权。</td>
     <td><img src="screenshots/zh-CN/calendar-planner.jpg" width="280" alt="读取真实空闲时间后生成的日历时段选择界面"></td>
   </tr>
   <tr>
-    <td><strong>操纵难以描述的概念</strong><br><br>改变光照、二氧化碳、温度和气孔开度，观察哪一步先成为光合作用瓶颈。<br><br>对话保留定义和必要边界；界面让用户亲自验证因果关系。</td>
+    <td><strong>探索光合作用</strong><br><br>改变光照、二氧化碳、温度和气孔开度，找到限制反应的环节。<br><br>图示会跟随控制项变化，因果关系可以直接操作和验证。</td>
     <td><img src="screenshots/zh-CN/photosynthesis-explorer.jpg" width="280" alt="可以改变四个条件的光合作用瓶颈模型"></td>
   </tr>
   <tr>
-    <td><strong>从 CLI 追踪真实代码</strong><br><br>解释项目里的实际路径，并返回映射到源码文件和函数的本地页面。<br><br>对话保留代码解释；界面提供可探索的路径、真实源码引用和稳定的 localhost 地址。</td>
-    <td><img src="screenshots/zh-CN/code-path-explorer.png" width="280" alt="通过 CLI 请求生成的中文 IAM 认证路径解释器"></td>
+    <td><strong>追踪代码路径</strong><br><br>从 CLI 要求 Agent 根据真实项目源码解释一条执行链路。<br><br>返回的本地页面列出文件、函数、分支，以及用户当前选中的路径。</td>
+    <td><img src="screenshots/zh-CN/code-path-explorer.png" width="280" alt="通过 CLI 请求生成的中文代码路径解释器"></td>
   </tr>
 </table>
 
 普通问答、文字改写、摘要和简单列表只返回文字。
 
-## CLI 示例
-
-CLI 使用同一个插件。明确要求 GenUI 后，Harness 会返回本地页面；下一轮可以直接读取页面里的操作，不需要用户重新描述。
-
-```text
-❯ 解释这个仓库里的 IAM 认证链路。生成一个交互式界面，把每一步映射到真实源码，
-  然后返回 localhost 地址。
-
-  我追踪了 oauthController.ts → tokenService.ts → openV1Controller.ts。
-  页面可以切换认证入口和请求条件。
-
-  http://127.0.0.1:3090/genui/app/iam-auth-path
-
-❯ 我切换到了 OAuth，保持凭证有效，关闭 Session 命中，保留权限通过，
-  并展开了第 7 步。请求会停在哪里？
-
-  请求停在第 6 步“换用户 token + 写应用 session”。
-  第 7 步虽然被展开查看，但不会执行。
-```
-
 ## Inline 与 Canvas
 
-同一个页面先跟随回答显示为 Inline。任务需要更大空间时，可以在 Canvas 中打开；对话区会自适应变窄，不会被页面盖住。
+同一个页面既可以放在回答里，也可以在对话右侧打开。
 
 | Inline | Canvas |
 | --- | --- |
 | <img src="screenshots/zh-CN/photosynthesis-inline.png" width="620" alt="在 DeepSeek Harness 对话中内联显示的光合作用交互模型"> | <img src="screenshots/zh-CN/photosynthesis-canvas-current.png" width="620" alt="DeepSeek Harness 会话侧边栏、对话区和右侧光合作用 Canvas 同时可见"> |
-| 适合一个聚焦选择、一组控制或小型可视化。 | 适合在保留对话的同时进行更深入的探索。 |
+| 适合紧凑的控制项或聚焦选择。 | 提供更大空间，同时保留对话。 |
 
-两种模式共享同一份任务状态。需要时还可以全屏打开，或通过稳定的 localhost 地址访问。
+Inline、Canvas、全屏、本地页面和 Agent 后续轮次共享同一份任务状态。
+
+## CLI 示例
+
+终端 profile 会返回 localhost 页面。下一轮可以直接引用用户刚才在页面里选择的路径。
+
+```text
+❯ 解释这个仓库里生成页面如何进入带权限控制的运行时。做一个交互式代码路径页面，
+  然后返回 localhost 地址。
+
+  我梳理了 src/tools.ts → src/artifacts/builder.ts → src/runtime/server.ts
+  → src/artifacts/registry.ts。
+
+  http://127.0.0.1:<port>/genui/app/<task-app>
+
+❯ 我刚才选的路径停在哪里？
+
+  它到达了 src/runtime/server.ts 的权限检查，然后停在真实工具调用之前，
+  因为这项访问还没有获得允许。
+```
 
 ## 工作方式
 
-1. Agent 把普通回答留在文字里，只在交互确实能改善任务时创建界面。
-2. 它直接编写 React + TypeScript，声明需要的真实工具或公开 API 范围，并得到经过检查的构建结果。
-3. 用户可以在 Inline、Canvas、全屏或本地链接中操作。
-4. 输入、选择、草稿和完成结果会保存到当前任务。下一轮回答前，Agent 会先读取这些状态。
-5. 后续要求会更新同一个页面。URL 和用户状态跨版本保留；更新失败时继续使用最后一个正常版本。
+1. Agent 把解释留在对话里，只在交互有实际价值时创建一个聚焦页面。
+2. 它编写 React + TypeScript，声明需要的准确工具或公开 HTTPS 范围；插件负责构建和检查页面。
+3. 用户输入保存到当前任务。后续轮次直接读取这些状态，后续修改更新同一个页面，失败的修改不会替换正常版本。
 
-工具和 MCP 首次调用前会明确申请权限。公开 HTTPS 请求只能访问声明过的无凭据范围；API Key 和外部服务凭据始终留在 Harness 中。
+连接工具和 API 首次使用前会申请授权。页面卡片会显示当前访问权限，用户可以随时收回。凭据始终留在 Harness 中。
 
 ## Design MD
 
-可复用的视觉方向写在 `DESIGN.md`，而不是组件树 IR。插件内置 4 套风格：
+视觉方向写在 `DESIGN.md` 中。插件内置 4 套风格：
 
 | 风格 | 适用场景 |
 | --- | --- |
@@ -86,11 +81,11 @@ CLI 使用同一个插件。明确要求 GenUI 后，Harness 会返回本地页�
 | `field-atlas` | 科学、因果和空间概念解释 |
 | `kinetic-signal` | 实时数据、连接工具和用户触发操作 |
 
-打开 **设置 → 插件 → 插件配置**，可以保留自动选择、指定内置风格、导入 `DESIGN.md`，或导出当前风格作为自己的起点。Agent 会静默应用选定方向，不会在生成页面里再放一套设计设置。
+打开 **设置 → 插件 → 插件配置**，可以自动选择、指定内置风格、导入 `DESIGN.md`，或导出一份作为起点。这个选择只影响之后新建的页面，不会在页面中增加设计设置。
 
 ## 安装
 
-需要 Node.js `^22.19.0 || >=24`、pnpm 11 和 DeepSeek Harness。
+使用 Node.js `^22.19.0 || >=24`。当前版本在 DeepSeek Harness `0.1.0-rc.6` 和 Cordis `4.0.0-rc.7` 上通过测试。
 
 ```sh
 curl -fL https://github.com/pengyue-polaron/deepseek-harness-genui/releases/latest/download/dsh-plugin-genui.tgz -o /tmp/dsh-plugin-genui.tgz
@@ -99,17 +94,17 @@ dsh plugin --profile web exec playwright install chromium
 dsh --profile web
 ```
 
-兼容的 Harness 终端配置可以把 `--profile web` 换成 `--profile tui`。MCP 按照原有方式连接到同一个 profile；生成页面使用它们的准确工具名。
+Web profile 支持 Inline、Canvas、全屏和 localhost 链接。终端 profile 把命令里的 `web` 换成 `tui`；TUI 返回本地链接，不嵌入 Canvas。MCP 仍按原有方式连接到同一个 profile。
 
-## 技术栈
+## 安全
 
-| 宿主 | 生成页面 | 构建 | 状态 | 验证 |
-| --- | --- | --- | --- | --- |
-| DeepSeek Harness + Cordis | React 18 + TypeScript | esbuild | 任务级 | Playwright + Vitest |
+生成代码在沙箱中运行。工具调用和公开 HTTPS 范围必须提前声明、限定范围并由用户授权。临时链接 7 天后失效；任务状态和访问权限在 7 天无活动后清理。用户可以回到任务里的页面卡片查看或收回权限。
 
-每次构建都会检查桌面端和移动端宽度、浅色和暗色模式，以及减少动态效果的环境。
+插件使用 DeepSeek Harness + Cordis、React 18 + TypeScript、esbuild、Playwright 和 Vitest。
 
 ## 开发
+
+从源码构建需要 pnpm 11。
 
 ```sh
 pnpm install

@@ -1,6 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { open, readFile } from 'node:fs/promises'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import { TASK_TTL_MS, VERIFICATION_TOKEN_TTL_MS } from '../lifecycle.ts'
 
 export type CapabilityMode = 'interactive' | 'verification'
 
@@ -10,7 +11,7 @@ interface CapabilityPayload {
   sessionId: string
   mode: CapabilityMode
   nonce: string
-  expiresAt?: number
+  expiresAt: number
 }
 
 interface Capability {
@@ -53,8 +54,8 @@ function decode(value: string): CapabilityPayload | undefined {
     if (typeof parsed !== 'object' || parsed === null) return undefined
     const payload = parsed as Partial<CapabilityPayload>
     if (payload.version !== 1 || typeof payload.artifactId !== 'string' || typeof payload.sessionId !== 'string'
-      || (payload.mode !== 'interactive' && payload.mode !== 'verification') || typeof payload.nonce !== 'string') return undefined
-    if (payload.expiresAt !== undefined && typeof payload.expiresAt !== 'number') return undefined
+      || (payload.mode !== 'interactive' && payload.mode !== 'verification') || typeof payload.nonce !== 'string'
+      || typeof payload.expiresAt !== 'number') return undefined
     return payload as CapabilityPayload
   } catch {
     return undefined
@@ -64,6 +65,7 @@ function decode(value: string): CapabilityPayload | undefined {
 export class CapabilityStore {
   private readonly agents = new Map<string, Agent>()
   private readonly revoked = new Set<string>()
+  private readonly interactiveTokens = new Map<string, { token: string; expiresAt: number }>()
 
   constructor(
     private readonly resolveAgent?: AgentResolver,
@@ -77,15 +79,21 @@ export class CapabilityStore {
   issue(artifactId: string, agent: Agent, mode: CapabilityMode = 'interactive'): string {
     const sessionId = String(agent.id)
     this.agents.set(sessionId, agent)
+    const tokenKey = `${artifactId}\0${sessionId}`
+    const current = this.interactiveTokens.get(tokenKey)
+    if (mode === 'interactive' && current !== undefined && current.expiresAt > Date.now()) return current.token
+    const expiresAt = Date.now() + (mode === 'verification' ? VERIFICATION_TOKEN_TTL_MS : TASK_TTL_MS)
     const payload = encode({
       version: 1,
       artifactId,
       sessionId,
       mode,
       nonce: mode === 'interactive' ? 'task' : randomBytes(16).toString('base64url'),
-      ...(mode === 'verification' ? { expiresAt: Date.now() + 5 * 60 * 1000 } : {}),
+      expiresAt,
     })
-    return `${payload}.${this.sign(payload)}`
+    const token = `${payload}.${this.sign(payload)}`
+    if (mode === 'interactive') this.interactiveTokens.set(tokenKey, { token, expiresAt })
+    return token
   }
 
   resolve(token: string, artifactId: string): Capability | undefined {
@@ -97,8 +105,7 @@ export class CapabilityStore {
     const received = Buffer.from(signature, 'base64url')
     if (expected.length !== received.length || !timingSafeEqual(expected, received)) return undefined
     const payload = decode(encoded)
-    if (payload === undefined || payload.artifactId !== artifactId
-      || (payload.expiresAt !== undefined && payload.expiresAt <= Date.now())) return undefined
+    if (payload === undefined || payload.artifactId !== artifactId || payload.expiresAt <= Date.now()) return undefined
     const agent = this.agents.get(payload.sessionId) ?? this.resolveAgent?.(payload.sessionId)
     if (agent === undefined) return undefined
     return { artifactId: payload.artifactId, sessionId: payload.sessionId, agent, mode: payload.mode }
@@ -111,6 +118,7 @@ export class CapabilityStore {
   clear(): void {
     this.agents.clear()
     this.revoked.clear()
+    this.interactiveTokens.clear()
   }
 
   private sign(payload: string): string {

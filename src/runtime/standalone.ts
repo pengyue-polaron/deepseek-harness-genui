@@ -1,4 +1,4 @@
-export const ARTIFACT_RUNTIME_VERSION = '0.12.0'
+export const ARTIFACT_RUNTIME_VERSION = '0.12.1'
 
 export const STANDALONE_RUNTIME = String.raw`
 const root = document.body

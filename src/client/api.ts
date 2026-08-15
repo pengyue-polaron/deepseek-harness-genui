@@ -1,4 +1,4 @@
-import type { GenuiMeta } from './types.ts'
+import type { GenuiMeta, PermissionStatus } from './types.ts'
 
 interface ArtifactAccess {
   endpoint: string
@@ -74,6 +74,14 @@ async function post<T>(meta: GenuiMeta, action: string, value: Record<string, un
 
 export function grantPermission(meta: GenuiMeta, versionId: string, capabilityId: string): Promise<{ granted: boolean }> {
   return post(meta, 'permission/grant', { version_id: versionId, capability_id: capabilityId })
+}
+
+export function listPermissions(meta: GenuiMeta, versionId: string): Promise<{ permissions: PermissionStatus[] }> {
+  return post(meta, 'permission/list', { version_id: versionId })
+}
+
+export function revokePermission(meta: GenuiMeta, capabilityId: string): Promise<{ revoked: boolean }> {
+  return post(meta, 'permission/revoke', { capability_id: capabilityId })
 }
 
 export function previewUrlForLocale(meta: GenuiMeta, locale: 'en' | 'zh'): string {

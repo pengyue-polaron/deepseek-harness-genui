@@ -113,7 +113,7 @@ export function DesignSettingsCard({ t }: DesignSettingsCardProps) {
           </select>
           <p>{t('design.hint')}</p>
           <div className="dsh-genui-design-actions">
-            <input ref={inputRef} id={inputId} type="file" accept=".md,text/markdown,text/plain" aria-label={t('design.import')} hidden onChange={event => { void importFile(event) }} />
+            <input ref={inputRef} id={inputId} name="genui-design-import" type="file" accept=".md,text/markdown,text/plain" aria-label={t('design.import')} hidden onChange={event => { void importFile(event) }} />
             <button type="button" disabled={pending} onClick={() => inputRef.current?.click()}>{t('design.import')}</button>
             {settings?.default_design_id == null
               ? <span className="dsh-genui-design-export-disabled" aria-disabled="true">{t('design.export')}</span>

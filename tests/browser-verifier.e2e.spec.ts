@@ -159,7 +159,8 @@ function App() {
 createRoot(document.getElementById('root')!).render(<App />)`,
       }],
     })
-    expect((await buildArtifact(version, registry.distPath(version.artifactId, version.id))).ok).toBe(true)
+    const built = await buildArtifact(version, registry.distPath(version.artifactId, version.id))
+    expect(built.ok, JSON.stringify(built.diagnostics)).toBe(true)
     await registry.settle(version.artifactId, version.id, {
       checkedAt: new Date().toISOString(), build: 'passed', browser: 'not-run', diagnostics: [], notes: [],
     })
@@ -214,5 +215,46 @@ createRoot(document.getElementById('root')!).render(<App />)`,
       expect.stringContaining('visible interactive control has no accessible name: button'),
       expect.stringContaining('visible image is missing alt text: img'),
     ]))
+  }, 60_000)
+
+  async function verifyFixture(id: string, source: string) {
+    const version = await registry.create({
+      id, title: id, summary: 'Primary interaction fixture.', requirements: [], capabilities: [],
+      files: [{ path: 'src/main.tsx', content: source }],
+    })
+    const built = await buildArtifact(version, registry.distPath(version.artifactId, version.id))
+    expect(built.ok, JSON.stringify(built.diagnostics)).toBe(true)
+    await registry.settle(version.artifactId, version.id, {
+      checkedAt: new Date().toISOString(), build: 'passed', browser: 'not-run', diagnostics: [], notes: [],
+    })
+    const token = capabilities.issue(version.artifactId, fakeAgent)
+    return verifyArtifactInBrowser(`${origin}/genui/preview/${version.artifactId}/${version.id}?lang=en#token=${token}`)
+  }
+
+  it('accepts a primary button that changes visible state', async () => {
+    const result = await verifyFixture('primary-button', `import React, { useState } from 'react'
+import { createRoot } from 'react-dom/client'
+function App() { const [open, setOpen] = useState(false); return <main><button data-genui-primary-action onClick={() => setOpen(true)}>Show details</button><p>{open ? 'Details are visible' : 'Ready'}</p></main> }
+createRoot(document.getElementById('root')!).render(<App />)`)
+    expect(result.ok).toBe(true)
+    expect(result.notes).toContain('primary interaction changed the app or invoked a verified action')
+  }, 60_000)
+
+  it('rejects a primary button whose handler does nothing', async () => {
+    const result = await verifyFixture('primary-noop', `import React from 'react'
+import { createRoot } from 'react-dom/client'
+function App() { return <main><button data-genui-primary-action onClick={() => undefined}>Show details</button><p>Unchanged</p></main> }
+createRoot(document.getElementById('root')!).render(<App />)`)
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics.map(item => item.text)).toContain('data-genui-primary-action did not change visible app state or invoke a verified action')
+  }, 60_000)
+
+  it('accepts a primary range control that changes its output', async () => {
+    const result = await verifyFixture('primary-slider', `import React from 'react'
+import { createRoot } from 'react-dom/client'
+import { useArtifactState } from '@dsh-genui/sdk'
+function App() { const [light, setLight] = useArtifactState('light', 2); return <main><label>Light<input data-genui-primary-action type="range" min="1" max="5" value={light} onChange={event => setLight(Number(event.target.value))} /></label><output>{light}</output></main> }
+createRoot(document.getElementById('root')!).render(<App />)`)
+    expect(result.ok).toBe(true)
   }, 60_000)
 })

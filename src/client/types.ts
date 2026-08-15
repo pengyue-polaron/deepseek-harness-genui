@@ -20,6 +20,8 @@ export interface PermissionRequest {
   }
 }
 
+export type PermissionStatus = PermissionRequest['permission'] & { granted: boolean }
+
 export function readMeta(block: ToolCallViewProps['block']): GenuiMeta | undefined {
   if (!('kind' in block) || block.isError) return undefined
   const raw: unknown = block.meta

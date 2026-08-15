@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-genui",
   "description": "Code-first generative UI artifacts for DeepSeek Harness",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "private": true,
   "keywords": [
     "deepseek-harness",

@@ -1,14 +1,14 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { dirname, resolve } from 'node:path'
 import { assertArtifactId, normalizeSourcePath, safeJoin } from './paths.ts'
+import { MAX_VERSIONS_PER_ARTIFACT, TASK_TTL_MS } from '../lifecycle.ts'
 import type {
   ArtifactCapability, ArtifactGrant, ArtifactRecord, ArtifactSessionState, ArtifactVersion,
   FilePatch, Requirement, SourceFile, VerificationEvidence,
 } from './types.ts'
 
 const RECORD_FILE = 'artifact.json'
-export const TASK_STATE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 async function readJson<T>(path: string): Promise<T> {
   return JSON.parse(await readFile(path, 'utf8')) as T
@@ -86,6 +86,19 @@ export class ArtifactRegistry {
 
   async init(): Promise<void> {
     await mkdir(this.root, { recursive: true, mode: 0o700 })
+    const entries = await readdir(this.root, { withFileTypes: true })
+    await Promise.all(entries.filter(entry => entry.isDirectory()).map(async entry => {
+      try {
+        const id = assertArtifactId(entry.name)
+        const record = await readJson<ArtifactRecord>(this.recordPath(id))
+        if (Date.parse(record.updatedAt) + TASK_TTL_MS <= Date.now()) {
+          await rm(safeJoin(this.root, id), { recursive: true, force: true })
+        }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT'
+          && !(error instanceof Error && error.message.startsWith('artifact id must be'))) throw error
+      }
+    }))
   }
 
   private recordPath(id: string): string {
@@ -146,7 +159,7 @@ export class ArtifactRegistry {
         grants: {},
       }
       await atomicJson(this.versionPath(id, versionId), version)
-      await atomicJson(this.recordPath(id), record)
+      await this.saveRecord(record)
       return version
     })
   }
@@ -190,7 +203,7 @@ export class ArtifactRegistry {
       record.latestVersionId = versionId
       record.versions.push(versionId)
       await atomicJson(this.versionPath(input.id, versionId), version)
-      await atomicJson(this.recordPath(input.id), record)
+      await this.saveRecord(record)
       return version
     })
   }
@@ -205,7 +218,7 @@ export class ArtifactRegistry {
       if (version.status === 'ready') record.currentVersionId = versionId
       record.updatedAt = new Date().toISOString()
       await atomicJson(this.versionPath(id, versionId), version)
-      await atomicJson(this.recordPath(id), record)
+      await this.saveRecord(record)
       return version
     })
   }
@@ -217,7 +230,7 @@ export class ArtifactRegistry {
       if (version.status !== 'ready') throw new Error('rollback target must be a ready version')
       record.currentVersionId = versionId
       record.updatedAt = new Date().toISOString()
-      await atomicJson(this.recordPath(id), record)
+      await this.saveRecord(record)
       return record
     })
   }
@@ -229,7 +242,7 @@ export class ArtifactRegistry {
       if (state === undefined) return undefined
       if (Date.parse(state.expiresAt) > Date.now()) return structuredClone(state)
       delete record.states[sessionId]
-      await atomicJson(this.recordPath(id), record)
+      await this.saveRecord(record)
       return undefined
     })
   }
@@ -243,10 +256,10 @@ export class ArtifactRegistry {
       record.states[sessionId] = {
         values: updater(structuredClone(values)),
         updatedAt: now.toISOString(),
-        expiresAt: new Date(now.valueOf() + TASK_STATE_TTL_MS).toISOString(),
+        expiresAt: new Date(now.valueOf() + TASK_TTL_MS).toISOString(),
       }
       record.updatedAt = now.toISOString()
-      await atomicJson(this.recordPath(id), record)
+      await this.saveRecord(record)
       return record
     })
   }
@@ -258,9 +271,51 @@ export class ArtifactRegistry {
       grants[capabilityId] = grant
       record.grants[sessionId] = grants
       record.updatedAt = new Date().toISOString()
-      await atomicJson(this.recordPath(id), record)
+      await this.saveRecord(record)
       return record
     })
+  }
+
+  async readGrants(id: string, sessionId: string): Promise<Record<string, ArtifactGrant>> {
+    return this.withMutationLock(id, async () => {
+      const record = await this.get(id)
+      const grants = record.grants[sessionId]
+      if (grants === undefined) return {}
+      const active = Object.fromEntries(Object.entries(grants).filter(([, grant]) => Date.parse(grant.expiresAt) > Date.now()))
+      if (Object.keys(active).length !== Object.keys(grants).length) {
+        if (Object.keys(active).length === 0) delete record.grants[sessionId]
+        else record.grants[sessionId] = active
+        await this.saveRecord(record)
+      }
+      return structuredClone(active)
+    })
+  }
+
+  async revokeCapability(id: string, sessionId: string, capabilityId: string): Promise<boolean> {
+    return this.withMutationLock(id, async () => {
+      const record = await this.get(id)
+      const grants = record.grants[sessionId]
+      if (grants === undefined || grants[capabilityId] === undefined) return false
+      delete grants[capabilityId]
+      if (Object.keys(grants).length === 0) delete record.grants[sessionId]
+      record.updatedAt = new Date().toISOString()
+      await this.saveRecord(record)
+      return true
+    })
+  }
+
+  private async saveRecord(record: ArtifactRecord): Promise<void> {
+    const protectedIds = new Set([record.currentVersionId, record.latestVersionId].filter((value): value is string => value !== undefined))
+    const newest = [...record.versions].reverse()
+    const retained = new Set<string>(protectedIds)
+    for (const versionId of newest) {
+      if (retained.size >= MAX_VERSIONS_PER_ARTIFACT) break
+      retained.add(versionId)
+    }
+    const removed = record.versions.filter(versionId => !retained.has(versionId))
+    if (removed.length > 0) record.versions = record.versions.filter(versionId => retained.has(versionId))
+    await atomicJson(this.recordPath(record.id), record)
+    await Promise.all(removed.map(versionId => rm(dirname(this.versionPath(record.id, versionId)), { recursive: true, force: true })))
   }
 
   private async withMutationLock<T>(id: string, operation: () => Promise<T>): Promise<T> {
