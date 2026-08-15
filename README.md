@@ -87,8 +87,7 @@ Open **Settings → Plugins → Plugin configuration** to use automatic selectio
 Use Node.js `^22.19.0 || >=24`. This release is tested with DeepSeek Harness `0.1.0-rc.6` and Cordis `4.0.0-rc.7`.
 
 ```sh
-curl -fL https://github.com/pengyue-polaron/deepseek-harness-genui/releases/latest/download/dsh-plugin-genui.tgz -o /tmp/dsh-plugin-genui.tgz
-dsh plugin --profile web add /tmp/dsh-plugin-genui.tgz
+dsh plugin --profile web add dsh-plugin-genui
 dsh plugin --profile web exec playwright install chromium
 dsh --profile web
 ```
