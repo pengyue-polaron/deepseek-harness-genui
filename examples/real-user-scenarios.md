@@ -8,12 +8,6 @@ These prompts describe a goal, not a screen. None is hard-coded into the plugin.
 
 The useful surface is a source-linked shortlist. The Agent must distinguish competing PRs, preserve the user's choices, and read them back on the next turn.
 
-## Replan a trip around changing constraints
-
-> I will be in Hangzhou from Friday to Sunday. On Saturday afternoon I am meeting a friend who cannot walk far. We had planned West Lake and the art museum, but if it rains we do not want much walking. I also want some quiet coffee time. Check the weather and rearrange the three days. I want to adjust the trade-offs between walking, indoor time, budget, and free time before you finish the plan.
-
-Weather stays grounded in a named source. Changing one preference should visibly change the itinerary, and the confirmed choices must carry into the next turn.
-
 ## Understand why a positive test can be wrong
 
 > A clinic says a test is 95% accurate, but a friend says a positive result may still be wrong. I have no statistics background. Explain it using 10,000 people and let me change how common the condition is.

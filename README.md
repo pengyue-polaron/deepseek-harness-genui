@@ -50,7 +50,6 @@ Add MCP servers to the Harness profile. Generated apps call their exact tool nam
 ## Good fits
 
 - Pause a long task at a real decision, then continue from the user's saved choice.
-- Replan around live constraints such as weather, accessibility, budget, or time.
 - Search and shortlist connected data without exposing credentials to the app.
 - Turn a difficult scientific relationship into a manipulable causal model.
 
