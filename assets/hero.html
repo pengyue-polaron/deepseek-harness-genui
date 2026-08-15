@@ -10,9 +10,9 @@
     body {
       position: relative;
       background:
-        radial-gradient(circle at 18% 14%, rgba(235, 140, 90, .19), transparent 30%),
-        radial-gradient(circle at 87% 79%, rgba(81, 145, 128, .14), transparent 33%),
-        #0d0f0f;
+        radial-gradient(circle at 17% 15%, rgba(226, 125, 76, .20), transparent 28%),
+        radial-gradient(circle at 91% 82%, rgba(88, 145, 124, .17), transparent 31%),
+        #0c0f0e;
       color: #f4f0e8;
       font-family: "Avenir Next", "Helvetica Neue", sans-serif;
     }
@@ -20,49 +20,84 @@
       position: absolute;
       inset: 0;
       background-image:
-        linear-gradient(rgba(255,255,255,.026) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,.026) 1px, transparent 1px);
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
       background-size: 44px 44px;
       content: "";
-      mask-image: linear-gradient(to bottom, black, transparent 82%);
+      mask-image: linear-gradient(to bottom, black, transparent 84%);
     }
-    .brand { position: absolute; z-index: 3; top: 58px; left: 72px; display: flex; align-items: center; gap: 12px; }
-    .mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 11px; background: #eb8c5a; color: #14110f; font-size: 17px; font-weight: 800; }
-    .brand strong { font-size: 14px; letter-spacing: .13em; text-transform: uppercase; }
-    .brand span { color: #aaa8a1; font-size: 12px; letter-spacing: .08em; }
-    .copy { position: absolute; z-index: 3; top: 139px; left: 72px; width: 470px; }
-    h1 { margin: 0; font-size: 66px; font-weight: 650; letter-spacing: -.055em; line-height: .98; text-wrap: balance; }
-    h1 em { color: #ed9a69; font-family: "Iowan Old Style", Georgia, serif; font-weight: 500; }
-    .lede { width: 430px; margin: 25px 0 0; color: #b7b4ac; font-size: 18px; line-height: 1.55; text-wrap: pretty; }
-    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 25px; }
-    .chip { border: 1px solid rgba(255,255,255,.13); border-radius: 999px; padding: 8px 12px; background: rgba(255,255,255,.045); color: #d7d3cb; font-size: 12px; font-weight: 600; }
-    .shot { position: absolute; z-index: 2; overflow: hidden; border: 1px solid rgba(255,255,255,.16); border-radius: 20px; background: #151616; box-shadow: 0 30px 90px rgba(0,0,0,.46); }
-    .shot::before { position: absolute; z-index: 2; top: 0; right: 0; left: 0; height: 32px; background: linear-gradient(to bottom, rgba(13,15,15,.24), transparent); content: ""; pointer-events: none; }
-    .shot img { display: block; width: 100%; height: 100%; object-fit: cover; }
-    .concept { top: 68px; right: 65px; width: 975px; height: 610px; transform: rotate(.35deg); }
-    .concept img { object-position: 50% 50%; }
-    .tools { bottom: 61px; left: 72px; width: 650px; height: 366px; transform: rotate(-.45deg); }
-    .tools img { object-position: 50% 50%; }
-    .caption { position: absolute; z-index: 4; display: flex; align-items: center; gap: 9px; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; padding: 9px 13px; background: rgba(16,18,18,.84); box-shadow: 0 8px 30px rgba(0,0,0,.25); color: #e8e4dc; font-size: 12px; font-weight: 650; backdrop-filter: blur(12px); }
-    .caption i { width: 7px; height: 7px; border-radius: 50%; background: #eb8c5a; box-shadow: 0 0 0 4px rgba(235,140,90,.12); }
-    .cap-concept { top: 96px; right: 91px; }
-    .cap-tools { bottom: 385px; left: 96px; }
-    .footer { position: absolute; z-index: 5; right: 70px; bottom: 54px; display: grid; justify-items: end; gap: 7px; }
-    .footer strong { color: #efebe3; font-size: 15px; letter-spacing: .03em; }
-    .footer span { color: #85837e; font-size: 12px; }
+    .brand { position: absolute; z-index: 4; top: 52px; left: 68px; display: flex; align-items: center; gap: 11px; }
+    .mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 10px; background: #e58b59; color: #17120f; font-size: 17px; font-weight: 800; }
+    .brand strong { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; }
+    .version { color: #8e918c; font-size: 11px; letter-spacing: .08em; }
+    .copy { position: absolute; z-index: 3; top: 145px; left: 68px; width: 430px; }
+    .eyebrow { margin: 0 0 16px; color: #e69a6f; font-size: 12px; font-weight: 750; letter-spacing: .15em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: 61px; font-weight: 650; letter-spacing: -.052em; line-height: 1.02; text-wrap: balance; }
+    h1 em { color: #eda277; font-family: "Iowan Old Style", Georgia, serif; font-weight: 500; }
+    .lede { margin: 24px 0 0; color: #b7b5ad; font-size: 17px; line-height: 1.58; text-wrap: pretty; }
+    .flow { display: grid; gap: 10px; margin-top: 31px; }
+    .step { display: grid; grid-template-columns: 27px 1fr; align-items: center; gap: 11px; color: #d9d5cd; font-size: 13px; }
+    .step b { display: grid; width: 27px; height: 27px; place-items: center; border: 1px solid rgba(255,255,255,.15); border-radius: 50%; color: #eea176; font-size: 11px; }
+    .step span { color: #8f938e; }
+    .stage {
+      position: absolute;
+      z-index: 2;
+      top: 58px;
+      right: 58px;
+      width: 1000px;
+      height: 785px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 22px;
+      background: #141716;
+      box-shadow: 0 34px 100px rgba(0,0,0,.47);
+    }
+    .windowbar { display: flex; height: 52px; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.09); padding: 0 21px; background: #191c1b; }
+    .windowbar strong { font-size: 12px; letter-spacing: .02em; }
+    .windowbar span { color: #8e928d; font-size: 11px; }
+    .transcript { position: relative; height: 205px; padding: 22px 24px; background: linear-gradient(115deg, #171918 0%, #171918 67%, #14201b 100%); }
+    .turn { position: relative; width: 770px; padding-left: 58px; }
+    .turn + .turn { margin-top: 15px; }
+    .speaker { position: absolute; top: 1px; left: 0; width: 43px; color: #777c77; font-size: 9px; font-weight: 800; letter-spacing: .13em; text-align: right; }
+    .turn p { margin: 0; color: #e5e1d9; font-size: 14px; line-height: 1.48; }
+    .turn.agent p { color: #b8bbb5; }
+    .generated { position: absolute; right: 24px; bottom: 28px; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(111, 180, 148, .26); border-radius: 999px; padding: 8px 12px; background: rgba(74, 128, 104, .13); color: #acd4bf; font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+    .generated i { width: 7px; height: 7px; border-radius: 50%; background: #79c49f; box-shadow: 0 0 0 4px rgba(121,196,159,.12); }
+    .canvas { position: relative; height: 528px; border-top: 1px solid rgba(255,255,255,.09); background: #101310; }
+    .canvasbar { position: absolute; z-index: 3; top: 15px; right: 18px; left: 18px; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
+    .canvasbar span { border: 1px solid rgba(255,255,255,.13); border-radius: 999px; padding: 7px 11px; background: rgba(11,14,13,.80); color: #d7d4cc; font-size: 10px; font-weight: 700; backdrop-filter: blur(10px); }
+    .canvasbar small { color: #989c96; font-size: 10px; }
+    .canvas img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; opacity: .96; }
+    .receipt { position: absolute; z-index: 3; right: 19px; bottom: 18px; display: flex; align-items: center; gap: 9px; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; padding: 10px 12px; background: rgba(17,20,18,.90); box-shadow: 0 10px 34px rgba(0,0,0,.34); color: #dedbd3; font-size: 11px; backdrop-filter: blur(12px); }
+    .receipt b { color: #7dc7a4; font-size: 13px; }
+    .footer { position: absolute; z-index: 4; bottom: 53px; left: 68px; color: #7f837e; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
   </style>
 </head>
 <body>
-  <div class="brand"><span class="mark">G</span><strong>DeepSeek Harness GenUI</strong><span>0.10.1</span></div>
+  <div class="brand"><span class="mark">G</span><strong>DeepSeek Harness GenUI</strong><span class="version">0.10.2</span></div>
   <section class="copy">
-    <h1>Make the useful part <em>interactive.</em></h1>
-    <p class="lede">Disposable React apps that can use connected tools, remember choices, and stay inside the conversation.</p>
-    <div class="chips"><span class="chip">Inline + Canvas</span><span class="chip">Task state</span><span class="chip">Scoped permissions</span></div>
+    <p class="eyebrow">Generative UI inside the task</p>
+    <h1>Ask for the outcome. Get the <em>interface.</em></h1>
+    <p class="lede">The Agent keeps the explanation in chat and turns only the part that benefits from interaction into a temporary React app.</p>
+    <div class="flow">
+      <div class="step"><b>1</b><div>Ask in plain language <span>— no screen specification</span></div></div>
+      <div class="step"><b>2</b><div>Read the answer <span>— reasoning stays in chat</span></div></div>
+      <div class="step"><b>3</b><div>Use the generated UI <span>— state returns next turn</span></div></div>
+    </div>
   </section>
-  <figure class="shot concept"><img src="../screenshots/v0.9.3-milky-way-galactic-scale.png" width="1440" height="900" alt="An interactive model showing the Sun and the Milky Way at galactic scale"></figure>
-  <div class="caption cap-concept"><i></i>Explore scale, not a static diagram</div>
-  <figure class="shot tools"><img src="../screenshots/v0.9.3-github-release-fullscreen.png" width="1440" height="900" alt="A release shortlist grounded in live GitHub evidence"></figure>
-  <div class="caption cap-tools"><i></i>Decide with live repository evidence</div>
-  <footer class="footer"><strong>CODE FIRST · TOOL AWARE · TASK SCOPED</strong><span>React · TypeScript · MCP · Playwright</span></footer>
+  <section class="stage" aria-label="A conversation producing an interactive photosynthesis model">
+    <header class="windowbar"><strong>DeepSeek Harness · Same task</strong><span>Chat + Canvas</span></header>
+    <div class="transcript">
+      <div class="turn user"><span class="speaker">YOU</span><p>Help me understand what limits photosynthesis. Let me change light, CO₂, temperature, and stomata myself.</p></div>
+      <div class="turn agent"><span class="speaker">AGENT</span><p>Light reactions supply ATP and NADPH; the Calvin cycle spends them. The bottleneck moves as conditions change. Use the model to test that relationship.</p></div>
+      <div class="generated"><i></i>Generated for this turn</div>
+    </div>
+    <div class="canvas">
+      <div class="canvasbar"><span>Interactive model</span><small>Inline · Canvas · Full screen</small></div>
+      <img src="../screenshots/v0.9.2-photosynthesis-fullscreen.png" width="1440" height="900" alt="Generated interactive photosynthesis model">
+      <div class="receipt"><b>↗</b>User interaction becomes context for the next Agent turn</div>
+    </div>
+  </section>
+  <footer class="footer">Code first · Tool aware · Task scoped</footer>
 </body>
 </html>

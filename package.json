@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-genui",
   "description": "Code-first generative UI artifacts for DeepSeek Harness",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.17.0",
@@ -41,6 +41,10 @@
     "lib/types/**/*.d.ts",
     "cordis.patch.yml",
     "assets/hero.png",
+    "screenshots/v0.9.3-github-release-selected.png",
+    "screenshots/v0.9.2-canvas.png",
+    "screenshots/v0.9.2-photosynthesis-canvas.png",
+    "screenshots/tool-state-readback-0.8.5.png",
     "README.md",
     "examples"
   ],
