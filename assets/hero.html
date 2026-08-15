@@ -10,31 +10,31 @@
     body {
       position: relative;
       background:
-        radial-gradient(circle at 13% 8%, rgba(230, 139, 85, .16), transparent 31%),
-        radial-gradient(circle at 93% 92%, rgba(93, 151, 126, .12), transparent 31%),
+        radial-gradient(circle at 11% 8%, rgba(229, 139, 89, .17), transparent 31%),
+        radial-gradient(circle at 92% 91%, rgba(92, 153, 124, .13), transparent 30%),
         #0d100f;
-      color: #f2eee6;
+      color: #f3efe7;
       font-family: "Avenir Next", "Helvetica Neue", sans-serif;
     }
     body::before {
       position: absolute;
       inset: 0;
       background-image:
-        linear-gradient(rgba(255,255,255,.021) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,.021) 1px, transparent 1px);
+        linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
       background-size: 48px 48px;
       content: "";
-      mask-image: linear-gradient(to right, black, transparent 72%);
+      mask-image: linear-gradient(to right, black, transparent 68%);
     }
     .brand {
       position: absolute;
       z-index: 2;
-      top: 44px;
+      top: 46px;
       left: 50px;
       display: flex;
       align-items: center;
       gap: 10px;
-      color: #ded9d0;
+      color: #ddd8cf;
       font-size: 11px;
       font-weight: 750;
       letter-spacing: .13em;
@@ -55,17 +55,17 @@
     .copy {
       position: absolute;
       z-index: 2;
-      top: 176px;
+      top: 201px;
       left: 50px;
-      width: 390px;
+      width: 345px;
     }
     h1 {
       margin: 0;
       color: #f5f1e9;
-      font-size: 58px;
+      font-size: 57px;
       font-weight: 620;
       letter-spacing: -.052em;
-      line-height: 1.01;
+      line-height: 1.02;
       text-wrap: balance;
     }
     h1 em {
@@ -74,116 +74,41 @@
       font-weight: 500;
     }
     .lede {
-      width: 340px;
+      width: 310px;
       margin: 25px 0 0;
-      color: #aaa9a2;
+      color: #a9aaa3;
       font-size: 16px;
       line-height: 1.55;
       text-wrap: pretty;
     }
-    .stage {
+    .screenshot {
       position: absolute;
       z-index: 2;
-      top: 52px;
-      right: 42px;
-      width: 755px;
-      height: 616px;
+      top: 124px;
+      right: 40px;
+      display: block;
+      width: 836px;
+      height: 470px;
       overflow: hidden;
-      border: 1px solid rgba(255,255,255,.14);
-      border-radius: 22px;
-      background: #151817;
-      box-shadow: 0 32px 90px rgba(0,0,0,.48);
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 18px;
+      box-shadow: 0 34px 90px rgba(0,0,0,.52);
+      object-fit: cover;
     }
-    .windowbar {
-      display: flex;
-      height: 46px;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid rgba(255,255,255,.08);
-      padding: 0 18px;
-      color: #d8d4cc;
-      font-size: 11px;
-      font-weight: 700;
-    }
-    .windowbar span { color: #777c77; font-weight: 500; }
-    .conversation {
-      display: grid;
-      gap: 12px;
-      height: 174px;
-      padding: 19px 22px;
-      background: linear-gradient(120deg, #181a19, #151b18);
-    }
-    .turn {
-      display: grid;
-      grid-template-columns: 48px 1fr;
-      gap: 13px;
-      align-items: start;
-    }
-    .turn strong {
-      padding-top: 3px;
-      color: #727873;
-      font-size: 9px;
-      letter-spacing: .12em;
-      text-align: right;
-    }
-    .turn p {
-      max-width: 610px;
-      margin: 0;
-      color: #e3dfd6;
-      font-size: 13px;
-      line-height: 1.46;
-    }
-    .turn.agent p { color: #aeb1ab; }
-    .app {
-      position: relative;
-      height: 396px;
-      overflow: hidden;
-      border-top: 1px solid rgba(255,255,255,.08);
-      background: #f8f5ef;
-    }
-    .app img {
-      position: absolute;
-      top: -155px;
-      right: -1px;
-      width: 2194px;
-      height: 1234px;
-      max-width: none;
-    }
-    .saved {
-      position: absolute;
-      z-index: 2;
-      right: 15px;
-      bottom: 15px;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      border: 1px solid rgba(255,255,255,.14);
-      border-radius: 10px;
-      padding: 9px 11px;
-      background: rgba(15,18,16,.88);
-      color: #d7d4cc;
-      font-size: 10px;
-      backdrop-filter: blur(10px);
-    }
-    .saved i { width: 7px; height: 7px; border-radius: 50%; background: #75c39b; }
   </style>
 </head>
 <body>
   <div class="brand"><span class="mark">G</span>DeepSeek Harness GenUI</div>
   <section class="copy">
-    <h1>Ask in words.<br>Work in an <em>interface.</em></h1>
-    <p class="lede">The explanation stays in the conversation. The part worth touching becomes a temporary app.</p>
+    <h1>Ask in words.<br>Decide in an <em>interface.</em></h1>
+    <p class="lede">The Agent explains in chat, then opens the part worth interacting with beside it.</p>
   </section>
-  <section class="stage" aria-label="A conversation producing an interactive model">
-    <header class="windowbar">One task <span>Conversation + Canvas</span></header>
-    <div class="conversation">
-      <div class="turn"><strong>YOU</strong><p>Help me understand what limits photosynthesis. Let me change the conditions myself.</p></div>
-      <div class="turn agent"><strong>AGENT</strong><p>Light supplies energy; CO₂ supplies carbon. The bottleneck moves as conditions change.</p></div>
-    </div>
-    <div class="app">
-      <img src="../screenshots/v0.10.9-photosynthesis-canvas.jpg" width="1280" height="720" alt="Generated photosynthesis model with interactive controls">
-      <span class="saved"><i></i>Your choices continue into the next turn</span>
-    </div>
-  </section>
+  <img
+    class="screenshot"
+    src="../screenshots/v0.10.7-calendar-canvas.jpg"
+    width="1280"
+    height="720"
+    alt="DeepSeek Harness conversation beside a generated calendar selection interface"
+  >
 </body>
 </html>
