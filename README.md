@@ -1,6 +1,6 @@
 # DeepSeek Harness GenUI
 
-[![Version](https://img.shields.io/badge/version-0.9.2-ea8f5a)](package.json)
+[![Version](https://img.shields.io/badge/version-0.9.3-ea8f5a)](package.json)
 [![CI](https://github.com/pengyue-polaron/deepseek-harness-genui/actions/workflows/ci.yml/badge.svg)](https://github.com/pengyue-polaron/deepseek-harness-genui/actions/workflows/ci.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.19-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-202124)](LICENSE)
@@ -29,7 +29,7 @@ pnpm run package:plugin
 ```
 
 ```sh
-DSH_HOME=/path/to/dsh-home pnpm dsh plugin --profile web add /absolute/path/to/dsh-plugin-genui-0.9.2.tgz
+DSH_HOME=/path/to/dsh-home pnpm dsh plugin --profile web add /absolute/path/to/dsh-plugin-genui-0.9.3.tgz
 DSH_HOME=/path/to/dsh-home pnpm dsh --profile web
 ```
 
@@ -49,11 +49,10 @@ Add MCP servers to the Harness profile. Generated apps call their exact tool nam
 
 ## Good fits
 
-- Compare a small set of plans, products, models, or time slots.
-- Explore a difficult scientific relationship with one manipulable model.
-- Collect missing inputs during a longer Agent task and resume later.
-- Search, filter, and shortlist live data from connected tools.
-- Monitor a live operation, then ask separately before any write action.
+- Pause a long task at a real decision, then continue from the user's saved choice.
+- Replan around live constraints such as weather, accessibility, budget, or time.
+- Search and shortlist connected data without exposing credentials to the app.
+- Turn a difficult scientific relationship into a manipulable causal model.
 
 Plain questions, rewriting, and straightforward explanations stay in prose. See [`examples/real-user-scenarios.md`](examples/real-user-scenarios.md) for acceptance prompts.
 

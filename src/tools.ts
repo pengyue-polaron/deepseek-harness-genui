@@ -53,7 +53,7 @@ function renderReceipt(value: unknown): { type: 'text'; text: string }[] {
   if (receipt.status === 'ready') {
     return [{
       type: 'text',
-      text: 'This result is final and fully checked. Run no more tools and end the turn immediately without adding text. Only if the transport requires nonempty final text, write one neutral 2–5 word handoff in the user\'s language that does not claim completion or make a choice for the user; do not copy a fixed phrase. Never say a page is ready or repeat its title, recommendation, values, sections, controls, schedule, budget, or checklist.',
+      text: 'This successful result must be the last emitted item. Emit no text and run no tools after it.',
     }]
   }
   const diagnosticText = receipt.diagnostics?.length
