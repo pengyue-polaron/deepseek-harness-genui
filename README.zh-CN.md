@@ -13,24 +13,26 @@
 
 ## 真实场景
 
-| 场景 | 留在对话里的内容 | 生成界面带来的价值 |
-| --- | --- | --- |
-| **比较真实工具结果**<br>结合已连接的 Hugging Face 和 GitHub，找出能在 24 GB Mac 上实际运行的视觉模型。 | 内存、许可证和实现限制。 | 筛选、并排证据和会保留的候选清单。 |
-| **配置一次真实操作**<br>找出少量合适的 90 分钟写作时段，只创建最终确认的日程。 | 推荐理由和隐私边界。 | 紧凑的时间表、已选时段、写入前授权和权威回读。 |
-| **操纵难以描述的概念**<br>观察光照、二氧化碳、温度和气孔开度如何改变光合作用瓶颈。 | 定义、假设和必要的边界。 | 控制条件、能量流动和结论会一起变化的因果模型。 |
-| **从 CLI 追踪真实代码**<br>解释项目里的实际路径，并返回映射到源码文件和函数的本地页面。 | 代码解释和结论。 | 可探索的路径、真实源码引用和稳定的 localhost 地址。 |
+<table>
+  <tr>
+    <td><strong>比较真实工具结果</strong><br><br>结合已连接的 Hugging Face 和 GitHub，找出能在 24 GB Mac 上实际运行的视觉模型。<br><br>对话保留内存、许可证和实现限制；界面负责筛选、比较证据和保存候选清单。</td>
+    <td><img src="screenshots/zh-CN/local-model-shortlist.jpg" width="280" alt="结合 Hugging Face 和 GitHub 结果生成的本地视觉模型筛选界面"></td>
+  </tr>
+  <tr>
+    <td><strong>配置一次真实操作</strong><br><br>找出少量合适的 90 分钟写作时段，只创建最终确认的日程。<br><br>对话保留推荐理由和隐私边界；界面让时间可选择，并在写入前申请授权。</td>
+    <td><img src="screenshots/zh-CN/calendar-planner.jpg" width="280" alt="读取真实空闲时间后生成的日历时段选择界面"></td>
+  </tr>
+  <tr>
+    <td><strong>操纵难以描述的概念</strong><br><br>改变光照、二氧化碳、温度和气孔开度，观察哪一步先成为光合作用瓶颈。<br><br>对话保留定义和必要边界；界面让用户亲自验证因果关系。</td>
+    <td><img src="screenshots/zh-CN/photosynthesis-explorer.jpg" width="280" alt="可以改变四个条件的光合作用瓶颈模型"></td>
+  </tr>
+  <tr>
+    <td><strong>从 CLI 追踪真实代码</strong><br><br>解释项目里的实际路径，并返回映射到源码文件和函数的本地页面。<br><br>对话保留代码解释；界面提供可探索的路径、真实源码引用和稳定的 localhost 地址。</td>
+    <td><img src="screenshots/zh-CN/code-path-explorer.png" width="280" alt="通过 CLI 请求生成的中文 IAM 认证路径解释器"></td>
+  </tr>
+</table>
 
 普通问答、文字改写、摘要和简单列表只返回文字。
-
-| 工具结果筛选 | 真实操作配置 |
-| --- | --- |
-| <img src="screenshots/zh-CN/local-model-shortlist.jpg" width="420" alt="结合 Hugging Face 和 GitHub 结果生成的本地视觉模型筛选界面"> | <img src="screenshots/zh-CN/calendar-planner.jpg" width="420" alt="读取真实空闲时间后生成的日历时段选择界面"> |
-| 筛选、比较并保留真正可运行的模型。 | 选择时段，确认后才写入日历。 |
-
-| 因果关系探索 | 空间尺度理解 |
-| --- | --- |
-| <img src="screenshots/zh-CN/photosynthesis-explorer.jpg" width="420" alt="可以改变条件的光合作用瓶颈模型"> | <img src="screenshots/zh-CN/milky-way-explorer.jpg" width="420" alt="可以缩放和切换视角的银河系尺度模型"> |
-| 改变条件，直接观察限制步骤如何转移。 | 从太阳附近逐步建立银河系尺度感。 |
 
 ## CLI 示例
 

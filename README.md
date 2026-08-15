@@ -13,19 +13,26 @@ A DeepSeek Harness plugin that turns the interactive part of a task into a tempo
 
 ## In Use
 
-| Situation | What stays in the conversation | What the generated UI adds |
-| --- | --- | --- |
-| **Compare tool-backed results**<br>Find vision models that can actually run on a 24 GB Mac using connected Hugging Face and GitHub sources. | Memory, license, and implementation limits. | Filters, side-by-side evidence, and a saved shortlist. |
-| **Configure a real action**<br>Find a few useful 90-minute writing slots, then create only the confirmed events. | The recommendation and privacy boundaries. | A compact schedule, selected slots, permission before writing, and authoritative readback. |
-| **Manipulate a difficult idea**<br>Show how light, carbon dioxide, temperature, and stomatal opening change the limiting step in photosynthesis. | Definitions, assumptions, and caveats. | A causal model whose controls, flow, and takeaway change together. |
-| **Trace code from a CLI**<br>Explain a real project path and return a local browser app grounded in source files and functions. | The code explanation and conclusion. | An explorable path, real source references, and a stable localhost URL. |
+<table>
+  <tr>
+    <td><strong>Compare tool-backed results</strong><br><br>Find vision models that can actually run on a 24 GB Mac using connected Hugging Face and GitHub sources.<br><br>The conversation keeps the memory, license, and implementation limits. The UI adds filters, evidence, and a saved shortlist.</td>
+    <td><img src="screenshots/en/local-model-shortlist.png" width="280" alt="English local vision model shortlist generated from connected Hugging Face and GitHub results"></td>
+  </tr>
+  <tr>
+    <td><strong>Configure a real action</strong><br><br>Find a few useful 90-minute writing slots, then create only the confirmed events.<br><br>The conversation keeps the recommendation and privacy boundary. The UI makes the schedule selectable and asks before writing.</td>
+    <td><img src="screenshots/en/calendar-planner.png" width="280" alt="English schedule for selecting three writing slots before calendar creation"></td>
+  </tr>
+  <tr>
+    <td><strong>Manipulate a difficult idea</strong><br><br>Change light, carbon dioxide, temperature, and stomatal opening to see which step limits photosynthesis.<br><br>The conversation keeps definitions and caveats. The UI turns the causal model into something the user can test.</td>
+    <td><img src="screenshots/en/photosynthesis-explorer.png" width="280" alt="English interactive photosynthesis model with four causal controls"></td>
+  </tr>
+  <tr>
+    <td><strong>Trace code from a CLI</strong><br><br>Explain a real project path and return a local browser app grounded in source files and functions.<br><br>The conversation keeps the explanation. The UI adds an explorable path, real source references, and a stable localhost URL.</td>
+    <td><img src="screenshots/en/code-path-explorer.png" width="280" alt="English source-grounded code path explorer returned from a CLI request"></td>
+  </tr>
+</table>
 
 Plain questions, rewriting, summaries, and simple lists stay in prose.
-
-| Interactive concept | Source-grounded code path |
-| --- | --- |
-| <img src="screenshots/en/photosynthesis-explorer.png" width="420" alt="Interactive photosynthesis model with controls for light, carbon dioxide, temperature, and stomatal opening"> | <img src="screenshots/en/code-path-inline.png" width="620" alt="Source-grounded code path generated inside a DeepSeek Harness conversation"> |
-| Change conditions and see the limiting step move. | Inspect the real files and functions behind a project path. |
 
 ## CLI Example
 
