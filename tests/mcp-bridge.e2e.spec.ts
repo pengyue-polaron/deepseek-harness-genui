@@ -146,7 +146,7 @@ describe('real MCP artifact bridge', () => {
     expect(zhResponse.status).toBe(200)
     const zhDocument = await zhResponse.text()
     expect(zhDocument).toContain('<html lang="zh">')
-    expect(zhDocument).toContain('app.js?runtime=0.11.0')
+    expect(zhDocument).toContain('app.js?runtime=0.11.1')
     expect(zhDocument).toContain('<meta name="color-scheme" content="light dark">')
 
     const missingLanguage = await fetch(`${origin}/genui/preview/mcp-artifact/${versionId}#token=${token}`)

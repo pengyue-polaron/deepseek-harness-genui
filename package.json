@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-genui",
   "description": "Code-first generative UI artifacts for DeepSeek Harness",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.17.0",
@@ -69,7 +69,7 @@
   "dependencies": {
     "@deepseek-ai/schemastery": "^3.18.0",
     "date-fns": "^4.1.0",
-    "esbuild": "^0.25.9",
+    "esbuild-wasm": "^0.25.12",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.468.0",
     "playwright": "^1.49.0",

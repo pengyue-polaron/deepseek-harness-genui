@@ -63,17 +63,12 @@ These are acceptance prompts, not hard-coded demos. Plain questions, rewriting, 
 
 ## Install
 
-Requires Node.js `^22.19.0 || >=24`, pnpm 11, DeepSeek Harness, and Playwright Chromium.
+Requires Node.js `^22.19.0 || >=24`, pnpm 11, DeepSeek Harness, and the GitHub CLI.
 
 ```sh
-pnpm install --frozen-lockfile
-pnpm exec playwright install chromium
-pnpm run package:plugin
-```
-
-```sh
-DSH_HOME=/path/to/dsh-home pnpm dsh plugin --profile web add /absolute/path/to/dsh-plugin-genui-0.11.0.tgz
-DSH_HOME=/path/to/dsh-home pnpm dsh --profile web
+gh release download --repo pengyue-polaron/deepseek-harness-genui --pattern dsh-plugin-genui.tgz --output /tmp/dsh-plugin-genui.tgz --clobber
+dsh plugin --profile web add /tmp/dsh-plugin-genui.tgz && dsh plugin --profile web exec playwright install chromium
+dsh --profile web
 ```
 
 Add MCP servers to the Harness profile as usual. Generated apps call their exact tool names; credentials stay in the Harness.

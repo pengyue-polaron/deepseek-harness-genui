@@ -6,104 +6,184 @@
   <title>DeepSeek Harness GenUI</title>
   <style>
     * { box-sizing: border-box; }
-    html { width: 1280px; height: 720px; overflow: hidden; background: #0c0f0e; }
+    html, body { width: 1280px; height: 720px; margin: 0; overflow: hidden; }
     body {
       position: relative;
-      width: 1600px;
-      height: 900px;
-      margin: 0;
-      overflow: hidden;
-      transform: scale(.8);
-      transform-origin: top left;
       background:
-        radial-gradient(circle at 17% 15%, rgba(226, 125, 76, .20), transparent 28%),
-        radial-gradient(circle at 91% 82%, rgba(88, 145, 124, .17), transparent 31%),
-        #0c0f0e;
-      color: #f4f0e8;
+        radial-gradient(circle at 13% 8%, rgba(230, 139, 85, .16), transparent 31%),
+        radial-gradient(circle at 93% 92%, rgba(93, 151, 126, .12), transparent 31%),
+        #0d100f;
+      color: #f2eee6;
       font-family: "Avenir Next", "Helvetica Neue", sans-serif;
     }
     body::before {
       position: absolute;
       inset: 0;
       background-image:
-        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
-      background-size: 44px 44px;
+        linear-gradient(rgba(255,255,255,.021) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.021) 1px, transparent 1px);
+      background-size: 48px 48px;
       content: "";
-      mask-image: linear-gradient(to bottom, black, transparent 84%);
+      mask-image: linear-gradient(to right, black, transparent 72%);
     }
-    .brand { position: absolute; z-index: 4; top: 52px; left: 68px; display: flex; align-items: center; gap: 11px; }
-    .mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 10px; background: #e58b59; color: #17120f; font-size: 17px; font-weight: 800; }
-    .brand strong { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; }
-    .version { color: #8e918c; font-size: 11px; letter-spacing: .08em; }
-    .copy { position: absolute; z-index: 3; top: 145px; left: 68px; width: 430px; }
-    .eyebrow { margin: 0 0 16px; color: #e69a6f; font-size: 12px; font-weight: 750; letter-spacing: .15em; text-transform: uppercase; }
-    h1 { margin: 0; font-size: 61px; font-weight: 650; letter-spacing: -.052em; line-height: 1.02; text-wrap: balance; }
-    h1 em { color: #eda277; font-family: "Iowan Old Style", Georgia, serif; font-weight: 500; }
-    .lede { margin: 24px 0 0; color: #b7b5ad; font-size: 17px; line-height: 1.58; text-wrap: pretty; }
-    .flow { display: grid; gap: 10px; margin-top: 31px; }
-    .step { display: grid; grid-template-columns: 27px 1fr; align-items: center; gap: 11px; color: #d9d5cd; font-size: 13px; }
-    .step b { display: grid; width: 27px; height: 27px; place-items: center; border: 1px solid rgba(255,255,255,.15); border-radius: 50%; color: #eea176; font-size: 11px; }
-    .step span { color: #8f938e; }
+    .brand {
+      position: absolute;
+      z-index: 2;
+      top: 44px;
+      left: 50px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #ded9d0;
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    .mark {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border-radius: 9px;
+      background: #e58b59;
+      color: #18130f;
+      font-size: 15px;
+      font-weight: 850;
+      letter-spacing: 0;
+    }
+    .copy {
+      position: absolute;
+      z-index: 2;
+      top: 176px;
+      left: 50px;
+      width: 390px;
+    }
+    h1 {
+      margin: 0;
+      color: #f5f1e9;
+      font-size: 58px;
+      font-weight: 620;
+      letter-spacing: -.052em;
+      line-height: 1.01;
+      text-wrap: balance;
+    }
+    h1 em {
+      color: #eda277;
+      font-family: "Iowan Old Style", Georgia, serif;
+      font-weight: 500;
+    }
+    .lede {
+      width: 340px;
+      margin: 25px 0 0;
+      color: #aaa9a2;
+      font-size: 16px;
+      line-height: 1.55;
+      text-wrap: pretty;
+    }
     .stage {
       position: absolute;
       z-index: 2;
-      top: 58px;
-      right: 58px;
-      width: 1000px;
-      height: 785px;
+      top: 52px;
+      right: 42px;
+      width: 755px;
+      height: 616px;
       overflow: hidden;
-      border: 1px solid rgba(255,255,255,.16);
+      border: 1px solid rgba(255,255,255,.14);
       border-radius: 22px;
-      background: #141716;
-      box-shadow: 0 34px 100px rgba(0,0,0,.47);
+      background: #151817;
+      box-shadow: 0 32px 90px rgba(0,0,0,.48);
     }
-    .windowbar { display: flex; height: 52px; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.09); padding: 0 21px; background: #191c1b; }
-    .windowbar strong { font-size: 12px; letter-spacing: .02em; }
-    .windowbar span { color: #8e928d; font-size: 11px; }
-    .transcript { position: relative; height: 205px; padding: 22px 24px; background: linear-gradient(115deg, #171918 0%, #171918 67%, #14201b 100%); }
-    .turn { position: relative; width: 770px; padding-left: 58px; }
-    .turn + .turn { margin-top: 15px; }
-    .speaker { position: absolute; top: 1px; left: 0; width: 43px; color: #777c77; font-size: 9px; font-weight: 800; letter-spacing: .13em; text-align: right; }
-    .turn p { margin: 0; color: #e5e1d9; font-size: 14px; line-height: 1.48; }
-    .turn.agent p { color: #b8bbb5; }
-    .generated { position: absolute; right: 24px; bottom: 28px; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(111, 180, 148, .26); border-radius: 999px; padding: 8px 12px; background: rgba(74, 128, 104, .13); color: #acd4bf; font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
-    .generated i { width: 7px; height: 7px; border-radius: 50%; background: #79c49f; box-shadow: 0 0 0 4px rgba(121,196,159,.12); }
-    .canvas { position: relative; height: 528px; border-top: 1px solid rgba(255,255,255,.09); background: #101310; }
-    .canvasbar { position: absolute; z-index: 3; top: 15px; right: 18px; left: 18px; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
-    .canvasbar span { border: 1px solid rgba(255,255,255,.13); border-radius: 999px; padding: 7px 11px; background: rgba(11,14,13,.80); color: #d7d4cc; font-size: 10px; font-weight: 700; backdrop-filter: blur(10px); }
-    .canvasbar small { color: #989c96; font-size: 10px; }
-    .canvas img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; opacity: .96; }
-    .receipt { position: absolute; z-index: 3; right: 19px; bottom: 18px; display: flex; align-items: center; gap: 9px; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; padding: 10px 12px; background: rgba(17,20,18,.90); box-shadow: 0 10px 34px rgba(0,0,0,.34); color: #dedbd3; font-size: 11px; backdrop-filter: blur(12px); }
-    .receipt b { color: #7dc7a4; font-size: 13px; }
-    .footer { position: absolute; z-index: 4; bottom: 53px; left: 68px; color: #7f837e; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+    .windowbar {
+      display: flex;
+      height: 46px;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      padding: 0 18px;
+      color: #d8d4cc;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .windowbar span { color: #777c77; font-weight: 500; }
+    .conversation {
+      display: grid;
+      gap: 12px;
+      height: 174px;
+      padding: 19px 22px;
+      background: linear-gradient(120deg, #181a19, #151b18);
+    }
+    .turn {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 13px;
+      align-items: start;
+    }
+    .turn strong {
+      padding-top: 3px;
+      color: #727873;
+      font-size: 9px;
+      letter-spacing: .12em;
+      text-align: right;
+    }
+    .turn p {
+      max-width: 610px;
+      margin: 0;
+      color: #e3dfd6;
+      font-size: 13px;
+      line-height: 1.46;
+    }
+    .turn.agent p { color: #aeb1ab; }
+    .app {
+      position: relative;
+      height: 396px;
+      overflow: hidden;
+      border-top: 1px solid rgba(255,255,255,.08);
+      background: #f8f5ef;
+    }
+    .app img {
+      position: absolute;
+      top: -155px;
+      right: -1px;
+      width: 2194px;
+      height: 1234px;
+      max-width: none;
+    }
+    .saved {
+      position: absolute;
+      z-index: 2;
+      right: 15px;
+      bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 10px;
+      padding: 9px 11px;
+      background: rgba(15,18,16,.88);
+      color: #d7d4cc;
+      font-size: 10px;
+      backdrop-filter: blur(10px);
+    }
+    .saved i { width: 7px; height: 7px; border-radius: 50%; background: #75c39b; }
   </style>
 </head>
 <body>
-  <div class="brand"><span class="mark">G</span><strong>DeepSeek Harness GenUI</strong><span class="version">0.11.0</span></div>
+  <div class="brand"><span class="mark">G</span>DeepSeek Harness GenUI</div>
   <section class="copy">
-    <p class="eyebrow">Generative UI inside the task</p>
-    <h1>Ask for the outcome. Get the <em>interface.</em></h1>
-    <p class="lede">The Agent keeps the explanation in chat and turns only the part that benefits from interaction into a temporary React app.</p>
-    <div class="flow">
-      <div class="step"><b>1</b><div>Ask in plain language <span>— no screen specification</span></div></div>
-      <div class="step"><b>2</b><div>Read the answer <span>— reasoning stays in chat</span></div></div>
-      <div class="step"><b>3</b><div>Use the generated UI <span>— state returns next turn</span></div></div>
+    <h1>Ask in words.<br>Work in an <em>interface.</em></h1>
+    <p class="lede">The explanation stays in the conversation. The part worth touching becomes a temporary app.</p>
+  </section>
+  <section class="stage" aria-label="A conversation producing an interactive model">
+    <header class="windowbar">One task <span>Conversation + Canvas</span></header>
+    <div class="conversation">
+      <div class="turn"><strong>YOU</strong><p>Help me understand what limits photosynthesis. Let me change the conditions myself.</p></div>
+      <div class="turn agent"><strong>AGENT</strong><p>Light supplies energy; CO₂ supplies carbon. The bottleneck moves as conditions change.</p></div>
+    </div>
+    <div class="app">
+      <img src="../screenshots/v0.10.9-photosynthesis-canvas.jpg" width="1280" height="720" alt="Generated photosynthesis model with interactive controls">
+      <span class="saved"><i></i>Your choices continue into the next turn</span>
     </div>
   </section>
-  <section class="stage" aria-label="A conversation producing an interactive photosynthesis model">
-    <header class="windowbar"><strong>DeepSeek Harness · Same task</strong><span>Chat + Canvas</span></header>
-    <div class="transcript">
-      <div class="turn user"><span class="speaker">YOU</span><p>Help me understand what limits photosynthesis. Let me change light, CO₂, temperature, and stomata myself.</p></div>
-      <div class="turn agent"><span class="speaker">AGENT</span><p>Light reactions supply ATP and NADPH; the Calvin cycle spends them. The bottleneck moves as conditions change. Use the model to test that relationship.</p></div>
-      <div class="generated"><i></i>Generated for this turn</div>
-    </div>
-    <div class="canvas">
-      <div class="canvasbar"><span>Interactive model</span><small>Inline · Canvas · Full screen</small></div>
-      <img src="../screenshots/v0.10.9-photosynthesis-canvas.jpg" width="1280" height="720" alt="Generated interactive photosynthesis model beside the conversation">
-      <div class="receipt"><b>↗</b>User interaction becomes context for the next Agent turn</div>
-    </div>
-  </section>
-  <footer class="footer">Code first · Tool aware · Task scoped</footer>
 </body>
 </html>

@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: npm install --global pnpm@11.17.0
+      - run: pnpm install --frozen-lockfile
+      - name: Verify tag matches package version
+        run: test "$GITHUB_REF_NAME" = "v$(node -p "require('./package.json').version")"
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm run package:plugin
+      - name: Prepare stable asset name
+        run: mv dist/dsh-plugin-genui-*.tgz dist/dsh-plugin-genui.tgz
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: dist/dsh-plugin-genui.tgz

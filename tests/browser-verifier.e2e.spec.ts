@@ -137,18 +137,24 @@ createRoot(document.getElementById('root')!).render(<App />)`,
       capabilities: [{
         id: 'echo-message', kind: 'tool', label: 'Read the explanation',
         reason: 'Load the selected explanation from the connected source.', access: 'read', tool: 'test_echo',
+      }, {
+        id: 'public-service', kind: 'external', label: 'Check the public service',
+        reason: 'Read the latest public status when you ask.', access: 'read',
+        urlPrefix: 'https://api.example.com/v1/', methods: ['GET'],
       }],
       files: [{
         path: 'src/main.tsx',
         content: `import React, { useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { callTool } from '@dsh-genui/sdk'
+import { callTool, requestExternal } from '@dsh-genui/sdk'
 function App() {
   const [answer, setAnswer] = useState('Waiting')
   return <main><button onClick={async () => {
     const value = await callTool('test_echo', { message: 'Connected' }) as { echoed: string }
     setAnswer(value.echoed)
-  }}>Load explanation</button><p>{answer}</p></main>
+  }}>Load explanation</button><button onClick={() => {
+    void requestExternal('https://api.example.com/v1/status').catch(() => undefined)
+  }}>Check service</button><p>{answer}</p></main>
 }
 createRoot(document.getElementById('root')!).render(<App />)`,
       }],
@@ -166,8 +172,16 @@ createRoot(document.getElementById('root')!).render(<App />)`,
       await app.getByRole('button', { name: 'Load explanation' }).click()
       await page.getByRole('heading', { name: 'Read the explanation' }).waitFor({ state: 'visible' })
       await page.getByText('Load the selected explanation from the connected source.').waitFor({ state: 'visible' })
-      await page.getByRole('button', { name: 'Allow' }).click()
+      await page.getByText('Read information', { exact: true }).waitFor({ state: 'visible' })
+      await page.getByText('Once allowed, this app can keep using this capability during the current task.').waitFor({ state: 'visible' })
+      await page.getByRole('button', { name: 'Allow for this task' }).click()
       await app.getByText('Connected').waitFor({ state: 'visible' })
+
+      await app.getByRole('button', { name: 'Check service' }).click()
+      await page.getByRole('heading', { name: 'Check the public service' }).waitFor({ state: 'visible' })
+      await page.getByText('Connect to api.example.com', { exact: true }).waitFor({ state: 'visible' })
+      await page.getByText('Allowed requests GET', { exact: true }).waitFor({ state: 'visible' })
+      await page.getByRole('button', { name: 'Not now' }).click()
     } finally {
       await browser.close()
     }
