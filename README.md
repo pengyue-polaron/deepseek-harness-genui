@@ -5,7 +5,7 @@ English | [简体中文](README.zh-CN.md)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.19-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-202124)](LICENSE)
 
-![A coding request becomes an interactive code-path explorer](assets/hero-en.png)
+![A coding request becomes an inline interactive code-path explorer](assets/hero-en.png)
 
 A DeepSeek Harness plugin that turns the interactive part of a task into a temporary React app. The answer stays in chat; the UI appears only when it is useful.
 

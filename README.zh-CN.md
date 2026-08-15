@@ -5,7 +5,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.19-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-202124)](LICENSE)
 
-![一句话需求变成可操作的临时界面](assets/hero-zh-CN.png)
+![文字解释、交互模型和下一轮状态回读发生在同一个对话里](assets/hero-zh-CN.png)
 
 一个 DeepSeek Harness 插件，把任务里适合操作的部分变成临时 React 页面。回答留在对话里；只有界面确实更好用时才生成界面。
 

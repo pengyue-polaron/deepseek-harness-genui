@@ -36,32 +36,6 @@
     html[data-language="en"] [data-shot="en"],
     html[data-language="zh-CN"] [data-copy="zh-CN"],
     html[data-language="zh-CN"] [data-shot="zh-CN"] { display: block; }
-    .brand {
-      position: absolute;
-      z-index: 2;
-      top: 46px;
-      left: 50px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: #ddd8cf;
-      font-size: 11px;
-      font-weight: 750;
-      letter-spacing: .13em;
-      text-transform: uppercase;
-    }
-    .mark {
-      display: grid;
-      width: 30px;
-      height: 30px;
-      place-items: center;
-      border-radius: 9px;
-      background: #e58b59;
-      color: #18130f;
-      font-size: 15px;
-      font-weight: 850;
-      letter-spacing: 0;
-    }
     .copy {
       position: absolute;
       z-index: 2;
@@ -69,7 +43,7 @@
       left: 50px;
       width: 345px;
     }
-    html[data-language="zh-CN"] .copy { width: 400px; }
+    html[data-language="zh-CN"] .copy { width: 350px; }
     h1 {
       margin: 0;
       color: #f5f1e9;
@@ -86,7 +60,7 @@
     }
     html[data-language="zh-CN"] h1 {
       font-family: "Songti SC", "STSong", serif;
-      font-size: 46px;
+      font-size: 42px;
       font-weight: 600;
       letter-spacing: -.045em;
       line-height: 1.12;
@@ -112,16 +86,9 @@
       box-shadow: 0 34px 90px rgba(0,0,0,.52);
       object-fit: cover;
     }
-    html[data-language="zh-CN"] .screenshot {
-      top: 80px;
-      right: 130px;
-      width: 342px;
-      height: 560px;
-    }
   </style>
 </head>
 <body>
-  <div class="brand"><span class="mark">G</span>DeepSeek Harness GenUI</div>
   <section class="copy" data-copy="en">
     <h1>Ask in words.<br>Decide in an <em>interface.</em></h1>
     <p class="lede">The Agent keeps the answer in chat and opens the part worth interacting with.</p>
@@ -133,18 +100,18 @@
   <img
     class="screenshot"
     data-shot="en"
-    src="../screenshots/en/code-path-explorer.jpg"
+    src="../screenshots/en/code-path-inline.png"
     width="1280"
     height="720"
-    alt="An interactive code-path explorer generated from a coding task"
+    alt="An interactive code-path explorer embedded in a coding conversation"
   >
   <img
     class="screenshot"
     data-shot="zh-CN"
-    src="../screenshots/zh-CN/calendar-planner.jpg"
-    width="440"
+    src="../screenshots/zh-CN/photosynthesis-inline.png"
+    width="1280"
     height="720"
-    alt="对话旁生成的日历时段选择界面"
+    alt="对话中生成的光合作用模型和下一轮状态回读"
   >
 </body>
 </html>
