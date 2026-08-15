@@ -5,21 +5,41 @@ English | [简体中文](README.zh-CN.md)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.19-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-202124)](LICENSE)
 
-<img src="assets/hero-en.png" width="1280" alt="A user asks a coding question and DeepSeek Harness returns prose with an interactive code-path explorer">
+<img src="assets/hero-en.png" width="1280" alt="A task becomes an interface, saved choices return to the task, and later actions wait for approval">
 
-A DeepSeek Harness plugin for temporary, task-specific React apps. The Agent answers in prose and adds an interface only when the user needs to explore, compare, configure, or act. Each app is created for the task and opens ready to use.
-
-> **Interaction loop:** The Agent creates an app → the user clicks, selects, types, or drags → the result returns to the task → the next Agent turn continues from it. The user does not have to translate the interaction back into prose.
-
-## In Use
+DeepSeek Harness GenUI is a runtime interface layer for Agent tasks. When text gets in the way, the Agent can make the current task grow a focused UI—to explain a difficult relationship, collect a complex decision, or operate a connected tool.
 
 <table>
   <tr>
-    <td><strong>Pick calendar slots</strong><br><br>Find useful 90-minute writing blocks and create only the confirmed events.<br><br>The app lays real availability side by side, keeps the selection, and asks before writing to the calendar.</td>
-    <td><img src="screenshots/en/calendar-planner.png" width="280" alt="English schedule for selecting three writing slots before calendar creation"></td>
+    <td width="33%"><strong>Built for the task</strong><br><br>Generated from the current context and shown Inline, in Canvas, or on localhost. No separate app to design or deploy.</td>
+    <td width="33%"><strong>Choices return to the task</strong><br><br>Saved selections, inputs, drafts, and progress remain available for a later Agent turn to read.</td>
+    <td width="33%"><strong>Connected to real tools</strong><br><br>Calls to declared Harness/MCP tools and declared credential-free public HTTPS endpoints run only after task-scoped approval.</td>
+  </tr>
+</table>
+
+> **The interface is not the output. It is part of the conversation.**
+
+In that conversation, the UI can be Agent output, structured user input, and—after approval—an entry point to real tools.
+
+## What Changes
+
+| | What it creates | What happens next |
+| --- | --- | --- |
+| App builder | A standalone app to keep or share | The app becomes the product |
+| MCP Apps | A prepared UI shipped by a tool author | The UI stays attached to that tool |
+| DeepSeek Harness GenUI | The interface missing from the current task | Saved state returns to the Agent, and approved tools can continue the work |
+
+## When an Interface Helps
+
+It does two jobs: make difficult relationships visible, and turn awkward text-based choices into direct manipulation.
+
+<table>
+  <tr>
+    <td><strong>Pick calendar slots</strong><br><br>Turn candidate availability into a short list of useful 90-minute writing blocks.<br><br>The interface saves the three choices to the task. A later calendar action remains separate and asks for approval.</td>
+    <td><img src="screenshots/en/calendar-planner.png" width="280" alt="English interface for choosing three writing slots"></td>
   </tr>
   <tr>
-    <td><strong>Explore photosynthesis</strong><br><br>Move light, carbon dioxide, temperature, and stomatal controls to find the limiting step.<br><br>The diagram changes with the controls, so the causal relationship is easier to test than to describe.</td>
+    <td><strong>Explore photosynthesis</strong><br><br>Move light, carbon dioxide, temperature, and stomatal controls to find the limiting step.<br><br>The diagram changes with the controls, making each variable's effect easier to explore than to describe.</td>
     <td><img src="screenshots/en/photosynthesis-explorer.png" width="280" alt="English interactive photosynthesis model with four causal controls"></td>
   </tr>
   <tr>
@@ -39,7 +59,7 @@ The same app can sit inside the answer or open beside the conversation.
 | <img src="screenshots/en/code-path-inline.png" width="620" alt="An interactive code path shown inline in a DeepSeek Harness conversation"> | <img src="screenshots/en/code-path-canvas.png" width="620" alt="The DeepSeek Harness sidebar, conversation, and code-path explorer visible together in the right-side Canvas"> |
 | A compact control or focused choice. | More room without covering the conversation. |
 
-Inline, Canvas, full screen, and localhost share one task state. Actions in any view return to the task for later Agent turns to read directly.
+Inline, Canvas, full screen, and localhost read and write the same task state. Selections and inputs saved by the interface remain available to later Agent turns.
 
 ## CLI Example
 
@@ -63,11 +83,11 @@ The terminal profile returns a localhost app. A follow-up can refer to the path 
 ## How It Works
 
 1. The Agent keeps the explanation in the conversation and creates one focused interface when interaction adds value.
-2. It writes React + TypeScript, declares the exact tools or public HTTPS routes it needs, then the plugin builds and checks the app.
-3. Clicks, selections, text input, and control values are saved to the task. Later turns read the result directly; the user does not have to restate in prose what they expressed through the app.
+2. It writes React + TypeScript and declares only the exact connected Harness/MCP/Skill tools or credential-free public HTTPS prefixes it needs; the plugin then builds and checks the interface.
+3. The interface saves semantic values—selections, form answers, drafts, and progress—to the task. When the user follows up, the Agent can read those values instead of asking them to repeat the result.
 4. Later edits update the same app without replacing a working version with a failed one.
 
-Connected tools and APIs ask before first use. The app card shows current access and lets the user remove it. Credentials stay in the Harness.
+Before the first use of each declared capability, Harness asks for task-scoped approval; undeclared calls are blocked. In Web, access can be reviewed or revoked from the app card. MCP credentials never enter generated code, while direct API requests are limited to credential-free public HTTPS.
 
 ## Design MD
 
@@ -78,13 +98,13 @@ Visual direction lives in `DESIGN.md`. Four profiles are included:
 | `editorial-workbench` | Reading, planning, forms, and content-heavy work |
 | `ledger-grid` | Comparisons, schedules, evidence, and shortlists |
 | `field-atlas` | Scientific, causal, and spatial explanations |
-| `kinetic-signal` | Live data, connected tools, and user-triggered actions |
+| `kinetic-signal` | Changing data, connected tools, and user-triggered actions |
 
 Open **Settings → Plugins → Plugin configuration** to use automatic selection, choose a profile, import a `DESIGN.md`, or export one as a starting point. The choice applies to new apps without adding design controls to them.
 
 ## Install
 
-Use Node.js `^22.19.0 || >=24`. This release is tested with DeepSeek Harness `0.1.0-rc.6` and Cordis `4.0.0-rc.7`.
+Use Node.js `^22.19.0 || >=24`. This release is tested with DeepSeek Harness `0.1.0-rc.6`.
 
 ```sh
 dsh plugin --profile web add dsh-plugin-genui
@@ -96,7 +116,7 @@ The Web profile supports Inline, Canvas, full screen, and localhost links. For a
 
 ## Safety
 
-Generated code runs in a sandbox. Tool calls and public HTTPS routes must be declared, scoped, and approved. Temporary links expire after 7 days; saved task state and access are removed after 7 days without activity. Return to the app card in the task to review or remove access.
+Generated code runs in a sandbox. Tool calls and public HTTPS routes must be declared, scoped, and approved. Temporary links and grants expire after 7 days; saved task state expires 7 days after its last update. Return to the app card in the task to review or remove access.
 
 The plugin uses DeepSeek Harness + Cordis, React 18 + TypeScript, esbuild, Playwright, and Vitest.
 
