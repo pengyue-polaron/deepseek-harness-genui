@@ -87,8 +87,7 @@ Inline、Canvas、全屏和本地页面共享同一份任务状态。用户在�
 使用 Node.js `^22.19.0 || >=24`。当前版本在 DeepSeek Harness `0.1.0-rc.6` 和 Cordis `4.0.0-rc.7` 上通过测试。
 
 ```sh
-curl -fL https://github.com/pengyue-polaron/deepseek-harness-genui/releases/latest/download/dsh-plugin-genui.tgz -o /tmp/dsh-plugin-genui.tgz
-dsh plugin --profile web add /tmp/dsh-plugin-genui.tgz
+dsh plugin --profile web add dsh-plugin-genui
 dsh plugin --profile web exec playwright install chromium
 dsh --profile web
 ```

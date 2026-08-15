@@ -2,14 +2,15 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
-  package:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -17,15 +18,45 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - run: npm install --global pnpm@11.17.0
-      - run: pnpm install --frozen-lockfile
-      - name: Verify tag matches package version
-        run: test "$GITHUB_REF_NAME" = "v$(node -p "require('./package.json').version")"
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm run package:plugin
-      - name: Prepare stable asset name
-        run: mv dist/dsh-plugin-genui-*.tgz dist/dsh-plugin-genui.tgz
-      - name: Publish release
+          registry-url: https://registry.npmjs.org
+      - name: Check release state
+        id: release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/dsh-plugin-genui.tgz --generate-notes --title "$GITHUB_REF_NAME"
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "npm_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "npm_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+          if gh release view "v$version" >/dev/null 2>&1; then
+            echo "github_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "github_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.release.outputs.npm_exists == 'false' || steps.release.outputs.github_exists == 'false'
+        run: npm install --global pnpm@11.17.0
+      - if: steps.release.outputs.npm_exists == 'false' || steps.release.outputs.github_exists == 'false'
+        run: pnpm install --frozen-lockfile
+      - if: steps.release.outputs.npm_exists == 'false' || steps.release.outputs.github_exists == 'false'
+        run: pnpm exec playwright install --with-deps chromium
+      - if: steps.release.outputs.npm_exists == 'false' || steps.release.outputs.github_exists == 'false'
+        run: pnpm run package:plugin
+      - name: Prepare stable asset name
+        if: steps.release.outputs.npm_exists == 'false' || steps.release.outputs.github_exists == 'false'
+        run: mv dist/dsh-plugin-genui-*.tgz dist/dsh-plugin-genui.tgz
+      - name: Publish GitHub release
+        if: steps.release.outputs.github_exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${{ steps.release.outputs.version }}"
+          gh release create "v$version" dist/dsh-plugin-genui.tgz --target "$GITHUB_SHA" --generate-notes --title "v$version"
+      - name: Publish npm package
+        if: steps.release.outputs.npm_exists == 'false'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish ./dist/dsh-plugin-genui.tgz --access public --provenance
