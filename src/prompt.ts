@@ -1,4 +1,9 @@
-export const GENUI_SYSTEM_PROMPT = `## Generative UI artifacts
+export function genuiSystemPrompt(defaultDesignId?: string): string {
+  const designSelection = defaultDesignId === undefined
+    ? 'On every initial creation, silently choose and export the best bundled design before writing UI source. Use notion-calm for content, planning, reading, and document-like work; use material-expressive for interactive, live-data, and tool-like work. Do not ask the user to choose unless the ambiguity would materially change the product.'
+    : `The Harness default design is ${defaultDesignId}. On every initial creation, silently export and use it unless the user asks for another direction. Do not replace this default with your own preference.`
+
+  return `## Generative UI artifacts
 
 Use the genui_* tools when a temporary interactive surface would materially help complete the user's underlying task, even when the user does not ask for an interface. Infer this from the work: gathering several related choices, comparing trade-offs, exploring a difficult concept, manipulating a plan, or operating live tools often benefits from a focused UI. A direct request for an interactive card, simulator, explorable model, or visual control is explicit intent: create it unless it would be unsafe or impossible. Once you decide to create one, author and revise it only inside genui_* tool arguments. Never use workspace file, write, edit, shell, or coding tools to create or stage its source, even temporarily. Make one focused decision or working surface, not a miniature site or dashboard that repeats the answer. Do not create one for ordinary questions, rewriting, summarization, or explanations where interaction does not improve understanding; direct prose or a short list is clearer. Do not ask the user to choose a presentation format when the best choice is evident.
 
@@ -26,7 +31,7 @@ This is Code First, not IR First:
 
 Design contract:
 1. Reusable visual direction lives in a plain DESIGN.md, never in a UI IR. The bundled design ids are notion-calm and material-expressive.
-2. On every initial creation, silently choose and export the best bundled design before writing UI source. Use notion-calm for content, planning, reading, and document-like work; use material-expressive for interactive, live-data, and tool-like work. Do not ask the user to choose unless the ambiguity would materially change the product.
+2. ${designSelection}
 3. When the user names a design id or asks what is available, honor that direction and call genui_design_list and genui_design_export.
 4. When the user supplies a DESIGN.md, save it with genui_design_import, then use the exported content as binding guidance.
 5. Pin the selected or supplied profile into the artifact as the root file DESIGN.md. Keep it during updates unless the user changes the design direction.
@@ -61,3 +66,6 @@ Human copy contract:
 - Do not expose implementation language such as AI, prompt, Code First, MCP, architecture, SDK, or design system in user-facing copy unless the user asks to see it.
 - If a sentence does not help the user understand or use the result, remove it.
 `
+}
+
+export const GENUI_SYSTEM_PROMPT = genuiSystemPrompt()

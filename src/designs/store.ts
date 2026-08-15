@@ -23,6 +23,7 @@ function titleOf(content: string, id: string): string {
 
 export class DesignStore {
   readonly root: string
+  private selectedDefault: string | undefined
 
   constructor(root: string) {
     this.root = resolve(root)
@@ -37,6 +38,37 @@ export class DesignStore {
         if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
       }
     }))
+    try {
+      const parsed: unknown = JSON.parse(await readFile(this.settingsPath(), 'utf8'))
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('design settings must be an object')
+      const value = (parsed as Record<string, unknown>).defaultDesignId
+      if (value !== null && typeof value !== 'string') throw new Error('defaultDesignId must be a design id or null')
+      if (typeof value === 'string') {
+        await this.get(value)
+        this.selectedDefault = value
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
+  }
+
+  defaultId(): string | undefined {
+    return this.selectedDefault
+  }
+
+  isBuiltin(id: string): boolean {
+    return DESIGN_PRESETS.some(preset => preset.id === id)
+  }
+
+  async setDefault(id: string | undefined): Promise<void> {
+    const safeId = id === undefined ? undefined : (await this.get(id)).id
+    const path = this.settingsPath()
+    const temporary = `${path}.${randomUUID()}.tmp`
+    await writeFile(temporary, `${JSON.stringify({ defaultDesignId: safeId ?? null }, null, 2)}\n`, {
+      encoding: 'utf8', mode: 0o600,
+    })
+    await rename(temporary, path)
+    this.selectedDefault = safeId
   }
 
   async list(): Promise<Array<Pick<StoredDesign, 'id' | 'title'>>> {
@@ -70,5 +102,9 @@ export class DesignStore {
 
   private path(id: string): string {
     return resolve(this.root, `${designId(id)}.md`)
+  }
+
+  private settingsPath(): string {
+    return resolve(this.root, 'settings.json')
   }
 }

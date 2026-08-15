@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { GENUI_SYSTEM_PROMPT } from '../src/prompt.ts'
+import { GENUI_SYSTEM_PROMPT, genuiSystemPrompt } from '../src/prompt.ts'
 
 describe('GenUI system prompt', () => {
   it('keeps user handoffs product-focused without adding another prompt section', () => {
@@ -45,5 +45,13 @@ describe('GenUI system prompt', () => {
     expect(GENUI_SYSTEM_PROMPT).toContain('JSON responses must be parsed with JSON.parse(body)')
     expect(GENUI_SYSTEM_PROMPT).toContain('Keep fetched search results, catalogs, and other replaceable response payloads in plain React useState')
     expect(GENUI_SYSTEM_PROMPT).toContain('Derive reload and empty-state copy from data that actually remains available')
+  })
+
+  it('honors a Harness default design without changing the automatic default', () => {
+    expect(GENUI_SYSTEM_PROMPT).toContain('silently choose and export the best bundled design')
+    const custom = genuiSystemPrompt('home-journal')
+    expect(custom).toContain('The Harness default design is home-journal')
+    expect(custom).toContain('silently export and use it unless the user asks for another direction')
+    expect(custom).not.toContain('silently choose and export the best bundled design')
   })
 })

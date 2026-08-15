@@ -6,6 +6,46 @@ interface ArtifactAccess {
   preview: URL
 }
 
+export interface DesignChoice {
+  id: string
+  title: string
+  builtin: boolean
+}
+
+export interface DesignSettings {
+  default_design_id: string | null
+  designs: DesignChoice[]
+  export_base: string
+}
+
+let managementRoot: Promise<string> | undefined
+
+async function managementEndpoint(): Promise<string> {
+  managementRoot ??= fetch('/.well-known/dsh-genui', { headers: { accept: 'application/json' } })
+    .then(async response => {
+      const value = await response.json() as { route_prefix?: unknown; error?: string }
+      if (!response.ok || typeof value.route_prefix !== 'string') throw new Error(value.error ?? 'design settings are unavailable')
+      return `${value.route_prefix}/manage/designs`
+    })
+  return managementRoot
+}
+
+async function managementJson<T>(path = '', init?: RequestInit): Promise<T> {
+  const endpoint = await managementEndpoint()
+  const response = await fetch(`${endpoint}${path}`, {
+    ...init,
+    headers: { accept: 'application/json', ...init?.headers },
+  })
+  const value = await response.json() as T & { error?: string }
+  if (!response.ok) throw new Error(value.error ?? `design request failed: ${response.status}`)
+  return value
+}
+
+async function withExportBase(value: Promise<Omit<DesignSettings, 'export_base'>>): Promise<DesignSettings> {
+  const [settings, endpoint] = await Promise.all([value, managementEndpoint()])
+  return { ...settings, export_base: endpoint }
+}
+
 function access(meta: GenuiMeta): ArtifactAccess {
   if (meta.previewUrl === undefined) throw new Error('preview is unavailable')
   const preview = new URL(meta.previewUrl, window.location.href)
@@ -40,4 +80,24 @@ export function previewUrlForLocale(meta: GenuiMeta, locale: 'en' | 'zh'): strin
   const { preview } = access(meta)
   preview.searchParams.set('lang', locale)
   return preview.toString()
+}
+
+export function readDesignSettings(): Promise<DesignSettings> {
+  return withExportBase(managementJson())
+}
+
+export function setDefaultDesign(designId: string | null): Promise<DesignSettings> {
+  return withExportBase(managementJson('/default', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ design_id: designId }),
+  }))
+}
+
+export function importDesign(designId: string, content: string): Promise<DesignSettings> {
+  return withExportBase(managementJson('/import', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ design_id: designId, content }),
+  }))
 }

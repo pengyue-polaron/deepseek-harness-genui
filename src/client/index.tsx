@@ -6,6 +6,7 @@ import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import { grantPermission, previewUrlForLocale } from './api.ts'
 import { canvasController, useCanvasArtifact, useCanvasSurface } from './canvas.ts'
+import { DesignSettingsCard } from './design-settings.tsx'
 import { ShellIcon } from './icons.tsx'
 import { artifactCardLedger, usePrimaryArtifactCard } from './ledger.ts'
 import { en, NS, zh } from './locales.ts'
@@ -347,4 +348,10 @@ export function apply(ctx: ClientContext): void {
       yield ctx.slots.register({ name: 'tool.call.toolview', key }, HiddenGenuiToolView)
     }
   })
+  ctx.slots.inject('settings.plugin.item', () => ctx.slots.register({
+    name: 'settings.plugin.item',
+    id: 'genui-design',
+    order: 30,
+    locale: NS,
+  }, DesignSettingsCard))
 }

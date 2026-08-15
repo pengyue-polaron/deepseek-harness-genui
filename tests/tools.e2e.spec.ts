@@ -36,7 +36,7 @@ describe('GenUI Harness tool lifecycle', () => {
     agent = { id: SessionId('genui-tools-e2e'), ctx } as unknown as Agent
 
     const capabilities = new CapabilityStore()
-    const runtime = createHttpRuntime(ctx, registry, capabilities, '/genui')
+    const runtime = createHttpRuntime(ctx, registry, designs, capabilities, '/genui')
     const server = createServer((req, res) => {
       runtime.handler(req, res).catch((error: unknown) => {
         res.writeHead(500)

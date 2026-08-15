@@ -206,7 +206,7 @@ function registerDesignTools(ctx: Context, registry: ArtifactRegistry, designs: 
       render: (_args, value) => [{ type: 'text', text: JSON.stringify(value, null, 2) }],
     },
     async execute() {
-      return { designs: await designs.list() } as unknown as Record<string, JsonValue>
+      return { default_design_id: designs.defaultId() ?? null, designs: await designs.list() } as unknown as Record<string, JsonValue>
     },
     isConcurrencySafe: () => true,
   }))

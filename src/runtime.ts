@@ -12,7 +12,7 @@ import { DesignStore } from './designs/store.ts'
 import { CapabilityStore } from './runtime/capabilities.ts'
 import { createHttpRuntime } from './runtime/server.ts'
 import { registerGenuiTools } from './tools.ts'
-import { GENUI_SYSTEM_PROMPT } from './prompt.ts'
+import { genuiSystemPrompt } from './prompt.ts'
 
 export async function apply(ctx: Context, config: Config): Promise<() => void> {
   const resolved = resolveConfig(config)
@@ -25,9 +25,10 @@ export async function apply(ctx: Context, config: Config): Promise<() => void> {
     sessionId => ctx.agents.get(SessionId(sessionId)),
   )
 
-  const http = createHttpRuntime(ctx, registry, capabilities, resolved.routePrefix)
+  const http = createHttpRuntime(ctx, registry, designs, capabilities, resolved.routePrefix)
   ctx.webServer.register({ kind: 'prefix', path: resolved.routePrefix, handler: http.handler })
-  ctx.systemPrompt.section({ name: 'tool:genui', order: 118, text: GENUI_SYSTEM_PROMPT })
+  ctx.webServer.register({ kind: 'exact', path: '/.well-known/dsh-genui', handler: http.handler })
+  ctx.systemPrompt.section({ name: 'tool:genui', order: 118, text: () => genuiSystemPrompt(designs.defaultId()) })
   const previewOrigin = `http://127.0.0.1:${ctx.webServer.port}`
   registerGenuiTools(ctx, registry, designs, capabilities, resolved.routePrefix, previewOrigin)
   ctx.logger.info(`GenUI artifacts: ${registry.root}`)

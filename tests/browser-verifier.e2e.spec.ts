@@ -10,6 +10,7 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 import { ArtifactRegistry } from '../src/artifacts/registry.ts'
 import { buildArtifact } from '../src/artifacts/builder.ts'
 import { verifyArtifactInBrowser } from '../src/artifacts/browser-verifier.ts'
+import { DesignStore } from '../src/designs/store.ts'
 import { CapabilityStore } from '../src/runtime/capabilities.ts'
 import { createHttpRuntime } from '../src/runtime/server.ts'
 
@@ -29,6 +30,8 @@ describe('sandboxed browser verification', () => {
     root = await mkdtemp(join(tmpdir(), 'dsh-genui-browser-'))
     registry = new ArtifactRegistry(root, 128 * 1024)
     await registry.init()
+    const designs = new DesignStore(join(root, '.designs'))
+    await designs.init()
     const version = await registry.create({
       id: 'sandbox-state',
       title: 'Sandbox state',
@@ -59,7 +62,7 @@ createRoot(document.getElementById('root')!).render(<App />)`,
     capabilities = new CapabilityStore()
     fakeAgent = { id: SessionId('browser-e2e'), ctx } as unknown as Agent
     const token = capabilities.issue(version.artifactId, fakeAgent)
-    const runtime = createHttpRuntime(ctx, registry, capabilities, '/genui')
+    const runtime = createHttpRuntime(ctx, registry, designs, capabilities, '/genui')
     const server = createServer((req, res) => {
       runtime.handler(req, res).catch((error: unknown) => {
         res.writeHead(500)

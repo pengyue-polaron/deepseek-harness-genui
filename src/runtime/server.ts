@@ -5,6 +5,7 @@ import { CallId } from '@deepseek-ai/dsh-llm'
 import type { Context } from '@deepseek-ai/cordis'
 import { TASK_STATE_TTL_MS, type ArtifactRegistry } from '../artifacts/registry.ts'
 import { safeJoin } from '../artifacts/paths.ts'
+import type { DesignStore } from '../designs/store.ts'
 import type { CapabilityStore } from './capabilities.ts'
 import { requestExternal } from './external.ts'
 import {
@@ -34,7 +35,7 @@ const MIME: Record<string, string> = {
   '.webp': 'image/webp',
 }
 
-const ARTIFACT_RUNTIME_VERSION = '0.9.3'
+const ARTIFACT_RUNTIME_VERSION = '0.10.1'
 
 function json(res: ServerResponse, status: number, value: unknown, req?: IncomingMessage): void {
   res.writeHead(status, {
@@ -65,6 +66,17 @@ function bearer(req: IncomingMessage): string | undefined {
   return value?.startsWith('Bearer ') ? value.slice(7) : undefined
 }
 
+function acceptsManagementRequest(req: IncomingMessage): boolean {
+  return req.headers['sec-fetch-site'] !== 'cross-site'
+}
+
+async function designSettings(designs: DesignStore): Promise<Record<string, unknown>> {
+  return {
+    default_design_id: designs.defaultId() ?? null,
+    designs: (await designs.list()).map(design => ({ ...design, builtin: designs.isBuiltin(design.id) })),
+  }
+}
+
 function html(routePrefix: string, artifactId: string, versionId: string, hasCss: boolean, language: 'en' | 'zh'): string {
   const css = hasCss ? `<link rel="stylesheet" href="${routePrefix}/assets/${artifactId}/${versionId}/app.css?runtime=${ARTIFACT_RUNTIME_VERSION}">` : ''
   return `<!doctype html>
@@ -79,6 +91,7 @@ export interface GenuiHttpRuntime {
 export function createHttpRuntime(
   ctx: Context,
   registry: ArtifactRegistry,
+  designs: DesignStore,
   capabilities: CapabilityStore,
   routePrefix: string,
 ): GenuiHttpRuntime {
@@ -86,7 +99,50 @@ export function createHttpRuntime(
     async handler(req, res) {
       try {
         const url = new URL(req.url ?? '/', 'http://localhost')
+        if (req.method === 'GET' && url.pathname === '/.well-known/dsh-genui') {
+          if (!acceptsManagementRequest(req)) return json(res, 403, { error: 'cross-site management requests are not allowed' })
+          json(res, 200, { route_prefix: routePrefix })
+          return
+        }
         const relative = url.pathname.slice(routePrefix.length).split('/').filter(Boolean).map(decodeURIComponent)
+        if (relative[0] === 'manage') {
+          if (!acceptsManagementRequest(req)) return json(res, 403, { error: 'cross-site management requests are not allowed' })
+          if (req.method === 'GET' && relative.length === 2 && relative[1] === 'designs') {
+            json(res, 200, await designSettings(designs))
+            return
+          }
+          if (req.method === 'GET' && relative.length === 3 && relative[1] === 'designs') {
+            const design = await designs.get(relative[2] ?? '')
+            if (url.searchParams.get('download') === '1') {
+              res.writeHead(200, {
+                'content-type': 'text/markdown; charset=utf-8',
+                'content-disposition': 'attachment; filename="DESIGN.md"',
+                'cache-control': 'no-store',
+                'x-content-type-options': 'nosniff',
+              })
+              res.end(design.content)
+              return
+            }
+            json(res, 200, { design_id: design.id, title: design.title, filename: 'DESIGN.md', content: design.content })
+            return
+          }
+          if (req.method === 'POST' && relative.length === 3 && relative[1] === 'designs' && relative[2] === 'default') {
+            const input = await body(req)
+            if (input.design_id !== null && typeof input.design_id !== 'string') throw new Error('design_id must be a design id or null')
+            await designs.setDefault(typeof input.design_id === 'string' ? input.design_id : undefined)
+            json(res, 200, await designSettings(designs))
+            return
+          }
+          if (req.method === 'POST' && relative.length === 3 && relative[1] === 'designs' && relative[2] === 'import') {
+            const input = await body(req, 128 * 1024)
+            if (typeof input.design_id !== 'string' || typeof input.content !== 'string') throw new Error('design_id and content are required')
+            const design = await designs.put(input.design_id, input.content)
+            await designs.setDefault(design.id)
+            json(res, 200, await designSettings(designs))
+            return
+          }
+          return json(res, 404, { error: 'unknown GenUI management action' })
+        }
         if (req.method === 'GET' && relative[0] === 'preview' && relative.length === 3) {
           const [, artifactId = '', versionId = ''] = relative
           const language = url.searchParams.get('lang')

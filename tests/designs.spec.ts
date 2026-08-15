@@ -35,6 +35,20 @@ describe('DesignStore', () => {
     })
   })
 
+  it('persists one optional default design', async () => {
+    const designs = await store()
+    await designs.put('home-journal', '# Home Journal\n\nUse warm paper surfaces.\n')
+    await designs.setDefault('home-journal')
+    expect(designs.defaultId()).toBe('home-journal')
+
+    const reloaded = new DesignStore(designs.root)
+    await reloaded.init()
+    expect(reloaded.defaultId()).toBe('home-journal')
+    await reloaded.setDefault(undefined)
+    expect(reloaded.defaultId()).toBeUndefined()
+    await expect(reloaded.setDefault('missing-design')).rejects.toThrow()
+  })
+
   it('rejects malformed and oversized profiles', async () => {
     const designs = await store()
     await expect(designs.put('../escape', '# Escape')).rejects.toThrow('design id')

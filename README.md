@@ -1,6 +1,6 @@
 # DeepSeek Harness GenUI
 
-[![Version](https://img.shields.io/badge/version-0.9.3-ea8f5a)](package.json)
+[![Version](https://img.shields.io/badge/version-0.10.1-ea8f5a)](package.json)
 [![CI](https://github.com/pengyue-polaron/deepseek-harness-genui/actions/workflows/ci.yml/badge.svg)](https://github.com/pengyue-polaron/deepseek-harness-genui/actions/workflows/ci.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.19-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-202124)](LICENSE)
@@ -29,11 +29,15 @@ pnpm run package:plugin
 ```
 
 ```sh
-DSH_HOME=/path/to/dsh-home pnpm dsh plugin --profile web add /absolute/path/to/dsh-plugin-genui-0.9.3.tgz
+DSH_HOME=/path/to/dsh-home pnpm dsh plugin --profile web add /absolute/path/to/dsh-plugin-genui-0.10.1.tgz
 DSH_HOME=/path/to/dsh-home pnpm dsh --profile web
 ```
 
 Add MCP servers to the Harness profile. Generated apps call their exact tool names; credentials never enter generated source or app state.
+
+## Design
+
+Open **Settings → Plugins → Plugin configuration** to keep automatic styling, choose a built-in direction, or import a `DESIGN.md`. The selected default applies to new apps; each existing app keeps the design pinned to its version.
 
 ## Stack
 

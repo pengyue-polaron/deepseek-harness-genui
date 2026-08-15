@@ -11,6 +11,7 @@ import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import { apply as applyMcp } from '@deepseek-ai/dsh-mcp-client'
 import { ArtifactRegistry } from '../src/artifacts/registry.ts'
+import { DesignStore } from '../src/designs/store.ts'
 import { CapabilityStore } from '../src/runtime/capabilities.ts'
 import { createHttpRuntime } from '../src/runtime/server.ts'
 
@@ -45,6 +46,8 @@ describe('real MCP artifact bridge', () => {
     root = await mkdtemp(join(tmpdir(), 'dsh-genui-mcp-'))
     registry = new ArtifactRegistry(root, 128 * 1024)
     await registry.init()
+    const designs = new DesignStore(join(root, '.designs'))
+    await designs.init()
     const version = await registry.create({
       id: 'mcp-artifact', title: 'MCP artifact', summary: 'Runtime bridge fixture', requirements: [],
       capabilities: [
@@ -65,7 +68,7 @@ describe('real MCP artifact bridge', () => {
     } as unknown as Agent
     token = capabilities.issue('mcp-artifact', fakeAgent)
     verificationToken = capabilities.issue('mcp-artifact', fakeAgent, 'verification')
-    const runtime = createHttpRuntime(ctx, registry, capabilities, '/genui')
+    const runtime = createHttpRuntime(ctx, registry, designs, capabilities, '/genui')
     const server = createServer((req, res) => {
       runtime.handler(req, res).catch((error: unknown) => {
         res.writeHead(500)
@@ -143,11 +146,52 @@ describe('real MCP artifact bridge', () => {
     expect(zhResponse.status).toBe(200)
     const zhDocument = await zhResponse.text()
     expect(zhDocument).toContain('<html lang="zh">')
-    expect(zhDocument).toContain('app.js?runtime=0.9.3')
+    expect(zhDocument).toContain('app.js?runtime=0.10.1')
     expect(zhDocument).toContain('<meta name="color-scheme" content="light dark">')
 
     const missingLanguage = await fetch(`${origin}/genui/preview/mcp-artifact/${versionId}#token=${token}`)
     expect(missingLanguage.status).toBe(400)
+  })
+
+  it('manages the default DESIGN.md through the same-origin Harness surface', async () => {
+    const discovery = await fetch(`${origin}/.well-known/dsh-genui`)
+    expect(await discovery.json()).toEqual({ route_prefix: '/genui' })
+
+    const initial = await fetch(`${origin}/genui/manage/designs`).then(response => response.json()) as {
+      default_design_id: string | null
+      designs: Array<{ id: string; builtin: boolean }>
+    }
+    expect(initial.default_design_id).toBeNull()
+    expect(initial.designs).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'notion-calm', builtin: true }),
+      expect.objectContaining({ id: 'material-expressive', builtin: true }),
+    ]))
+
+    const imported = await fetch(`${origin}/genui/manage/designs/import`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ design_id: 'home-journal', content: '# Home Journal\n\nUse warm paper.\n' }),
+    }).then(response => response.json()) as { default_design_id: string }
+    expect(imported.default_design_id).toBe('home-journal')
+
+    const exported = await fetch(`${origin}/genui/manage/designs/home-journal`).then(response => response.json()) as {
+      filename: string
+      content: string
+    }
+    expect(exported).toMatchObject({ filename: 'DESIGN.md', content: expect.stringContaining('warm paper') })
+    const download = await fetch(`${origin}/genui/manage/designs/home-journal?download=1`)
+    expect(download.headers.get('content-disposition')).toBe('attachment; filename="DESIGN.md"')
+    expect(await download.text()).toContain('warm paper')
+
+    const automatic = await fetch(`${origin}/genui/manage/designs/default`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ design_id: null }),
+    }).then(response => response.json()) as { default_design_id: null }
+    expect(automatic.default_design_id).toBeNull()
+
+    const crossSite = await fetch(`${origin}/genui/manage/designs`, { headers: { 'sec-fetch-site': 'cross-site' } })
+    expect(crossSite.status).toBe(403)
   })
 
   it('dry-runs state writes and returns inert tool data during browser verification', async () => {
