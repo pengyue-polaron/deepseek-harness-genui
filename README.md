@@ -1,63 +1,61 @@
 # DeepSeek Harness GenUI
 
-[![Version](https://img.shields.io/badge/version-0.10.2-ea8f5a)](package.json)
+[![Version](https://img.shields.io/badge/version-0.10.12-ea8f5a)](package.json)
 [![CI](https://github.com/pengyue-polaron/deepseek-harness-genui/actions/workflows/ci.yml/badge.svg)](https://github.com/pengyue-polaron/deepseek-harness-genui/actions/workflows/ci.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.19-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-202124)](LICENSE)
 
-![A user asks for help in chat and the Agent returns an explanation beside a generated interactive model](assets/hero.png)
+![A request in DeepSeek Harness becomes a written answer and an interactive app](assets/hero.png)
 
-Generative UI for DeepSeek Harness. The user describes the outcome in plain language. The Agent answers in chat and, only when interaction helps, creates a disposable React app inside the same task.
+A DeepSeek Harness plugin that turns the interactive part of a task into a temporary React app. The answer stays in chat; decisions, exploration, and tool actions get a focused interface only when one helps.
 
-**Request → answer in chat → working UI → saved interaction → next Agent turn**
+**Ask in plain language -> read the answer -> use the UI -> continue from the saved state**
 
-## Where it earns its place
+## Real Tasks
 
 <table>
   <thead>
     <tr>
-      <th>Need</th>
-      <th>Answer in chat</th>
+      <th>Request</th>
+      <th>Agent response</th>
       <th>Generated UI</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td><strong>Pause a long task at the right decision</strong><br><br>“Prepare a one-day release shortlist from recent issues, PRs, and failed Actions. Do not change the repository until I confirm it.”</td>
-      <td>The Agent explains the release blocker, competing fixes, effort, risk, and what still needs a human decision.</td>
-      <td><img src="screenshots/v0.9.3-github-release-selected.png" width="360" alt="A source-linked GitHub release shortlist beside the Harness conversation"><br><br>A source-linked shortlist with saved selections. The Agent continues the release plan from the confirmed set.</td>
+      <td><strong>Choose a local vision model</strong><br><br>“Find models that can realistically run on a 24 GB Mac. Use my connected Hugging Face and GitHub sources, then help me keep a shortlist.”</td>
+      <td>Explains memory, license, and implementation constraints. The next turn reads the 2 saved candidates without searching again.</td>
+      <td><img src="screenshots/v0.10.7-vlm-canvas.jpg" width="420" alt="A Notion-style local vision model shortlist beside the Agent response"><br><br>Notion Calm filters and shortlist over real Hugging Face and GitHub evidence.</td>
     </tr>
     <tr>
-      <td><strong>Work across tools without building an integration</strong><br><br>“Find small vision models and related implementations. Search the sources I connected, then let me keep the useful ones.”</td>
-      <td>The Agent states what it can search, asks for permission at first use, and keeps credentials out of the generated app.</td>
-      <td><img src="screenshots/v0.9.2-canvas.png" width="360" alt="A temporary model search workspace using Hugging Face and GitHub tools"><br><br>One temporary workspace over Hugging Face and GitHub, with search, source filters, and favorites.</td>
+      <td><strong>Find time without exposing the calendar</strong><br><br>“Find three 90-minute windows next week. Show only a few useful choices, then add them after I confirm.”</td>
+      <td>Reads availability without repeating private event titles. It recalls the 3 selected times and writes them only after explicit confirmation.</td>
+      <td><img src="screenshots/v0.10.7-calendar-canvas.jpg" width="420" alt="A Notion-style calendar choice surface with three saved time slots"><br><br>Notion Calm recommendations backed by a real Calendar connection.</td>
     </tr>
     <tr>
-      <td><strong>Explain a relationship that changes</strong><br><br>“Show me which part of photosynthesis becomes limiting when light, CO₂, temperature, or stomata change.”</td>
-      <td>The Agent first explains the light reactions, ATP/NADPH, Calvin cycle, and the likely bottleneck in plain language.</td>
-      <td><img src="screenshots/v0.9.2-photosynthesis-canvas.png" width="360" alt="An interactive photosynthesis model beside the written explanation"><br><br>A causal model with sliders and live energy and matter flow, not a decorative diagram.</td>
+      <td><strong>Explore a causal system</strong><br><br>“Help me understand what limits photosynthesis when light, CO₂, temperature, and stomata change.”</td>
+      <td>Separates the light reactions from the Calvin cycle, then explains the bottleneck for the exact values saved in the UI.</td>
+      <td><img src="screenshots/v0.10.9-photosynthesis-canvas.jpg" width="420" alt="A Material Expressive photosynthesis model with four interactive controls"><br><br>A Material Expressive model where energy and matter flow change with 4 controls.</td>
     </tr>
     <tr>
-      <td><strong>Let the next turn use what happened in the UI</strong><br><br>“Which candidates did I just favorite? Read only the choices saved in the page.”</td>
-      <td>The Agent reads the task-scoped state and answers with the exact selected items instead of guessing from chat history.</td>
-      <td><img src="screenshots/tool-state-readback-0.8.5.png" width="360" alt="The Agent reading a user's saved UI selections on the next turn"><br><br>The generated app is a two-way task surface: user interaction becomes context for the next step.</td>
+      <td><strong>Build spatial intuition</strong><br><br>“Take me from nearby stars to the Milky Way. Let me change scale and viewpoint and compare light-travel time.”</td>
+      <td>Explains how we infer the galaxy from inside it. The next turn reads the chosen scale, viewpoint, and target in natural language.</td>
+      <td><img src="screenshots/v0.10.10-milky-way-canvas.jpg" width="420" alt="A Material Expressive Milky Way scale model beside the saved-state explanation"><br><br>A Material Expressive logarithmic model with face-on, edge-on, and tilted views.</td>
     </tr>
   </tbody>
 </table>
 
-These are ordinary task prompts, not hard-coded demos. The useful boundary is simple: prose carries the answer; UI carries the interaction.
+These are acceptance prompts, not hard-coded demos. Plain questions, rewriting, and straightforward explanations stay in prose.
 
-## What it adds
+## What It Adds
 
-- Inline, adaptive Canvas, and full-screen surfaces inside the conversation.
+- Inline, adaptive Canvas, and full-screen surfaces inside the task.
 - Normal multi-file React + TypeScript; no component-tree IR.
 - Task-scoped state that the Agent can read on the next turn.
-- Existing Harness and MCP tools behind explicit, first-use permission prompts.
+- Existing Harness and MCP tools behind first-use permission prompts.
 - Approved public HTTPS requests without exposing credentials to app code.
-- Sandboxed builds with desktop, mobile, dark-mode, overflow, motion, and accessibility checks.
-- Reusable visual direction through `DESIGN.md`.
-
-Good fits include decision checkpoints, temporary tool workspaces, structured feedback, exception review, live incident triage, data reconciliation, and explorable models. Plain questions, rewriting, and straightforward explanations stay in prose.
+- Desktop, mobile, dark-mode, overflow, motion, and accessibility checks.
+- Importable and exportable `DESIGN.md` profiles.
 
 ## Install
 
@@ -70,27 +68,28 @@ pnpm run package:plugin
 ```
 
 ```sh
-DSH_HOME=/path/to/dsh-home pnpm dsh plugin --profile web add /absolute/path/to/dsh-plugin-genui-0.10.2.tgz
+DSH_HOME=/path/to/dsh-home pnpm dsh plugin --profile web add /absolute/path/to/dsh-plugin-genui-0.10.12.tgz
 DSH_HOME=/path/to/dsh-home pnpm dsh --profile web
 ```
 
-Add MCP servers to the Harness profile. Generated apps call their exact tool names; credentials never enter generated source or app state.
+Add MCP servers to the Harness profile as usual. Generated apps call their exact tool names; credentials stay in the Harness.
 
 ## Design
 
-Open **Settings → Plugins → Plugin configuration** to keep automatic styling, choose a built-in direction, or import a `DESIGN.md`. The selected default applies to new apps; each existing app keeps the design pinned to its version.
+Open **Settings -> Plugins -> Plugin configuration** to use automatic styling, choose a built-in direction, or import a `DESIGN.md`. The default applies to new apps; existing apps keep the design pinned to their version.
+
+Built in: `notion-calm` and `material-expressive`.
 
 ## Stack
 
 | Layer | Choice |
 | --- | --- |
 | Host | DeepSeek Harness + Cordis |
-| App code | React 18 + TypeScript |
+| App | React 18 + TypeScript |
 | Build | esbuild |
 | Isolation | sandboxed iframe + capability tokens |
+| State | task-scoped, 7-day inactivity expiry |
 | Verification | Playwright + Vitest |
-| Tools | Harness/MCP calls + approved public HTTPS |
-| State | task-scoped artifact state, 7-day inactivity expiry |
 
 ## Development
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { GENUI_SYSTEM_PROMPT, genuiSystemPrompt } from '../src/prompt.ts'
+import { GENUI_BEHAVIOR_PROMPT, GENUI_SYSTEM_PROMPT, genuiSystemPrompt } from '../src/prompt.ts'
 
 describe('GenUI system prompt', () => {
   it('keeps user handoffs product-focused without adding another prompt section', () => {
@@ -10,10 +10,7 @@ describe('GenUI system prompt', () => {
     expect(GENUI_SYSTEM_PROMPT).toContain('normally 3–5 source files including its stylesheet')
     expect(GENUI_SYSTEM_PROMPT).toContain('Do not create one for ordinary questions, rewriting, summarization, or explanations where interaction does not improve understanding')
     expect(GENUI_SYSTEM_PROMPT).toContain('Do not ask the user to choose a presentation format when the best choice is evident')
-    expect(GENUI_SYSTEM_PROMPT).toContain('Keep every genui_* call invisible.')
-    expect(GENUI_SYSTEM_PROMPT).toContain('Every visible assistant sentence must be final-answer content, never a work update; fix failures silently.')
-    expect(GENUI_SYSTEM_PROMPT).toContain('Harness may expose short reasoning summaries')
-    expect(GENUI_SYSTEM_PROMPT).toContain('without narrating tool selection, files, code writing, compilation, verification, or other implementation steps')
+    expect(GENUI_SYSTEM_PROMPT).toContain('Keep every genui_* call invisible and fix failures silently.')
     expect(GENUI_SYSTEM_PROMPT).toContain('never create goals, plans, to-dos, recurring work, or workspace files for it')
     expect(GENUI_SYSTEM_PROMPT).toContain('including when the user says they will return later')
     expect(GENUI_SYSTEM_PROMPT).toContain('state the main recommendation in 1–3 natural sentences before the call')
@@ -39,12 +36,25 @@ describe('GenUI system prompt', () => {
     expect(GENUI_SYSTEM_PROMPT).toContain('genui_state_read must be the first tool call before any answer or action')
     expect(GENUI_SYSTEM_PROMPT).toContain('Use its current values and __result as the authority')
     expect(GENUI_SYSTEM_PROMPT).toContain('never answer from an earlier chat summary or remembered defaults')
-    expect(GENUI_SYSTEM_PROMPT).toContain('Use at most one targeted read per requested source')
+    expect(GENUI_SYSTEM_PROMPT).toContain('never reveal storage keys, hook names, code, missing-field mechanics, or persistence history')
+    expect(GENUI_SYSTEM_PROMPT).toContain('do not render every possible interval as a separate control')
+    expect(GENUI_SYSTEM_PROMPT).toContain('never offer an option that crosses a day boundary')
     expect(GENUI_SYSTEM_PROMPT).toContain('A 429, Retry-After, or an explicit exhausted-quota response is rate limiting')
     expect(GENUI_SYSTEM_PROMPT).toContain('Disable every control that can start the same operation while it is pending')
     expect(GENUI_SYSTEM_PROMPT).toContain('JSON responses must be parsed with JSON.parse(body)')
     expect(GENUI_SYSTEM_PROMPT).toContain('Keep fetched search results, catalogs, and other replaceable response payloads in plain React useState')
     expect(GENUI_SYSTEM_PROMPT).toContain('Derive reload and empty-state copy from data that actually remains available')
+    expect(GENUI_SYSTEM_PROMPT).toContain('Never include index.html')
+    expect(GENUI_SYSTEM_PROMPT).toContain('after the user-facing explanation or recommendation, emit no ordinary text until the genui_* call succeeds')
+  })
+
+  it('places user-facing execution discipline near the persona', () => {
+    expect(GENUI_BEHAVIOR_PROMPT).toContain('Every visible assistant sentence must be useful final-answer content.')
+    expect(GENUI_BEHAVIOR_PROMPT).toContain('never discuss tool selection, source files, code writing, schemas, fields, compilation, verification, or implementation')
+    expect(GENUI_BEHAVIOR_PROMPT).toContain('at most two discovery calls per connected source, four reads from one source, and six connected reads total')
+    expect(GENUI_BEHAVIOR_PROMPT).toContain('prefer the matching connected MCP tool over a similarly scoped Skill')
+    expect(GENUI_BEHAVIOR_PROMPT).toContain('"only", "只用", and "仅根据" create a hard allowlist')
+    expect(GENUI_BEHAVIOR_PROMPT).toContain('Never stream working notes, first-person work narration, search commentary, implementation plans, retries, or error repair')
   })
 
   it('honors a Harness default design without changing the automatic default', () => {

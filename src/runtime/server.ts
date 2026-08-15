@@ -35,7 +35,7 @@ const MIME: Record<string, string> = {
   '.webp': 'image/webp',
 }
 
-const ARTIFACT_RUNTIME_VERSION = '0.10.2'
+const ARTIFACT_RUNTIME_VERSION = '0.10.12'
 
 function json(res: ServerResponse, status: number, value: unknown, req?: IncomingMessage): void {
   res.writeHead(status, {

@@ -102,6 +102,8 @@ export function DesignSettingsCard({ t }: DesignSettingsCardProps) {
           <label htmlFor={`${inputId}-select`}>{t('design.defaultLabel')}</label>
           <select
             id={`${inputId}-select`}
+            name="genui-default-design"
+            autoComplete="off"
             value={settings?.default_design_id ?? ''}
             disabled={settings === undefined || pending}
             onChange={event => { void choose(event.target.value) }}
@@ -111,7 +113,7 @@ export function DesignSettingsCard({ t }: DesignSettingsCardProps) {
           </select>
           <p>{t('design.hint')}</p>
           <div className="dsh-genui-design-actions">
-            <input ref={inputRef} id={inputId} type="file" accept=".md,text/markdown,text/plain" hidden onChange={event => { void importFile(event) }} />
+            <input ref={inputRef} id={inputId} type="file" accept=".md,text/markdown,text/plain" aria-label={t('design.import')} hidden onChange={event => { void importFile(event) }} />
             <button type="button" disabled={pending} onClick={() => inputRef.current?.click()}>{t('design.import')}</button>
             {settings?.default_design_id == null
               ? <span className="dsh-genui-design-export-disabled" aria-disabled="true">{t('design.export')}</span>
@@ -127,7 +129,7 @@ export function DesignSettingsCard({ t }: DesignSettingsCardProps) {
 const designSettingsCss = `
 .dsh-genui-design-card { list-style:none; overflow:hidden; border:1px solid var(--dsw-alias-border-l2); border-radius:12px; background:var(--dsw-alias-bg-layer-3); color:var(--dsw-alias-label-primary); }
 .dsh-genui-design-card[data-open='true'] { border-color:var(--dsw-alias-label-dimmed); background:var(--dsw-alias-bg-layer-2); }
-.dsh-genui-design-head { display:flex; width:100%; align-items:center; gap:12px; border:0; border-radius:12px; padding:14px 16px; background:none; color:inherit; cursor:pointer; font:inherit; text-align:left; }
+.dsh-genui-design-head { display:flex; width:100%; align-items:center; gap:12px; border:0; border-radius:12px; padding:14px 16px; background:none; color:inherit; cursor:pointer; font:inherit; text-align:left; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
 .dsh-genui-design-head:focus-visible, .dsh-genui-design-body select:focus-visible, .dsh-genui-design-actions button:focus-visible, .dsh-genui-design-actions a:focus-visible { outline:2px solid var(--dsw-alias-brand-primary); outline-offset:-2px; }
 .dsh-genui-design-head-copy { display:flex; min-width:0; flex:1; flex-direction:column; gap:4px; }
 .dsh-genui-design-head-copy strong { font-size:15px; line-height:1.4; }
@@ -141,7 +143,7 @@ const designSettingsCss = `
 .dsh-genui-design-body > p { margin:7px 0 14px; color:var(--dsw-alias-label-tertiary); font-size:12px; line-height:1.5; }
 .dsh-genui-design-actions { display:flex; align-items:center; gap:8px; padding-top:12px; border-top:1px solid var(--dsw-alias-border-l2); }
 .dsh-genui-design-actions button, .dsh-genui-design-actions a, .dsh-genui-design-export-disabled { box-sizing:border-box; display:inline-flex; min-height:32px; align-items:center; justify-content:center; border:1px solid var(--dsw-alias-border-l2); border-radius:8px; padding:0 12px; background:transparent; color:var(--dsw-alias-label-secondary); font-family:inherit; font-size:12px; font-weight:600; line-height:1; text-decoration:none; }
-.dsh-genui-design-actions button, .dsh-genui-design-actions a { cursor:pointer; }
+.dsh-genui-design-actions button, .dsh-genui-design-actions a { cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
 .dsh-genui-design-actions button:hover:not(:disabled), .dsh-genui-design-actions a:hover { border-color:var(--dsw-alias-label-dimmed); color:var(--dsw-alias-label-primary); }
 .dsh-genui-design-actions button:disabled, .dsh-genui-design-export-disabled { cursor:default; opacity:.45; }
 .dsh-genui-design-actions span { min-width:0; flex:1; color:var(--dsw-alias-label-tertiary); font-size:12px; text-align:right; }

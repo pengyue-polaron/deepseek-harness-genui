@@ -57,4 +57,32 @@ describe('buildArtifact', () => {
     expect(result.ok).toBe(false)
     expect(result.diagnostics.some(item => item.severity === 'error')).toBe(true)
   })
+
+  it('rejects user controls that cannot be read on the next turn', async () => {
+    const result = await buildArtifact(version(`
+      import React, { useState } from 'react'
+      import { createRoot } from 'react-dom/client'
+      function App() {
+        const [light, setLight] = useState(40)
+        return <input aria-label="Light" type="range" value={light} onChange={event => setLight(Number(event.target.value))} />
+      }
+      createRoot(document.body).render(<App />)
+    `), await dist())
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics.map(item => item.text).join('\n')).toContain('useArtifactState')
+  })
+
+  it('accepts typed task state for user controls', async () => {
+    const result = await buildArtifact(version(`
+      import React from 'react'
+      import { createRoot } from 'react-dom/client'
+      import { useArtifactState } from '@dsh-genui/sdk'
+      function App() {
+        const [settings, setSettings] = useArtifactState<{ light: number }>('settings', { light: 40 })
+        return <input aria-label="Light" type="range" value={settings.light} onChange={event => setSettings({ light: Number(event.target.value) })} />
+      }
+      createRoot(document.getElementById('root')!).render(<App />)
+    `), await dist())
+    expect(result.ok).toBe(true)
+  })
 })

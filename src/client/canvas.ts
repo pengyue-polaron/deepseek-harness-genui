@@ -8,9 +8,9 @@ export interface CanvasSurface {
 }
 
 const MIN_CANVAS_WIDTH = 340
-const MAX_CANVAS_WIDTH = 520
-const MIN_CONVERSATION_WIDTH = 600
-const CANVAS_SHARE = 0.4
+const MAX_CANVAS_WIDTH = 640
+const MIN_CONVERSATION_WIDTH = 560
+const CANVAS_SHARE = 0.46
 const INITIAL_SURFACE: CanvasSurface = { mode: 'split', width: 440 }
 
 export function solveCanvasSurface(frameWidth: number, workspaceWidth: number): CanvasSurface {

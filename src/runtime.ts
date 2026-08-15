@@ -10,9 +10,10 @@ import { resolveConfig } from './config.ts'
 import { ArtifactRegistry } from './artifacts/registry.ts'
 import { DesignStore } from './designs/store.ts'
 import { CapabilityStore } from './runtime/capabilities.ts'
+import { registerDiscoveryBudget } from './runtime/discovery-budget.ts'
 import { createHttpRuntime } from './runtime/server.ts'
 import { registerGenuiTools } from './tools.ts'
-import { genuiSystemPrompt } from './prompt.ts'
+import { GENUI_BEHAVIOR_PROMPT, genuiSystemPrompt } from './prompt.ts'
 
 export async function apply(ctx: Context, config: Config): Promise<() => void> {
   const resolved = resolveConfig(config)
@@ -28,7 +29,9 @@ export async function apply(ctx: Context, config: Config): Promise<() => void> {
   const http = createHttpRuntime(ctx, registry, designs, capabilities, resolved.routePrefix)
   ctx.webServer.register({ kind: 'prefix', path: resolved.routePrefix, handler: http.handler })
   ctx.webServer.register({ kind: 'exact', path: '/.well-known/dsh-genui', handler: http.handler })
+  ctx.systemPrompt.section({ name: 'behavior:genui', order: 1, text: GENUI_BEHAVIOR_PROMPT })
   ctx.systemPrompt.section({ name: 'tool:genui', order: 118, text: () => genuiSystemPrompt(designs.defaultId()) })
+  registerDiscoveryBudget(ctx)
   const previewOrigin = `http://127.0.0.1:${ctx.webServer.port}`
   registerGenuiTools(ctx, registry, designs, capabilities, resolved.routePrefix, previewOrigin)
   ctx.logger.info(`GenUI artifacts: ${registry.root}`)

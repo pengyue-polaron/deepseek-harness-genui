@@ -219,7 +219,8 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
     if (canvasOpen) {
       if (document.fullscreenElement === cardElement) await document.exitFullscreen()
       canvasController.close(canvasSessionId, artifactKey)
-      window.setTimeout(() => cardElement?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0)
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      window.setTimeout(() => cardElement?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'center' }), 0)
     } else {
       setCollapsed(false)
       canvasController.open(canvasSessionId, artifactKey)

@@ -23,6 +23,7 @@ describe('GenUI Harness tool lifecycle', () => {
   let closeServer: () => Promise<void>
   let callCounter = 0
   let lastRenderedContent: unknown
+  let lastConcludesTurn: true | undefined
 
   beforeAll(async () => {
     ctx = new Context()
@@ -69,6 +70,7 @@ describe('GenUI Harness tool lifecycle', () => {
     })
     if (result.isError) throw result.error
     lastRenderedContent = result.content
+    lastConcludesTurn = result.concludesTurn
     return result.value as Record<string, unknown>
   }
 
@@ -81,7 +83,9 @@ describe('GenUI Harness tool lifecycle', () => {
       capabilities: [],
       files: [{ path: 'src/main.tsx', content: 'const broken =' }],
     })
-    expect(created).toMatchObject({ artifact_id: 'tool-flow', status: 'failed' })
+    expect(created).toMatchObject({ status: 'failed' })
+    expect(created.artifact_id).toMatch(/^s-[a-f0-9]{12}-tool-flow$/)
+    expect(lastConcludesTurn).toBeUndefined()
     expect(created.message).toContain('using this failed version as the base')
     expect(lastRenderedContent).toEqual(expect.arrayContaining([
       expect.objectContaining({ text: expect.stringContaining('Do not call genui_create again') }),
@@ -99,15 +103,16 @@ function App() { return <main style={{padding: 24}}>Status: ready</main> }
 createRoot(document.getElementById('root')!).render(<App />)`,
       }],
     })
-    expect(repaired).toMatchObject({ artifact_id: 'tool-flow', status: 'ready' })
+    expect(repaired).toMatchObject({ artifact_id: created.artifact_id, status: 'ready' })
+    expect(lastConcludesTurn).toBe(true)
     expect(lastRenderedContent).toEqual([{
       type: 'text',
       text: 'This successful result must be the last emitted item. Emit no text and run no tools after it.',
     }])
 
-    await registry.updateState('tool-flow', String(agent.id), state => ({ ...state, feedback: { choice: 'quiet route' } }))
+    await registry.updateState(created.artifact_id as string, String(agent.id), state => ({ ...state, feedback: { choice: 'quiet route' } }))
     const submitted = await execute('genui_state_read', { artifact_id: 'tool-flow' })
-    expect(submitted).toMatchObject({ artifact_id: 'tool-flow', values: { feedback: { choice: 'quiet route' } } })
+    expect(submitted).toMatchObject({ artifact_id: created.artifact_id, values: { feedback: { choice: 'quiet route' } } })
 
     const updated = await execute('genui_update', {
       artifact_id: 'tool-flow',
@@ -125,7 +130,8 @@ function App() {
 createRoot(document.getElementById('root')!).render(<App />)`,
       }],
     })
-    expect(updated).toMatchObject({ artifact_id: 'tool-flow', status: 'ready' })
+    expect(updated).toMatchObject({ artifact_id: created.artifact_id, status: 'ready' })
+    expect(lastConcludesTurn).toBe(true)
 
     const inspected = await execute('genui_inspect', {
       artifact_id: 'tool-flow',
@@ -140,7 +146,7 @@ createRoot(document.getElementById('root')!).render(<App />)`,
       version_id: repaired.version_id,
     })
     expect(rolledBack).toMatchObject({ version_id: repaired.version_id, status: 'ready' })
-    expect((await registry.get('tool-flow')).currentVersionId).toBe(repaired.version_id)
+    expect((await registry.get(created.artifact_id as string)).currentVersionId).toBe(repaired.version_id)
   }, 60_000)
 
   it('lists, imports, and exports DESIGN.md profiles', async () => {
@@ -158,4 +164,23 @@ createRoot(document.getElementById('root')!).render(<App />)`,
     expect(exported).toMatchObject({ design_id: 'home-journal', filename: 'DESIGN.md' })
     expect(exported.content).toContain('warm paper surfaces')
   })
+
+  it('scopes repeated artifact names to their task', async () => {
+    const source = `import React from 'react'
+import { createRoot } from 'react-dom/client'
+createRoot(document.getElementById('root')!).render(<main>Ready</main>)`
+    agent = { id: SessionId('first-task'), ctx } as unknown as Agent
+    const first = await execute('genui_create', {
+      artifact_id: 'repeated-name', title: 'First', summary: 'First task', requirements: [], capabilities: [],
+      files: [{ path: 'src/main.tsx', content: source }],
+    })
+    agent = { id: SessionId('second-task'), ctx } as unknown as Agent
+    const second = await execute('genui_create', {
+      artifact_id: 'repeated-name', title: 'Second', summary: 'Second task', requirements: [], capabilities: [],
+      files: [{ path: 'src/main.tsx', content: source }],
+    })
+    expect(first.artifact_id).not.toBe(second.artifact_id)
+    expect(first.artifact_id).toMatch(/^s-[a-f0-9]{12}-repeated-name$/)
+    expect(second.artifact_id).toMatch(/^s-[a-f0-9]{12}-repeated-name$/)
+  }, 60_000)
 })

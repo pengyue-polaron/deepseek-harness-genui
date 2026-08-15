@@ -224,7 +224,22 @@ export interface ArtifactBuildResult {
   outputFiles: string[]
 }
 
+function stateContractDiagnostics(version: ArtifactVersion): BuildDiagnostic[] {
+  const source = version.files
+    .filter(file => file.path.startsWith('src/'))
+    .map(file => file.content)
+    .join('\n')
+  const collectsUserState = /<\s*(?:input|select|textarea)\b|\baria-(?:checked|pressed)\s*=|\brole\s*=\s*["'](?:checkbox|radio|slider|switch)["']/i.test(source)
+  if (!collectsUserState || /\buseArtifactState\s*(?:<[\s\S]{0,500}?>\s*)?\(/.test(source)) return []
+  return [{
+    severity: 'error',
+    text: 'Interactive user choices must use useArtifactState so they survive Canvas changes and remain readable on the next turn.',
+  }]
+}
+
 export async function buildArtifact(version: ArtifactVersion, distPath: string): Promise<ArtifactBuildResult> {
+  const contractDiagnostics = stateContractDiagnostics(version)
+  if (contractDiagnostics.length > 0) return { ok: false, diagnostics: contractDiagnostics, outputFiles: [] }
   let result: BuildResult
   try {
     result = await build({

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
@@ -68,6 +69,16 @@ function renderReceipt(value: unknown): { type: 'text'; text: string }[] {
 function requireAgent(agent: Agent | undefined): Agent {
   if (agent === undefined) throw new Error('GenUI tools require a live Harness agent')
   return agent
+}
+
+function taskArtifactId(agent: Agent, requested: string): string {
+  const prefix = `s-${createHash('sha256').update(String(agent.id)).digest('hex').slice(0, 12)}-`
+  if (requested.startsWith(prefix)) return requested
+  const available = 64 - prefix.length
+  const local = requested.length <= available
+    ? requested
+    : `${requested.slice(0, available - 9)}-${createHash('sha256').update(requested).digest('hex').slice(0, 8)}`
+  return `${prefix}${local}`
 }
 
 function presentation(value: unknown): JsonValue {
@@ -240,7 +251,7 @@ function registerDesignTools(ctx: Context, registry: ArtifactRegistry, designs: 
       schema: { type: 'object', additionalProperties: true },
       render: (_args, value) => [{ type: 'text', text: JSON.stringify(value, null, 2) }],
     },
-    async execute(args) {
+    async execute(args, exec) {
       const hasDesign = args.design_id !== undefined
       const hasArtifact = args.artifact_id !== undefined
       if (hasDesign === hasArtifact) throw new Error('provide exactly one of design_id or artifact_id')
@@ -248,7 +259,8 @@ function registerDesignTools(ctx: Context, registry: ArtifactRegistry, designs: 
         const design = await designs.get(args.design_id as string)
         return { design_id: design.id, title: design.title, filename: 'DESIGN.md', content: design.content }
       }
-      const version = await registry.getVersion(args.artifact_id as string, args.version_id)
+      const artifactId = taskArtifactId(requireAgent(exec.agent), args.artifact_id as string)
+      const version = await registry.getVersion(artifactId, args.version_id)
       const content = version.files.find(file => file.path === 'DESIGN.md')?.content
       if (content === undefined) throw new Error('artifact version does not contain DESIGN.md')
       return { artifact_id: version.artifactId, version_id: version.id, filename: 'DESIGN.md', content }
@@ -270,7 +282,7 @@ export function registerGenuiTools(
     name: 'genui_create',
     description: 'Create and compile a new multi-file React/TypeScript UI artifact. Put source directly in this call; never stage it with workspace write, edit, shell, or coding tools. Call this only once per artifact id; repair any failed attempt with genui_update using the returned version guidance. Use ordinary source code, not an intermediate UI representation.',
     parameters: {
-      artifact_id: { type: 'string', required: true, description: 'Stable lowercase kebab-case id.' },
+      artifact_id: { type: 'string', required: true, description: 'Stable lowercase kebab-case id within this task.' },
       title: { type: 'string', required: true },
       summary: { type: 'string', required: true },
       requirements: { type: 'array', items: { type: 'string' }, required: true },
@@ -278,7 +290,10 @@ export function registerGenuiTools(
         type: 'array', items: capabilitySpec, required: true,
         description: 'Only the exact connected actions and credential-free HTTPS services this app may request. Prefer exact Harness/MCP/Skill tool names; declare an external URL only when no suitable connected tool exists. Use [] for a local-only app.',
       },
-      files: { type: 'array', items: fileSpec, required: true },
+      files: {
+        type: 'array', items: fileSpec, required: true,
+        description: 'Complete source file array. Allowed paths are DESIGN.md, artifact.manifest.json, src/**, and public/**; never include index.html. Every item must contain exactly path and content; never send a filename-keyed object, nested files field, language field, or commentary.',
+      },
     },
     output: {
       schema: receiptSchema,
@@ -286,15 +301,18 @@ export function registerGenuiTools(
       presentationMeta: (_args, value) => presentation(value),
     },
     async execute(args, exec) {
+      const agent = requireAgent(exec.agent)
       const version = await registry.create({
-        id: args.artifact_id,
+        id: taskArtifactId(agent, args.artifact_id),
         title: args.title,
         summary: args.summary,
         requirements: args.requirements,
         capabilities: capabilitiesFromInput(args.capabilities as CapabilityInput[]),
         files: args.files as SourceFile[],
       })
-      return compile(registry, capabilities, routePrefix, previewOrigin, version, requireAgent(exec.agent))
+      const receipt = await compile(registry, capabilities, routePrefix, previewOrigin, version, agent)
+      if (receipt.status === 'ready') exec.concludeTurn()
+      return receipt
     },
   }))
 
@@ -331,8 +349,9 @@ export function registerGenuiTools(
       presentationMeta: (_args, value) => presentation(value),
     },
     async execute(args, exec) {
+      const agent = requireAgent(exec.agent)
       const version = await registry.update({
-        id: args.artifact_id,
+        id: taskArtifactId(agent, args.artifact_id),
         baseVersionId: args.base_version_id,
         summary: args.summary,
         patches: args.patches as FilePatch[],
@@ -340,7 +359,9 @@ export function registerGenuiTools(
         ...(args.supersede_requirements === undefined ? {} : { supersedeRequirements: args.supersede_requirements }),
         ...(args.capabilities === undefined ? {} : { capabilities: capabilitiesFromInput(args.capabilities as CapabilityInput[]) }),
       })
-      return compile(registry, capabilities, routePrefix, previewOrigin, version, requireAgent(exec.agent))
+      const receipt = await compile(registry, capabilities, routePrefix, previewOrigin, version, agent)
+      if (receipt.status === 'ready') exec.concludeTurn()
+      return receipt
     },
   }))
 
@@ -352,13 +373,17 @@ export function registerGenuiTools(
     },
     output: {
       schema: { type: 'object', additionalProperties: true },
-      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value, null, 2) }],
+      render: (_args, value) => [{
+        type: 'text',
+        text: `These values are authoritative. Read them silently. Never discuss storage, SDKs, missing keys, implementation, or internal reasoning with the user. If the user also requested an app revision, inspect and update it without visible planning.\n${JSON.stringify(value, null, 2)}`,
+      }],
     },
     async execute(args, exec) {
       const agent = requireAgent(exec.agent)
-      const state = await registry.readState(args.artifact_id, String(agent.id))
+      const artifactId = taskArtifactId(agent, args.artifact_id)
+      const state = await registry.readState(artifactId, String(agent.id))
       return {
-        artifact_id: args.artifact_id,
+        artifact_id: artifactId,
         values: state?.values ?? {},
         updated_at: state?.updatedAt ?? null,
         expires_at: state?.expiresAt ?? null,
@@ -378,9 +403,10 @@ export function registerGenuiTools(
       schema: { type: 'object', additionalProperties: true },
       render: (_args, value) => [{ type: 'text', text: JSON.stringify(value, null, 2) }],
     },
-    async execute(args) {
-      const artifact = await registry.get(args.artifact_id)
-      const version = await registry.getVersion(args.artifact_id, args.version_id)
+    async execute(args, exec) {
+      const artifactId = taskArtifactId(requireAgent(exec.agent), args.artifact_id)
+      const artifact = await registry.get(artifactId)
+      const version = await registry.getVersion(artifactId, args.version_id)
       return JSON.parse(JSON.stringify({ artifact, version })) as Record<string, JsonValue>
     },
     isConcurrencySafe: () => true,
@@ -399,14 +425,16 @@ export function registerGenuiTools(
       presentationMeta: (_args, value) => presentation(value),
     },
     async execute(args, exec) {
-      const artifact = await registry.rollback(args.artifact_id, args.version_id)
-      const token = capabilities.issue(args.artifact_id, requireAgent(exec.agent))
+      const agent = requireAgent(exec.agent)
+      const artifactId = taskArtifactId(agent, args.artifact_id)
+      const artifact = await registry.rollback(artifactId, args.version_id)
+      const token = capabilities.issue(artifactId, agent)
       return {
-        artifact_id: args.artifact_id,
+        artifact_id: artifactId,
         title: artifact.title,
         version_id: args.version_id,
         status: 'ready',
-        preview_url: `${routePrefix}/preview/${args.artifact_id}/${args.version_id}?lang=en#token=${token}`,
+        preview_url: `${routePrefix}/preview/${artifactId}/${args.version_id}?lang=en#token=${token}`,
         message: 'Artifact rolled back to the selected ready version.',
         diagnostics: [],
       }

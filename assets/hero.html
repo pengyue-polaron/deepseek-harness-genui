@@ -6,9 +6,15 @@
   <title>DeepSeek Harness GenUI</title>
   <style>
     * { box-sizing: border-box; }
-    html, body { width: 1600px; height: 900px; margin: 0; overflow: hidden; }
+    html { width: 1280px; height: 720px; overflow: hidden; background: #0c0f0e; }
     body {
       position: relative;
+      width: 1600px;
+      height: 900px;
+      margin: 0;
+      overflow: hidden;
+      transform: scale(.8);
+      transform-origin: top left;
       background:
         radial-gradient(circle at 17% 15%, rgba(226, 125, 76, .20), transparent 28%),
         radial-gradient(circle at 91% 82%, rgba(88, 145, 124, .17), transparent 31%),
@@ -74,7 +80,7 @@
   </style>
 </head>
 <body>
-  <div class="brand"><span class="mark">G</span><strong>DeepSeek Harness GenUI</strong><span class="version">0.10.2</span></div>
+  <div class="brand"><span class="mark">G</span><strong>DeepSeek Harness GenUI</strong><span class="version">0.10.12</span></div>
   <section class="copy">
     <p class="eyebrow">Generative UI inside the task</p>
     <h1>Ask for the outcome. Get the <em>interface.</em></h1>
@@ -94,7 +100,7 @@
     </div>
     <div class="canvas">
       <div class="canvasbar"><span>Interactive model</span><small>Inline · Canvas · Full screen</small></div>
-      <img src="../screenshots/v0.9.2-photosynthesis-fullscreen.png" width="1440" height="900" alt="Generated interactive photosynthesis model">
+      <img src="../screenshots/v0.10.9-photosynthesis-canvas.jpg" width="1280" height="720" alt="Generated interactive photosynthesis model beside the conversation">
       <div class="receipt"><b>↗</b>User interaction becomes context for the next Agent turn</div>
     </div>
   </section>
