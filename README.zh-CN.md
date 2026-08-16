@@ -7,31 +7,13 @@
 
 <img src="assets/hero-zh-CN.png" width="1280" alt="当前任务生成界面，保存的选择回到任务，后续行动仍需授权">
 
-DeepSeek Harness GenUI 是 Agent 任务里的动态界面层。文字不好用时，Agent 可以让当前任务临时长出一个聚焦界面：解释难讲清的关系、收集复杂选择，或操作已经连接的工具。
+有些任务用文字来回描述很别扭。DeepSeek Harness GenUI 让 Agent 可以为当前任务生成一个聚焦界面，用来讲清复杂关系，或收集难以用一段话表达的用户选择。
 
-<table>
-  <tr>
-    <td width="33%"><strong>为当前任务而生</strong><br><br>根据当前上下文生成，可放在 Inline、Canvas 或 localhost 里。不用另做、另部署一个 App。</td>
-    <td width="33%"><strong>操作结果会回来</strong><br><br>页面保存的选择、输入、草稿和进度会回到任务状态，供 Agent 后续轮次读取。</td>
-    <td width="33%"><strong>能连接真实工具</strong><br><br>已声明的 Harness/MCP 工具和无需凭据的公开 HTTPS，仅在当前任务授权后调用。</td>
-  </tr>
-</table>
-
-> **界面不是对话结束后的产物，它就是对话的一部分。**
-
-在这段对话里，界面既可以是 Agent 的表达，也可以是用户的结构化回应；获得授权后，它还可以成为真实工具的入口。
-
-## 区别在哪里
-
-| | 生成什么 | 接下来怎样 |
-| --- | --- | --- |
-| App Builder | 一个可保存、可分享的独立应用 | 应用本身成为交付物 |
-| MCP Apps | 工具作者预先准备的界面 | 界面始终跟着对应工具 |
-| DeepSeek Harness GenUI | 当前任务临时缺少的界面 | 保存的状态回到 Agent，已授权的工具可以继续办事 |
+这个插件走 code-first 路线。Coding Agent 编写普通前端代码——React + TypeScript，而不是组件树 DSL 或 IR。界面可以保存用户的选择、输入和修改，供 Agent 在下一轮读取并继续处理任务。
 
 ## 什么时候值得生成界面
 
-它主要解决两类问题：把难讲清的关系画出来，把难描述的选择变成可以直接操作的界面。
+当用户需要看清一个复杂关系，或同时处理几项相互影响的选择时，界面比文字更合适。普通问答、文字改写、摘要和简单列表仍然只返回文字。
 
 <table>
   <tr>
@@ -48,8 +30,6 @@ DeepSeek Harness GenUI 是 Agent 任务里的动态界面层。文字不好用�
   </tr>
 </table>
 
-普通问答、文字改写、摘要和简单列表只返回文字。
-
 ## Inline 与 Canvas
 
 同一个页面既可以放在回答里，也可以在对话右侧打开。
@@ -59,7 +39,7 @@ DeepSeek Harness GenUI 是 Agent 任务里的动态界面层。文字不好用�
 | <img src="screenshots/zh-CN/photosynthesis-inline.png" width="620" alt="在 DeepSeek Harness 对话中内联显示的光合作用交互模型"> | <img src="screenshots/zh-CN/photosynthesis-canvas-current.png" width="620" alt="DeepSeek Harness 会话侧边栏、对话区和右侧光合作用 Canvas 同时可见"> |
 | 适合紧凑的控制项或聚焦选择。 | 提供更大空间，同时保留对话。 |
 
-Inline、Canvas、全屏和本地页面读写同一份任务状态。界面保存的选择和输入，可以在 Agent 后续轮次继续使用。
+Inline、Canvas、全屏和 CLI/localhost 是同一份任务状态的不同入口。在任一入口保存的选择和输入，都可以在 Agent 后续轮次继续使用。
 
 ## CLI 示例
 
@@ -82,16 +62,18 @@ Inline、Canvas、全屏和本地页面读写同一份任务状态。界面保�
 
 ## 工作方式
 
-1. Agent 把解释留在对话里，只在交互有实际价值时创建一个聚焦页面。
-2. Agent 编写 React + TypeScript，并且只声明需要的准确 Harness/MCP/Skill 工具，或无需凭据的公开 HTTPS 范围；插件负责构建和检查界面。
-3. 界面把选择、表单答案、草稿和进度等有意义的结果保存到当前任务。用户下一轮继续时，Agent 可以先读取这些结果，不必让用户重新描述一遍。
-4. 后续修改更新同一个页面，失败的修改不会替换正常版本。
+1. Agent 编写普通的 React + TypeScript，插件负责构建和检查。
+2. 界面把选择、表单答案、草稿和进度等有意义的结果保存到当前任务。用户继续追问时，Agent 可以读取这些结果，不必让用户重新描述。
+3. 页面只声明实际需要的 Harness/MCP/Skill 工具，或无需凭据的公开 HTTPS 接口。首次调用前请求授权，授权只对当前任务有效；未声明的调用会被拒绝。
+4. 后续修改更新同一个页面。失败的更新不会覆盖当前可用版本。
 
-每项声明过的能力在第一次使用前，都会申请当前任务内的授权；未声明的调用直接拒绝。Web 端可以从页面卡片查看或撤回权限。MCP 凭据不会进入生成代码，页面直连 API 仅支持无需凭据的公开 HTTPS。
+Web 端可以从页面卡片查看或撤回权限。MCP 凭据不会进入生成代码。
 
-## Design MD
+## DESIGN.md
 
-视觉方向写在 `DESIGN.md` 中。插件内置 4 套风格：
+打开 **设置 → 插件 → 插件配置**，可以为新应用设置默认设计：让插件自动选择、选用内置风格、导入自定义 `DESIGN.md`，或导出当前选中的设计作为起点。选定后，它会成为之后新建应用的默认设计，不必在每个提示词里重复描述风格。已经生成的应用会保留原来的设计。
+
+`DESIGN.md` 控制的是设计语言，不是页面结构。React + TypeScript 仍然可以按任务需要实现模拟器、图形、地图、时间轴、代码图、动画和不规则布局。
 
 | 风格 | 适用场景 |
 | --- | --- |
@@ -100,11 +82,9 @@ Inline、Canvas、全屏和本地页面读写同一份任务状态。界面保�
 | `field-atlas` | 科学、因果和空间概念解释 |
 | `kinetic-signal` | 变化中的数据、连接工具和用户触发操作 |
 
-打开 **设置 → 插件 → 插件配置**，可以自动选择、指定内置风格、导入 `DESIGN.md`，或导出一份作为起点。这个选择只影响之后新建的页面，不会在页面中增加设计设置。
-
 ## 安装
 
-使用 Node.js `^22.19.0 || >=24`。当前版本在 DeepSeek Harness `0.1.0-rc.6` 上通过测试。
+使用 Node.js `^22.19.0 || >=24`。插件支持 DeepSeek Harness `^0.1.0-rc.6`。
 
 ```sh
 dsh plugin --profile web add dsh-plugin-genui
@@ -116,7 +96,7 @@ Web profile 支持 Inline、Canvas、全屏和 localhost 链接。终端 profile
 
 ## 安全
 
-生成代码在沙箱中运行。工具调用和公开 HTTPS 范围必须提前声明、限定范围并由用户授权。临时链接和已授予权限会在 7 天后失效；任务状态在最后一次更新 7 天后过期。用户可以回到任务里的页面卡片查看或收回权限。
+生成代码在沙箱中运行。页面直连 API 只支持已声明、无需凭据的公开 HTTPS 接口。临时链接和已授予权限会在 7 天后失效；任务状态在最后一次更新 7 天后过期。用户可以回到任务里的页面卡片查看或收回权限。
 
 插件使用 DeepSeek Harness + Cordis、React 18 + TypeScript、esbuild、Playwright 和 Vitest。
 

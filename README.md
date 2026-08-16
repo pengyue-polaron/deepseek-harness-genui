@@ -7,31 +7,13 @@ English | [简体中文](README.zh-CN.md)
 
 <img src="assets/hero-en.png" width="1280" alt="A task becomes an interface, saved choices return to the task, and later actions wait for approval">
 
-DeepSeek Harness GenUI is a runtime interface layer for Agent tasks. When text gets in the way, the Agent can make the current task grow a focused UI—to explain a difficult relationship, collect a complex decision, or operate a connected tool.
+Some tasks are awkward in text. DeepSeek Harness GenUI lets an Agent create a focused interface for the current task: something that explains a difficult relationship or collects a complex user response.
 
-<table>
-  <tr>
-    <td width="33%"><strong>Built for the task</strong><br><br>Generated from the current context and shown Inline, in Canvas, or on localhost. No separate app to design or deploy.</td>
-    <td width="33%"><strong>Choices return to the task</strong><br><br>Saved selections, inputs, drafts, and progress remain available for a later Agent turn to read.</td>
-    <td width="33%"><strong>Connected to real tools</strong><br><br>Calls to declared Harness/MCP tools and declared credential-free public HTTPS endpoints run only after task-scoped approval.</td>
-  </tr>
-</table>
-
-> **The interface is not the output. It is part of the conversation.**
-
-In that conversation, the UI can be Agent output, structured user input, and—after approval—an entry point to real tools.
-
-## What Changes
-
-| | What it creates | What happens next |
-| --- | --- | --- |
-| App builder | A standalone app to keep or share | The app becomes the product |
-| MCP Apps | A prepared UI shipped by a tool author | The UI stays attached to that tool |
-| DeepSeek Harness GenUI | The interface missing from the current task | Saved state returns to the Agent, and approved tools can continue the work |
+The plugin is code-first. The Coding Agent writes ordinary React + TypeScript, not a component-tree DSL or IR. The interface can save what the user selected, entered, or changed so the next Agent turn can read it and continue the task.
 
 ## When an Interface Helps
 
-It does two jobs: make difficult relationships visible, and turn awkward text-based choices into direct manipulation.
+Use an interface when the user needs to see a difficult relationship or make several connected choices. Plain questions, rewriting, summaries, and simple lists stay in prose.
 
 <table>
   <tr>
@@ -48,8 +30,6 @@ It does two jobs: make difficult relationships visible, and turn awkward text-ba
   </tr>
 </table>
 
-Plain questions, rewriting, summaries, and simple lists stay in prose.
-
 ## Inline & Canvas
 
 The same app can sit inside the answer or open beside the conversation.
@@ -59,7 +39,7 @@ The same app can sit inside the answer or open beside the conversation.
 | <img src="screenshots/en/code-path-inline.png" width="620" alt="An interactive code path shown inline in a DeepSeek Harness conversation"> | <img src="screenshots/en/code-path-canvas.png" width="620" alt="The DeepSeek Harness sidebar, conversation, and code-path explorer visible together in the right-side Canvas"> |
 | A compact control or focused choice. | More room without covering the conversation. |
 
-Inline, Canvas, full screen, and localhost read and write the same task state. Selections and inputs saved by the interface remain available to later Agent turns.
+Inline, Canvas, fullscreen, and CLI/localhost are different surfaces over the same task state. Selections and inputs saved in one surface remain available to later Agent turns.
 
 ## CLI Example
 
@@ -82,16 +62,18 @@ The terminal profile returns a localhost app. A follow-up can refer to the path 
 
 ## How It Works
 
-1. The Agent keeps the explanation in the conversation and creates one focused interface when interaction adds value.
-2. It writes React + TypeScript and declares only the exact connected Harness/MCP/Skill tools or credential-free public HTTPS prefixes it needs; the plugin then builds and checks the interface.
-3. The interface saves semantic values—selections, form answers, drafts, and progress—to the task. When the user follows up, the Agent can read those values instead of asking them to repeat the result.
-4. Later edits update the same app without replacing a working version with a failed one.
+1. The Agent writes ordinary React + TypeScript and the plugin builds and checks it.
+2. The interface saves semantic values—selections, form answers, drafts, and progress—to the current task. A follow-up can read those values instead of asking the user to repeat them.
+3. The app declares only the Harness/MCP/Skill tools or credential-free public HTTPS routes it needs. Before the first call, Harness asks for approval that applies only to the current task; undeclared calls are blocked.
+4. Later edits update the same app. A failed update never replaces the current working version.
 
-Before the first use of each declared capability, Harness asks for task-scoped approval; undeclared calls are blocked. In Web, access can be reviewed or revoked from the app card. MCP credentials never enter generated code, while direct API requests are limited to credential-free public HTTPS.
+In Web, access can be reviewed or revoked from the app card. MCP credentials never enter generated code.
 
-## Design MD
+## DESIGN.md
 
-Visual direction lives in `DESIGN.md`. Four profiles are included:
+Open **Settings → Plugins → Plugin configuration** to set the default design for new apps. Choose automatic selection or a built-in profile, import a custom `DESIGN.md`, or export the selected one as a starting point. Once selected, it becomes the default for apps created later, so the style does not need to be repeated in every prompt. Existing apps keep their original design.
+
+`DESIGN.md` controls the design language, not the page structure. React + TypeScript remains free to implement simulations, graphics, maps, timelines, code graphs, animation, and irregular layouts.
 
 | Profile | Best fit |
 | --- | --- |
@@ -100,11 +82,9 @@ Visual direction lives in `DESIGN.md`. Four profiles are included:
 | `field-atlas` | Scientific, causal, and spatial explanations |
 | `kinetic-signal` | Changing data, connected tools, and user-triggered actions |
 
-Open **Settings → Plugins → Plugin configuration** to use automatic selection, choose a profile, import a `DESIGN.md`, or export one as a starting point. The choice applies to new apps without adding design controls to them.
-
 ## Install
 
-Use Node.js `^22.19.0 || >=24`. This release is tested with DeepSeek Harness `0.1.0-rc.6`.
+Use Node.js `^22.19.0 || >=24`. The plugin supports DeepSeek Harness `^0.1.0-rc.6`.
 
 ```sh
 dsh plugin --profile web add dsh-plugin-genui
@@ -112,11 +92,11 @@ dsh plugin --profile web exec playwright install chromium
 dsh --profile web
 ```
 
-The Web profile supports Inline, Canvas, full screen, and localhost links. For a terminal profile, replace `web` with `tui`; TUI returns localhost links and does not embed Canvas. Connect MCP servers to the same profile as usual.
+The Web profile supports Inline, Canvas, fullscreen, and localhost links. For a terminal profile, replace `web` with `tui`; TUI returns localhost links and does not embed Canvas. Connect MCP servers to the same profile as usual.
 
 ## Safety
 
-Generated code runs in a sandbox. Tool calls and public HTTPS routes must be declared, scoped, and approved. Temporary links and grants expire after 7 days; saved task state expires 7 days after its last update. Return to the app card in the task to review or remove access.
+Generated code runs in a sandbox. Direct API requests are limited to declared, credential-free public HTTPS routes. Temporary links and grants expire after 7 days; saved task state expires 7 days after its last update. Return to the app card in the task to review or remove access.
 
 The plugin uses DeepSeek Harness + Cordis, React 18 + TypeScript, esbuild, Playwright, and Vitest.
 
@@ -131,4 +111,4 @@ pnpm test
 pnpm run package:plugin
 ```
 
-[Acceptance scenarios](examples/real-user-scenarios.md) · [Screenshot guide](docs/CAPTURE_GUIDE.zh-CN.md) · [Contributing](CONTRIBUTING.md) · MIT
+[Acceptance scenarios](examples/real-user-scenarios.md) · [Screenshot guide (Chinese)](docs/CAPTURE_GUIDE.zh-CN.md) · [Contributing](CONTRIBUTING.md) · MIT
