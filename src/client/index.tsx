@@ -139,6 +139,18 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
     const receive = (event: MessageEvent<unknown>) => {
       if (event.source !== frameRef.current?.contentWindow || typeof event.data !== 'object' || event.data === null) return
       const value = event.data as Record<string, unknown>
+      if (value.source === 'dsh-genui' && value.type === 'state-changed'
+        && value.artifactId === meta.artifactId && value.versionId === meta.versionId) announce(t('feedback.saved'))
+    }
+    window.addEventListener('message', receive)
+    return () => window.removeEventListener('message', receive)
+  }, [meta?.artifactId, meta?.versionId])
+
+  useEffect(() => {
+    if (meta === undefined) return
+    const receive = (event: MessageEvent<unknown>) => {
+      if (event.source !== frameRef.current?.contentWindow || typeof event.data !== 'object' || event.data === null) return
+      const value = event.data as Record<string, unknown>
       if (value.source !== 'dsh-genui' || value.type !== 'permission-request'
         || value.artifactId !== meta.artifactId || value.versionId !== meta.versionId || typeof value.requestId !== 'string'
         || typeof value.permission !== 'object' || value.permission === null) return
@@ -420,6 +432,11 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
                     <div>
                       <strong>{item.label}</strong>
                       <span>{item.reason}</span>
+                      <div className="dsh-genui-access-facts">
+                        <span>{item.access === 'write' ? t('permission.write') : t('permission.read')}</span>
+                        {item.destination === undefined ? null : <span>{t('permission.connect')} {item.destination}</span>}
+                        {item.methods?.length ? <span>{t('permission.methods')} {item.methods.join(' / ')}</span> : null}
+                      </div>
                     </div>
                     {item.granted ? (
                       <button type="button" className="dsh-genui-button" disabled={accessPending !== undefined} onClick={() => { void removeAccess(item.id) }}>

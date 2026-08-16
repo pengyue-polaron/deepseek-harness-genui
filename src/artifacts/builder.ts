@@ -71,10 +71,12 @@ const request = (action, body) => {
   const key = action + ':' + JSON.stringify(body)
   const current = inFlightRequests.get(key)
   if (current) return current
-  const pending = sendRequest(action, body, true).finally(() => {
-    setTimeout(() => inFlightRequests.delete(key), 250)
-  })
+  const pending = sendRequest(action, body, true)
   inFlightRequests.set(key, pending)
+  void pending.then(
+    () => { setTimeout(() => inFlightRequests.delete(key), 250) },
+    () => { inFlightRequests.delete(key) },
+  )
   return pending
 }
 
@@ -106,7 +108,7 @@ export const reportResult = async (value) => {
 export function watchTool(name, args, listener, options = {}) {
   let stopped = false
   let timer
-  const intervalMs = Math.max(1000, Math.min(60000, options.intervalMs || 5000))
+  const intervalMs = Math.max(5000, Math.min(60000, options.intervalMs || 5000))
   const refresh = async () => {
     try {
       const value = await callTool(name, args)

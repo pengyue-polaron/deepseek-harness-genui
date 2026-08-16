@@ -182,6 +182,70 @@ createRoot(document.getElementById('root')!).render(<App />)`,
     expect((await registry.get(created.artifact_id as string)).currentVersionId).toBe(repaired.version_id)
   }, 60_000)
 
+  it('preserves a saved choice through two task updates', async () => {
+    const source = (extra: string) => `import React from 'react'
+import { createRoot } from 'react-dom/client'
+import { useArtifactState } from '@dsh-genui/sdk'
+function App() {
+  const [plan, setPlan, status] = useArtifactState('weekendPlan', { riversideOptional: false, leaveBy: '18:00' })
+  if (!status.ready) return <main>Opening your plan...</main>
+  return <main style={{padding: 24, maxWidth: 680}}><h1>Weekend plan</h1><p>Riverside walk: {plan.riversideOptional ? 'optional' : 'planned'}</p><p>Leave by {plan.leaveBy}</p><p>${extra}</p><button data-genui-primary-action onClick={() => setPlan(value => ({ ...value, riversideOptional: !value.riversideOptional }))}>Change riverside walk</button>{status.error ? <p role="alert">Could not save the change.</p> : null}</main>
+}
+createRoot(document.getElementById('root')!).render(<App />)`
+    const created = await execute('genui_create', {
+      artifact_id: 'weekend-evolution',
+      title: 'Weekend plan',
+      delivery: 'embedded',
+      language: 'en',
+      summary: 'Arrange two stops without doubling back.',
+      requirements: ['Compare the two stops in one adjustable plan'],
+      capabilities: [],
+      files: [{ path: 'src/main.tsx', content: source('Two stops, one route.') }],
+    })
+    expect(created.status).toBe('ready')
+
+    const savedPlan = { riversideOptional: true, leaveBy: '17:30', selectedStops: ['museum', 'market'] }
+    await registry.updateState(created.artifact_id as string, String(agent.id), state => ({ ...state, weekendPlan: savedPlan }))
+    expect(await execute('genui_state_read', { artifact_id: 'weekend-evolution' }))
+      .toMatchObject({ values: { weekendPlan: savedPlan } })
+
+    await execute('genui_inspect', { artifact_id: 'weekend-evolution' })
+    const firstUpdate = await execute('genui_update', {
+      artifact_id: 'weekend-evolution',
+      delivery: 'embedded',
+      language: 'en',
+      base_version_id: created.version_id,
+      summary: 'Keep an indoor fallback for rain.',
+      add_requirements: ['Keep an indoor fallback for rain'],
+      patches: [{ path: 'src/main.tsx', content: source('Rain fallback: museum cafe.') }],
+    })
+    expect(firstUpdate.status).toBe('ready')
+    expect(await execute('genui_state_read', { artifact_id: 'weekend-evolution' }))
+      .toMatchObject({ values: { weekendPlan: savedPlan } })
+
+    await execute('genui_inspect', { artifact_id: 'weekend-evolution' })
+    const secondUpdate = await execute('genui_update', {
+      artifact_id: 'weekend-evolution',
+      delivery: 'embedded',
+      language: 'en',
+      base_version_id: firstUpdate.version_id,
+      summary: 'Finish the plan before dinner.',
+      add_requirements: ['Finish before dinner'],
+      patches: [{ path: 'src/main.tsx', content: source('Dinner starts at 19:00.') }],
+    })
+    expect(secondUpdate.status).toBe('ready')
+
+    const finalState = await execute('genui_state_read', { artifact_id: 'weekend-evolution' })
+    expect(finalState).toMatchObject({ values: { weekendPlan: savedPlan } })
+    const inspected = await execute('genui_inspect', { artifact_id: 'weekend-evolution' })
+    expect((inspected.version as { requirements: Array<{ text: string; status: string }> }).requirements)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({ text: 'Compare the two stops in one adjustable plan', status: 'active' }),
+        expect.objectContaining({ text: 'Keep an indoor fallback for rain', status: 'active' }),
+        expect.objectContaining({ text: 'Finish before dinner', status: 'active' }),
+      ]))
+  }, 60_000)
+
   it('lists, imports, and exports DESIGN.md profiles', async () => {
     const listed = await execute('genui_design_list', {})
     expect(listed.designs).toEqual(expect.arrayContaining([

@@ -86,6 +86,8 @@ export const cardCss = `
 .dsh-genui-access-row > div { display: grid; min-width: 0; flex: 1; gap: 3px; }
 .dsh-genui-access-row strong { color: var(--g-ink); font: 650 12px/1.3 ui-sans-serif,sans-serif; overflow-wrap: anywhere; }
 .dsh-genui-access-row span { color: var(--g-muted); font: 11px/1.4 ui-sans-serif,sans-serif; overflow-wrap: anywhere; }
+.dsh-genui-access-row .dsh-genui-access-facts { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.dsh-genui-access-row .dsh-genui-access-facts span { border: 1px solid var(--g-border); border-radius: 999px; padding: 3px 6px; color: var(--g-ink); font-size: 9px; font-weight: 650; }
 .dsh-genui-access-row .dsh-genui-button { flex: none; }
 .dsh-genui-access-row .dsh-genui-access-state { flex: none; color: var(--g-muted); font-weight: 650; }
 .dsh-genui-access > .dsh-genui-permission-error { margin: 0 0 10px; color: var(--g-danger); font: 11px/1.4 ui-sans-serif,sans-serif; }

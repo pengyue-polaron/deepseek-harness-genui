@@ -14,6 +14,7 @@ import { ArtifactRegistry } from '../src/artifacts/registry.ts'
 import { DesignStore } from '../src/designs/store.ts'
 import { CapabilityStore } from '../src/runtime/capabilities.ts'
 import { createHttpRuntime } from '../src/runtime/server.ts'
+import { ARTIFACT_RUNTIME_VERSION } from '../src/runtime/standalone.ts'
 
 describe('real MCP artifact bridge', () => {
   let ctx: Context
@@ -164,7 +165,7 @@ describe('real MCP artifact bridge', () => {
     expect(zhResponse.status).toBe(200)
     const zhDocument = await zhResponse.text()
     expect(zhDocument).toContain('<html lang="zh">')
-    expect(zhDocument).toContain('app.js?runtime=0.12.1')
+    expect(zhDocument).toContain(`app.js?runtime=${ARTIFACT_RUNTIME_VERSION}`)
     expect(zhDocument).toContain('<meta name="color-scheme" content="light dark">')
     expect(zhDocument).toContain('<meta name="theme-color" content="#faf9f6" media="(prefers-color-scheme: light)">')
     expect(zhDocument).toContain('<meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)">')
