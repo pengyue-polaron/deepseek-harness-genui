@@ -5,7 +5,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.19-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-202124)](LICENSE)
 
-<img src="assets/hero-zh-CN.png" width="1280" alt="当前任务生成界面，保存的选择回到任务，后续行动仍需授权">
+<img src="assets/hero-zh-CN.png" width="1280" alt="DeepSeek Harness 同时展示保存过选择的路线 Inline 和银河尺度 Canvas">
 
 有些任务用文字来回描述很别扭。DeepSeek Harness GenUI 让 Agent 可以为当前任务生成一个聚焦界面，用来讲清复杂关系，或收集难以用一段话表达的用户选择。
 

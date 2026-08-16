@@ -5,7 +5,7 @@ English | [简体中文](README.zh-CN.md)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.19-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-202124)](LICENSE)
 
-<img src="assets/hero-en.png" width="1280" alt="A task becomes an interface, saved choices return to the task, and later actions wait for approval">
+<img src="assets/hero-en.png" width="1280" alt="DeepSeek Harness with an interactive day plan inline and a scientific model open in Canvas">
 
 Some tasks are awkward in text. DeepSeek Harness GenUI lets an Agent create a focused interface for the current task: something that explains a difficult relationship or collects a complex user response.
 

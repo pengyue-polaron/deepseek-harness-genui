@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=1280, initial-scale=1">
-  <meta name="theme-color" content="#071014">
+  <meta name="theme-color" content="#090d11">
   <title>DeepSeek Harness GenUI</title>
   <script>
     const language = new URLSearchParams(location.search).get("lang") === "zh-CN" ? "zh-CN" : "en";
@@ -13,14 +13,12 @@
   <style>
     :root {
       color-scheme: dark;
-      --ink: #071014;
-      --panel: #0d191f;
-      --line: #29414c;
-      --text: #f4f8f7;
-      --muted: #9cb0ba;
+      --ink: #090d11;
+      --text: #f5f7f6;
+      --muted: #9ba7ae;
+      --line: rgba(211, 227, 232, .18);
       --green: #8cf3a8;
-      --cyan: #6ed6f1;
-      --amber: #ffc876;
+      --cyan: #79d9ee;
     }
 
     * { box-sizing: border-box; }
@@ -29,31 +27,42 @@
       position: relative;
       color: var(--text);
       background:
-        linear-gradient(rgba(110, 214, 241, .018) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(110, 214, 241, .018) 1px, transparent 1px),
-        radial-gradient(circle at 94% 3%, rgba(110, 214, 241, .15), transparent 30%),
-        radial-gradient(circle at 0% 96%, rgba(140, 243, 168, .08), transparent 28%),
-        var(--ink);
-      background-size: 48px 48px, 48px 48px, auto, auto, auto;
+        radial-gradient(circle at 91% 6%, rgba(121, 217, 238, .13), transparent 28%),
+        radial-gradient(circle at 5% 94%, rgba(140, 243, 168, .09), transparent 28%),
+        linear-gradient(135deg, #090d11 0%, #0b1116 55%, #091015 100%);
       font-family: "Avenir Next", "PingFang SC", "Hiragino Sans GB", sans-serif;
       -webkit-font-smoothing: antialiased;
     }
-    [data-copy], [data-shot] { display: none; }
+    body::before {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(rgba(121, 217, 238, .025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(121, 217, 238, .025) 1px, transparent 1px);
+      background-size: 52px 52px;
+      mask-image: linear-gradient(90deg, #000, transparent 72%);
+      content: "";
+    }
+    [data-copy], [data-shot] { display: none !important; }
     html[data-language="en"] [data-copy="en"],
     html[data-language="en"] [data-shot="en"],
     html[data-language="zh-CN"] [data-copy="zh-CN"],
-    html[data-language="zh-CN"] [data-shot="zh-CN"] { display: block; }
+    html[data-language="zh-CN"] [data-shot="zh-CN"] { display: block !important; }
+    html[data-language="en"] .mode[data-copy="en"],
+    html[data-language="zh-CN"] .mode[data-copy="zh-CN"] { display: flex !important; }
+
     .brand {
       position: absolute;
-      top: 42px;
-      left: 50px;
+      z-index: 5;
+      top: 39px;
+      left: 48px;
       display: flex;
       align-items: center;
-      gap: 12px;
-      color: #d6e0e4;
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: .07em;
+      gap: 11px;
+      color: #dbe3e5;
+      font-size: 15px;
+      font-weight: 720;
+      letter-spacing: .075em;
       text-transform: uppercase;
     }
     .mark {
@@ -66,187 +75,124 @@
     }
     .copy {
       position: absolute;
-      z-index: 2;
-      top: 145px;
-      left: 50px;
-      width: 354px;
+      z-index: 5;
+      top: 108px;
+      left: 48px;
+      width: 340px;
     }
     h1 {
       margin: 0;
-      font-size: 52px;
+      max-width: 340px;
+      font-size: 42px;
       font-weight: 720;
-      letter-spacing: -.052em;
-      line-height: 1.05;
+      letter-spacing: -.045em;
+      line-height: 1.08;
       text-wrap: balance;
     }
-    html[data-language="zh-CN"] h1 { font-size: 49px; line-height: 1.1; }
+    html[data-language="en"] h1 {
+      font-size: 36px;
+      white-space: nowrap;
+    }
+    html[data-language="zh-CN"] h1 {
+      max-width: 340px;
+      font-size: 42px;
+      letter-spacing: -.035em;
+      line-height: 1.14;
+    }
     h1 em { color: var(--green); font-style: normal; }
     .lede {
-      margin: 24px 0 0;
+      margin: 17px 0 0;
+      max-width: 315px;
       color: var(--muted);
-      font-size: 17px;
-      line-height: 1.55;
-      text-wrap: pretty;
-    }
-    .positioning {
-      margin-top: 25px;
-      padding-left: 15px;
-      border-left: 3px solid var(--green);
-      color: #dce5e8;
       font-size: 16px;
-      line-height: 1.45;
+      line-height: 1.5;
     }
-    .formula {
+
+    .frame {
       position: absolute;
-      left: 50px;
-      bottom: 48px;
-      color: #718690;
-      font-size: 13px;
-      letter-spacing: .04em;
-    }
-    .story {
-      position: absolute;
-      top: 48px;
-      right: 40px;
-      width: 800px;
-      height: 624px;
       overflow: hidden;
-      border: 1px solid #35515d;
-      border-radius: 22px;
-      background:
-        radial-gradient(circle at 18% 30%, rgba(110, 214, 241, .07), transparent 31%),
-        rgba(9, 18, 23, .96);
-      box-shadow: 0 30px 82px rgba(0, 0, 0, .4);
+      margin: 0;
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      background: #111315;
+      box-shadow: 0 28px 74px rgba(0, 0, 0, .48);
     }
-    .app-shot {
-      position: absolute;
-      top: 42px;
-      left: 27px;
-      width: 312px;
-      height: 510px;
-      border: 1px solid #3a515a;
-      border-radius: 15px;
+    .frame img {
+      display: block;
+      width: 100%;
+      height: 100%;
       object-fit: cover;
-      object-position: top center;
-      box-shadow: 0 22px 52px rgba(0, 0, 0, .38);
     }
-    .shot-note {
+    .canvas {
+      z-index: 2;
+      top: 68px;
+      right: 34px;
+      width: 854px;
+      height: 480px;
+    }
+    .inline {
+      z-index: 4;
+      left: 52px;
+      bottom: 18px;
+      width: 790px;
+      height: 377px;
+      border-color: rgba(140, 243, 168, .31);
+    }
+    .mode {
       position: absolute;
-      left: 45px;
-      bottom: 28px;
-      color: #7f939d;
-      font-size: 13px;
-    }
-    .story-copy {
-      position: absolute;
-      top: 39px;
-      right: 32px;
-      width: 395px;
-    }
-    .eyebrow {
-      color: var(--cyan);
-      font-size: 13px;
+      z-index: 6;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 30px;
+      padding: 6px 11px;
+      border: 1px solid rgba(255, 255, 255, .16);
+      border-radius: 999px;
+      background: rgba(8, 12, 15, .88);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
+      backdrop-filter: blur(12px);
+      color: #f1f5f4;
+      font-size: 11px;
       font-weight: 760;
-      letter-spacing: .09em;
+      letter-spacing: .08em;
       text-transform: uppercase;
     }
-    .request {
-      margin: 9px 0 20px;
-      font-size: 24px;
-      font-weight: 650;
-      line-height: 1.3;
-      text-wrap: balance;
-    }
-    html[data-language="zh-CN"] .request { font-size: 25px; }
-    .rail {
-      position: relative;
-      margin-top: 15px;
-    }
-    .rail::before {
-      position: absolute;
-      top: 14px;
-      bottom: 14px;
-      left: 8px;
-      width: 1px;
-      background: linear-gradient(var(--green), var(--cyan) 58%, var(--amber));
-      content: "";
-    }
-    .step {
-      position: relative;
-      min-height: 91px;
-      padding: 0 0 16px 36px;
-    }
-    .step::before {
-      position: absolute;
-      top: 7px;
-      left: 3px;
-      width: 11px;
-      height: 11px;
-      border: 2px solid var(--green);
+    .mode::before {
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
-      background: #0a171c;
+      background: var(--green);
+      box-shadow: 0 0 16px rgba(140, 243, 168, .7);
       content: "";
     }
-    .step:nth-child(2)::before { border-color: var(--cyan); }
-    .step:nth-child(3)::before { border-color: var(--amber); }
-    .step small { display: block; color: #7d929c; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
-    .step strong { display: block; margin-top: 5px; font-size: 19px; line-height: 1.25; }
-    .step p { margin: 5px 0 0; color: #9eb0b8; font-size: 14px; line-height: 1.4; }
-    .next-turn {
-      margin-top: 2px;
-      padding: 15px 17px;
-      border: 1px solid rgba(140, 243, 168, .3);
-      border-radius: 13px;
-      background: rgba(140, 243, 168, .055);
-      color: #dbe6e9;
-      font-size: 15px;
-      line-height: 1.45;
-    }
-    .next-turn span { color: var(--green); font-weight: 720; }
+    .mode-canvas { top: 84px; right: 50px; }
+    .mode-inline { left: 68px; bottom: 331px; }
   </style>
 </head>
 <body>
   <div class="brand"><i class="mark" aria-hidden="true"></i><span translate="no">DeepSeek Harness GenUI</span></div>
 
   <section class="copy" data-copy="en">
-    <h1>The Agent's next language is an <em>interface.</em></h1>
-    <p class="lede">When text gets in the way, the current task grows a UI. You interact, the result returns to the task, and approved tools can carry the work forward.</p>
-    <p class="positioning">Not another app builder.<br>A runtime interface layer for Agent tasks.</p>
+    <h1>You act in the UI.<br>The Agent picks up<br><em>from there.</em></h1>
+    <p class="lede">Code-first, inline in chat or open in Canvas.</p>
   </section>
   <section class="copy" data-copy="zh-CN">
-    <h1>Agent 的下一种语言，<em>是界面。</em></h1>
-    <p class="lede">文字不好用时，让当前任务临时长出一个界面。用户直接操作，结果回到任务，再由 Agent 或已授权的工具继续。</p>
-    <p class="positioning">不是另一个 App Builder。<br>这是 Agent 任务里的动态界面层。</p>
+    <h1>你在界面里操作，<br>Agent 下一轮<br><em>接着做。</em></h1>
+    <p class="lede">Code-first，放在对话里，也能展开到 Canvas。</p>
   </section>
-  <div class="formula">Language · Interface · Action · State · Language</div>
 
-  <section class="story">
-    <img class="app-shot" data-shot="en" src="../screenshots/en/calendar-planner.jpg" width="440" height="720" alt="Calendar interface generated for choosing 3 focus slots">
-    <img class="app-shot" data-shot="zh-CN" src="../screenshots/zh-CN/calendar-planner.jpg" width="440" height="720" alt="已选中 3 个日历时段的界面">
-    <span class="shot-note" data-copy="en">An interface generated for this task</span>
-    <span class="shot-note" data-copy="zh-CN">为当前任务生成的界面</span>
+  <figure class="frame canvas">
+    <img data-shot="en" src="../screenshots/en/science-canvas.jpg" width="1224" height="688" alt="A scientific explanation and interactive model open together in DeepSeek Harness Canvas">
+    <img data-shot="zh-CN" src="../screenshots/zh-CN/galaxy-canvas.jpg" width="1224" height="688" alt="DeepSeek Harness 对话与右侧银河尺度交互模型">
+  </figure>
+  <div class="mode mode-canvas" data-copy="en">Canvas</div>
+  <div class="mode mode-canvas" data-copy="zh-CN">Canvas</div>
 
-    <div class="story-copy" data-copy="en">
-      <span class="eyebrow">One task</span>
-      <h2 class="request">“Find 3 focus slots. Let me choose before creating events.”</h2>
-      <div class="rail">
-        <section class="step"><small>Interface</small><strong>The Agent makes the constraints visible</strong><p>Availability, conflicts, and the 3-slot limit become directly operable.</p></section>
-        <section class="step"><small>Task state</small><strong>Confirmed choices return to the task</strong><p>After the user saves three, a later turn can read them without another list.</p></section>
-        <section class="step"><small>Next action</small><strong>Calendar still waits for approval</strong><p>The Agent can continue from the saved choice without credentials entering the UI.</p></section>
-      </div>
-      <div class="next-turn"><span>Next turn:</span> “Create the 3 I picked.”</div>
-    </div>
-
-    <div class="story-copy" data-copy="zh-CN">
-      <span class="eyebrow">一个任务</span>
-      <h2 class="request">“找出 3 个专注时段，先让我选，再写进日历。”</h2>
-      <div class="rail">
-        <section class="step"><small>界面</small><strong>Agent 把约束摆到面前</strong><p>空闲、冲突和 3 个时段的限制，变成可以直接操作的页面。</p></section>
-        <section class="step"><small>任务状态</small><strong>选中的 3 个时段回到任务</strong><p>Agent 后续轮次读取保存结果，不用让用户再列一遍。</p></section>
-        <section class="step"><small>下一步行动</small><strong>Calendar 仍要先经过授权</strong><p>Agent 可以接着使用保存结果，凭据不会进入生成代码。</p></section>
-      </div>
-      <div class="next-turn"><span>下一轮：</span>“把我刚才选的 3 个建好。”</div>
-    </div>
-  </section>
+  <figure class="frame inline">
+    <img data-shot="en" src="../screenshots/en/route-planner-inline.jpg" width="1174" height="560" alt="An edited day plan and the next user turn shown inline in DeepSeek Harness">
+    <img data-shot="zh-CN" src="../screenshots/zh-CN/route-planner-inline.jpg" width="1174" height="560" alt="DeepSeek Harness 对话中保存过选择的路线规划界面与下一轮提问">
+  </figure>
+  <div class="mode mode-inline" data-copy="en">Inline</div>
+  <div class="mode mode-inline" data-copy="zh-CN">Inline</div>
 </body>
 </html>
