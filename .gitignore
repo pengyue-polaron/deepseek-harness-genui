@@ -2,4 +2,9 @@ node_modules/
 lib/
 dist/
 *.tgz
+*.tsbuildinfo
+.DS_Store
+coverage/
+playwright-report/
+test-results/
 .dsh-genui-data/

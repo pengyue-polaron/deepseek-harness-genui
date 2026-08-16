@@ -26,7 +26,7 @@
   </tr>
   <tr>
     <td><strong>追踪代码路径</strong><br><br>从 CLI 要求 Agent 根据真实项目源码解释一条执行链路。<br><br>返回的本地页面列出文件、函数、分支，以及用户当前选中的路径。</td>
-    <td><img src="screenshots/zh-CN/code-path-explorer.png" width="280" alt="通过 CLI 请求生成的中文代码路径解释器"></td>
+    <td><img src="screenshots/zh-CN/code-path-explorer.jpg" width="280" alt="通过 CLI 请求生成的中文代码路径解释器"></td>
   </tr>
 </table>
 
@@ -36,7 +36,7 @@
 
 | Inline | Canvas |
 | --- | --- |
-| <img src="screenshots/zh-CN/photosynthesis-inline.png" width="620" alt="在 DeepSeek Harness 对话中内联显示的光合作用交互模型"> | <img src="screenshots/zh-CN/photosynthesis-canvas-current.png" width="620" alt="DeepSeek Harness 会话侧边栏、对话区和右侧光合作用 Canvas 同时可见"> |
+| <img src="screenshots/zh-CN/photosynthesis-inline.jpg" width="620" alt="在 DeepSeek Harness 对话中内联显示的光合作用交互模型"> | <img src="screenshots/zh-CN/photosynthesis-canvas-current.jpg" width="620" alt="DeepSeek Harness 会话侧边栏、对话区和右侧光合作用 Canvas 同时可见"> |
 | 适合紧凑的控制项或聚焦选择。 | 提供更大空间，同时保留对话。 |
 
 Inline、Canvas、全屏和 CLI/localhost 是同一份任务状态的不同入口。在任一入口保存的选择和输入，都可以在 Agent 后续轮次继续使用。
@@ -111,4 +111,4 @@ pnpm test
 pnpm run package:plugin
 ```
 
-[验收场景](examples/real-user-scenarios.md) · [截图指南](docs/CAPTURE_GUIDE.zh-CN.md) · [参与贡献](CONTRIBUTING.md) · MIT
+[验收场景](examples/real-user-scenarios.md) · [参与贡献](CONTRIBUTING.md) · MIT

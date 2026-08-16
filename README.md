@@ -18,15 +18,15 @@ Use an interface when the user needs to see a difficult relationship or make sev
 <table>
   <tr>
     <td><strong>Pick calendar slots</strong><br><br>Turn candidate availability into a short list of useful 90-minute writing blocks.<br><br>The interface saves the three choices to the task. A later calendar action remains separate and asks for approval.</td>
-    <td><img src="screenshots/en/calendar-planner.png" width="280" alt="English interface for choosing three writing slots"></td>
+    <td><img src="screenshots/en/calendar-planner.jpg" width="280" alt="English interface for choosing three writing slots"></td>
   </tr>
   <tr>
     <td><strong>Explore photosynthesis</strong><br><br>Move light, carbon dioxide, temperature, and stomatal controls to find the limiting step.<br><br>The diagram changes with the controls, making each variable's effect easier to explore than to describe.</td>
-    <td><img src="screenshots/en/photosynthesis-explorer.png" width="280" alt="English interactive photosynthesis model with four causal controls"></td>
+    <td><img src="screenshots/en/photosynthesis-explorer.jpg" width="280" alt="English interactive photosynthesis model with four causal controls"></td>
   </tr>
   <tr>
     <td><strong>Trace a code path</strong><br><br>Ask from the CLI for a source-grounded explanation of a real project flow.<br><br>The result is a local explorer with files, functions, branches, and the path selected by the user.</td>
-    <td><img src="screenshots/en/code-path-explorer.png" width="280" alt="English source-grounded code path explorer returned from a CLI request"></td>
+    <td><img src="screenshots/en/code-path-explorer.jpg" width="280" alt="English source-grounded code path explorer returned from a CLI request"></td>
   </tr>
 </table>
 
@@ -36,7 +36,7 @@ The same app can sit inside the answer or open beside the conversation.
 
 | Inline | Canvas |
 | --- | --- |
-| <img src="screenshots/en/code-path-inline.png" width="620" alt="An interactive code path shown inline in a DeepSeek Harness conversation"> | <img src="screenshots/en/code-path-canvas.png" width="620" alt="The DeepSeek Harness sidebar, conversation, and code-path explorer visible together in the right-side Canvas"> |
+| <img src="screenshots/en/code-path-inline.jpg" width="620" alt="An interactive code path shown inline in a DeepSeek Harness conversation"> | <img src="screenshots/en/code-path-canvas.jpg" width="620" alt="The DeepSeek Harness sidebar, conversation, and code-path explorer visible together in the right-side Canvas"> |
 | A compact control or focused choice. | More room without covering the conversation. |
 
 Inline, Canvas, fullscreen, and CLI/localhost are different surfaces over the same task state. Selections and inputs saved in one surface remain available to later Agent turns.
@@ -111,4 +111,4 @@ pnpm test
 pnpm run package:plugin
 ```
 
-[Acceptance scenarios](examples/real-user-scenarios.md) · [Screenshot guide (Chinese)](docs/CAPTURE_GUIDE.zh-CN.md) · [Contributing](CONTRIBUTING.md) · MIT
+[Acceptance scenarios](examples/real-user-scenarios.md) · [Contributing](CONTRIBUTING.md) · MIT
