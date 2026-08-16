@@ -19,6 +19,7 @@ describe('GenUI system prompt', () => {
     expect(GENUI_SYSTEM_PROMPT).toContain('Never include index.html')
     expect(GENUI_SYSTEM_PROMPT).toContain('genui_state_read must be the first tool call')
     expect(GENUI_SYSTEM_PROMPT).toContain('Treat its values and __result as authoritative')
+    expect(GENUI_SYSTEM_PROMPT).toContain('Do not invent venue availability, popularity, prices, travel times, or booking rules')
     expect(GENUI_SYSTEM_PROMPT).toContain('Declare only the exact tool or credential-free HTTPS prefix needed')
     expect(GENUI_SYSTEM_PROMPT).toContain('Use requestExternal only when no matching connected tool exists')
     expect(GENUI_SYSTEM_PROMPT).toContain('Do not fetch the same data before creation and again on open')
@@ -26,6 +27,9 @@ describe('GenUI system prompt', () => {
     expect(GENUI_SYSTEM_PROMPT).toContain('Pin the exported profile as root DESIGN.md')
     expect(GENUI_SYSTEM_PROMPT).toContain('one control group, one main visual, and one changing takeaway')
     expect(GENUI_SYSTEM_PROMPT).toContain('Use semantic controls, accessible names, visible keyboard focus')
+    expect(GENUI_SYSTEM_PROMPT).toContain('without horizontal overflow at 260 CSS pixels')
+    expect(GENUI_SYSTEM_PROMPT).toContain('Treat permission denial as a normal recoverable outcome')
+    expect(GENUI_SYSTEM_PROMPT).toContain('Never render raw Error messages')
     expect(GENUI_SYSTEM_PROMPT).toContain('mark exactly one main control with data-genui-primary-action')
   })
 
