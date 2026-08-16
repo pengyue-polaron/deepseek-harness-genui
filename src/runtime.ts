@@ -8,6 +8,7 @@ import type {} from '@deepseek-ai/dsh-tools'
 import type { Config } from './config.ts'
 import { resolveConfig } from './config.ts'
 import { ArtifactRegistry } from './artifacts/registry.ts'
+import { BrowserVerifier } from './artifacts/browser-verifier.ts'
 import { DesignStore } from './designs/store.ts'
 import { CapabilityStore } from './runtime/capabilities.ts'
 import { registerDiscoveryBudget } from './runtime/discovery-budget.ts'
@@ -25,6 +26,7 @@ export async function apply(ctx: Context, config: Config): Promise<() => void> {
     resolve(registry.root, '.capability-key'),
     sessionId => ctx.agents.get(SessionId(sessionId)),
   )
+  const browserVerifier = new BrowserVerifier()
 
   const http = createHttpRuntime(ctx, registry, designs, capabilities, resolved.routePrefix)
   ctx.webServer.register({ kind: 'prefix', path: resolved.routePrefix, handler: http.handler })
@@ -33,8 +35,11 @@ export async function apply(ctx: Context, config: Config): Promise<() => void> {
   ctx.systemPrompt.section({ name: 'tool:genui', order: 118, text: () => genuiSystemPrompt(designs.defaultId()) })
   registerDiscoveryBudget(ctx)
   const previewOrigin = `http://127.0.0.1:${ctx.webServer.port}`
-  registerGenuiTools(ctx, registry, designs, capabilities, resolved.routePrefix, previewOrigin)
+  registerGenuiTools(ctx, registry, designs, capabilities, resolved.routePrefix, previewOrigin, url => browserVerifier.verify(url))
   ctx.logger.info(`GenUI artifacts: ${registry.root}`)
 
-  return () => { capabilities.clear() }
+  return () => {
+    capabilities.clear()
+    void browserVerifier.close().catch(() => undefined)
+  }
 }

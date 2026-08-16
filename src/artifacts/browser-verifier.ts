@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import type { Browser, BrowserContext } from 'playwright'
 import type { BuildDiagnostic } from './types.ts'
 
 export interface BrowserVerificationResult {
@@ -7,13 +8,13 @@ export interface BrowserVerificationResult {
   notes: string[]
 }
 
-export async function verifyArtifactInBrowser(url: string): Promise<BrowserVerificationResult> {
-  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
+async function verifyWithBrowser(browser: Browser, url: string): Promise<BrowserVerificationResult> {
+  let context: BrowserContext | undefined
   const diagnostics: BuildDiagnostic[] = []
   const notes: string[] = []
   try {
-    browser = await chromium.launch({ headless: true })
-    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+    context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
+    const page = await context.newPage()
     await page.goto(new URL('/genui/not-found', url).toString())
     page.on('console', (message) => {
       if (message.type() === 'error') diagnostics.push({ severity: 'error', text: `browser console: ${message.text()}` })
@@ -177,11 +178,62 @@ export async function verifyArtifactInBrowser(url: string): Promise<BrowserVerif
   } catch (error) {
     diagnostics.push({ severity: 'error', text: `browser verification failed: ${error instanceof Error ? error.message : String(error)}` })
   } finally {
-    await browser?.close()
+    await context?.close()
   }
   return {
     ok: diagnostics.every(item => item.severity !== 'error'),
     diagnostics,
     notes,
+  }
+}
+
+export class BrowserVerifier {
+  private browser: Promise<Browser> | undefined
+
+  constructor(private readonly launchBrowser: () => Promise<Browser> = () => chromium.launch({ headless: true })) {}
+
+  async verify(url: string): Promise<BrowserVerificationResult> {
+    try {
+      const browser = await this.getBrowser()
+      const result = await verifyWithBrowser(browser, url)
+      if (!browser.isConnected()) this.browser = undefined
+      return result
+    } catch (error) {
+      this.browser = undefined
+      return {
+        ok: false,
+        diagnostics: [{ severity: 'error', text: `browser verification failed: ${error instanceof Error ? error.message : String(error)}` }],
+        notes: [],
+      }
+    }
+  }
+
+  async close(): Promise<void> {
+    const pending = this.browser
+    this.browser = undefined
+    if (pending === undefined) return
+    await (await pending).close()
+  }
+
+  private async getBrowser(): Promise<Browser> {
+    const current = this.browser ??= this.launchBrowser()
+    try {
+      const browser = await current
+      if (browser.isConnected()) return browser
+      if (this.browser === current) this.browser = this.launchBrowser()
+      return await this.browser
+    } catch (error) {
+      if (this.browser === current) this.browser = undefined
+      throw error
+    }
+  }
+}
+
+export async function verifyArtifactInBrowser(url: string): Promise<BrowserVerificationResult> {
+  const verifier = new BrowserVerifier()
+  try {
+    return await verifier.verify(url)
+  } finally {
+    await verifier.close()
   }
 }

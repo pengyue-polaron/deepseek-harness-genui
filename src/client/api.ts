@@ -76,6 +76,10 @@ export function grantPermission(meta: GenuiMeta, versionId: string, capabilityId
   return post(meta, 'permission/grant', { version_id: versionId, capability_id: capabilityId })
 }
 
+export function grantAllPermissions(meta: GenuiMeta, versionId: string): Promise<{ granted: boolean }> {
+  return post(meta, 'permission/grant-all', { version_id: versionId })
+}
+
 export function listPermissions(meta: GenuiMeta, versionId: string): Promise<{ permissions: PermissionStatus[] }> {
   return post(meta, 'permission/list', { version_id: versionId })
 }

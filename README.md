@@ -64,7 +64,7 @@ The terminal profile returns a localhost app. A follow-up can refer to the path 
 
 1. The Agent writes ordinary React + TypeScript and the plugin builds and checks it.
 2. The interface saves semantic values—selections, form answers, drafts, and progress—to the current task. A follow-up can read those values instead of asking the user to repeat them.
-3. The app declares only the Harness/MCP/Skill tools or credential-free public HTTPS routes it needs. Before the first call, Harness asks for approval that applies only to the current task; undeclared calls are blocked.
+3. The app declares only the Harness/MCP/Skill tools or credential-free public HTTPS routes it needs. Before opening a connected app, Harness presents the complete access list for one task-scoped decision; changed capabilities are shown again, and undeclared calls are blocked.
 4. Later edits update the same app. A failed update never replaces the current working version.
 
 In Web, access can be reviewed or revoked from the app card. MCP credentials never enter generated code.

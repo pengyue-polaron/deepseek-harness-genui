@@ -256,6 +256,22 @@ export function createHttpRuntime(
             json(res, 200, { granted: true, permission: permissionView(requested) }, req)
             return
           }
+          if (action === 'permission/grant-all') {
+            if (capability.mode === 'verification') return json(res, 403, { error: 'permissions cannot be granted during verification' }, req)
+            if (typeof input.version_id !== 'string') throw new Error('version_id is required')
+            const version = await registry.getVersion(artifactId, input.version_id)
+            const grantedAt = new Date()
+            const expiresAt = new Date(grantedAt.valueOf() + TASK_TTL_MS).toISOString()
+            await registry.grantCapabilities(artifactId, capability.sessionId, Object.fromEntries(
+              version.capabilities.map(item => [item.id, {
+                fingerprint: capabilityFingerprint(item),
+                grantedAt: grantedAt.toISOString(),
+                expiresAt,
+              }]),
+            ))
+            json(res, 200, { granted: true, permissions: version.capabilities.map(permissionView) }, req)
+            return
+          }
           if (action === 'permission/list') {
             if (typeof input.version_id !== 'string') throw new Error('version_id is required')
             const version = await registry.getVersion(artifactId, input.version_id)

@@ -11,7 +11,7 @@ import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools'
 import { chromium } from 'playwright'
 import { ArtifactRegistry } from '../src/artifacts/registry.ts'
 import { buildArtifact } from '../src/artifacts/builder.ts'
-import { verifyArtifactInBrowser } from '../src/artifacts/browser-verifier.ts'
+import { BrowserVerifier, verifyArtifactInBrowser } from '../src/artifacts/browser-verifier.ts'
 import { DesignStore } from '../src/designs/store.ts'
 import { CapabilityStore } from '../src/runtime/capabilities.ts'
 import { createHttpRuntime } from '../src/runtime/server.ts'
@@ -152,6 +152,21 @@ createRoot(document.getElementById('root')!).render(<App />)`,
       'reduced-motion desktop mounted at 1280px without horizontal overflow',
       'mobile mounted at 390px without horizontal overflow',
     ])
+  }, 60_000)
+
+  it('reuses one Chromium process while isolating consecutive verifications', async () => {
+    let launches = 0
+    const verifier = new BrowserVerifier(async () => {
+      launches += 1
+      return chromium.launch({ headless: true })
+    })
+    try {
+      expect((await verifier.verify(previewUrl)).ok).toBe(true)
+      expect((await verifier.verify(previewUrl)).ok).toBe(true)
+      expect(launches).toBe(1)
+    } finally {
+      await verifier.close()
+    }
   }, 60_000)
 
   it('runs the current app at a stable local URL and persists its state', async () => {
@@ -319,6 +334,10 @@ createRoot(document.getElementById('root')!).render(<App />)`,
       const page = await browser.newPage()
       await page.goto(`${origin}/genui/app/${version.artifactId}?lang=en#token=${token}`)
       const app = page.frameLocator('#app')
+      await page.getByRole('heading', { name: 'This app needs the following access' }).waitFor({ state: 'visible' })
+      await page.getByText('Read the explanation', { exact: true }).waitFor({ state: 'visible' })
+      await page.getByText('Check the public service', { exact: true }).waitFor({ state: 'visible' })
+      await page.getByRole('button', { name: 'Not now' }).click()
       await app.getByRole('button', { name: 'Load explanation' }).click()
       await page.getByRole('heading', { name: 'Read the explanation' }).waitFor({ state: 'visible' })
       await page.getByText('Load the selected explanation from the connected source.').waitFor({ state: 'visible' })
@@ -410,6 +429,7 @@ createRoot(document.getElementById('root')!).render(<App />)`,
       })
       await page.goto(`${origin}/genui/app/${version.artifactId}?lang=en#token=${token}`)
       const app = page.frameLocator('#app')
+      await page.getByRole('button', { name: 'Not now' }).click()
       await app.getByRole('button', { name: 'Make garden optional' }).click()
       await page.getByText('Saved', { exact: true }).waitFor({ state: 'visible' })
       await app.getByText('Garden optional', { exact: true }).waitFor({ state: 'visible' })
@@ -446,7 +466,7 @@ createRoot(document.getElementById('root')!).render(<App />)`,
     }
   }, 45_000)
 
-  it('queues simultaneous permission requests in the standalone app', async () => {
+  it('grants every declared permission once before opening the standalone app', async () => {
     echoCalls = 0
     secondSourceCalls = 0
     const version = await registry.create({
@@ -488,35 +508,22 @@ createRoot(document.getElementById('root')!).render(<App />)`,
     const browser = await chromium.launch({ headless: true })
     try {
       const page = await browser.newPage()
-      let markFirstGrantStarted: () => void = () => {}
-      const firstGrantStarted = new Promise<void>(resolve => { markFirstGrantStarted = resolve })
-      let releaseFirstGrant: () => void = () => {}
-      const firstGrantReleased = new Promise<void>(resolve => { releaseFirstGrant = resolve })
-      let delayedFirstGrant = false
-      await page.route('**/permission/grant', async route => {
-        if (!delayedFirstGrant) {
-          delayedFirstGrant = true
-          markFirstGrantStarted()
-          await firstGrantReleased
-        }
-        await route.continue()
+      let grantAllCalls = 0
+      page.on('request', request => {
+        if (new URL(request.url()).pathname.endsWith('/permission/grant-all')) grantAllCalls += 1
       })
       await page.goto(`${origin}/genui/app/${version.artifactId}?lang=en#token=${token}`)
       const app = page.frameLocator('#app')
+      await page.getByRole('heading', { name: 'This app needs the following access' }).waitFor({ state: 'visible' })
+      await page.getByText('Read travel times', { exact: true }).waitFor({ state: 'visible' })
+      await page.getByText('Read opening times', { exact: true }).waitFor({ state: 'visible' })
+      await page.getByRole('button', { name: 'Allow all and open' }).click()
+      expect(grantAllCalls).toBe(1)
       await app.getByRole('button', { name: 'Check both' }).click()
-      const heading = page.locator('#permission-title')
-      await heading.waitFor({ state: 'visible' })
-      const firstTitle = await heading.textContent()
-      await page.getByRole('button', { name: 'Allow for this task' }).click()
-      await firstGrantStarted
-      await page.keyboard.press('Escape')
-      await expect.poll(() => heading.textContent()).toBe(firstTitle)
-      releaseFirstGrant()
-      await expect.poll(() => heading.textContent()).not.toBe(firstTitle)
-      await page.getByRole('button', { name: 'Allow for this task' }).click()
       await app.getByText('Both sources connected').waitFor({ state: 'visible' })
       expect(echoCalls).toBe(1)
       expect(secondSourceCalls).toBe(1)
+      expect(await page.locator('#permission').evaluate(dialog => (dialog as HTMLDialogElement).open)).toBe(false)
     } finally {
       await browser.close()
     }
@@ -556,8 +563,8 @@ createRoot(document.getElementById('root')!).render(<App />)`,
     try {
       const page = await browser.newPage()
       await page.goto(`${origin}/genui/app/${version.artifactId}?lang=en#token=${token}`)
-      await page.getByRole('heading', { name: 'Read live conditions' }).waitFor({ state: 'visible' })
-      await page.getByRole('button', { name: 'Allow for this task' }).click()
+      await page.getByText('Read live conditions', { exact: true }).waitFor({ state: 'visible' })
+      await page.getByRole('button', { name: 'Allow all and open' }).click()
       await expect.poll(() => pollCalls).toBe(1)
       await page.waitForTimeout(2_400)
       expect(pollCalls).toBe(1)

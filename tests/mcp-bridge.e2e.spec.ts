@@ -160,6 +160,33 @@ describe('real MCP artifact bridge', () => {
     expect(grant).toMatchObject({ status: 200, value: { granted: true } })
   })
 
+  it('grants every capability declared by one version in a single confirmation', async () => {
+    for (const capabilityId of ['echo-service', 'sum-service', 'public-weather']) {
+      await post('permission/revoke', { capability_id: capabilityId }, token)
+    }
+    const granted = await post('permission/grant-all', {}, token)
+    expect(granted).toMatchObject({
+      status: 200,
+      value: {
+        granted: true,
+        permissions: expect.arrayContaining([
+          expect.objectContaining({ id: 'echo-service' }),
+          expect.objectContaining({ id: 'sum-service' }),
+          expect.objectContaining({ id: 'public-weather' }),
+        ]),
+      },
+    })
+    const listed = await post('permission/list', {}, token)
+    expect(listed).toMatchObject({
+      status: 200,
+      value: { permissions: expect.arrayContaining([
+        expect.objectContaining({ id: 'echo-service', granted: true }),
+        expect.objectContaining({ id: 'sum-service', granted: true }),
+        expect.objectContaining({ id: 'public-weather', granted: true }),
+      ]) },
+    })
+  })
+
   it('serves preview document language explicitly', async () => {
     const zhResponse = await fetch(`${origin}/genui/preview/mcp-artifact/${versionId}?lang=zh#token=${token}`)
     expect(zhResponse.status).toBe(200)

@@ -99,7 +99,18 @@ export const cardCss = `
 .dsh-genui-receipt strong { min-width: 0; overflow: hidden; color: var(--g-ink); font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .dsh-genui-receipt span { min-width: 0; overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; }
 .dsh-genui-receipt button { width: auto; padding: 0 8px; }
-.dsh-genui-pending { padding: 10px 12px; border: 1px solid color-mix(in srgb,currentColor 16%,transparent); border-radius: 10px; color: inherit; font: 12px/1.4 ui-sans-serif,sans-serif; }
+.dsh-genui-progress { --g-border: rgba(37,40,44,.12); --g-panel: #faf9f6; --g-panel-raised: #fff; --g-ink: #252422; --g-muted: #77736d; --g-focus: #b94e32; display: grid; gap: 12px; overflow: hidden; border: 1px solid var(--g-border); border-radius: 12px; padding: 13px 14px; background: var(--g-panel-raised); color: var(--g-ink); font-family: ui-sans-serif,sans-serif; }
+.dsh-genui-progress-head { display: flex; min-width: 0; align-items: center; gap: 10px; }
+.dsh-genui-progress-head > div { display: grid; min-width: 0; gap: 2px; }
+.dsh-genui-progress-head strong { overflow: hidden; font-size: 13px; font-weight: 680; text-overflow: ellipsis; white-space: nowrap; }
+.dsh-genui-progress-head span { color: var(--g-muted); font-size: 11px; }
+.dsh-genui-progress-spinner { width: 18px; height: 18px; flex: none; border: 2px solid color-mix(in srgb,var(--g-focus) 22%,transparent); border-top-color: var(--g-focus); border-radius: 50%; animation: dsh-genui-spin 800ms linear infinite; }
+.dsh-genui-progress ol { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.dsh-genui-progress li { position: relative; min-width: 0; border-top: 2px solid var(--g-border); padding-top: 7px; color: var(--g-muted); font-size: 10px; line-height: 1.35; }
+.dsh-genui-progress li[data-state='active'] { border-top-color: var(--g-focus); color: var(--g-ink); font-weight: 650; }
+.dsh-genui-progress li[data-state='done'] { border-top-color: color-mix(in srgb,var(--g-focus) 45%,var(--g-border)); color: var(--g-muted); }
+.dsh-genui-progress > p { margin: -2px 0 0; color: var(--g-muted); font-size: 10px; line-height: 1.4; }
+@keyframes dsh-genui-spin { to { transform: rotate(360deg); } }
 .dsh-genui-card:fullscreen { display: flex; width: 100vw; height: 100dvh; border: 0; border-radius: 0; flex-direction: column; background: var(--g-panel); }
 .dsh-genui-card[data-surface='canvas']:fullscreen { inset: 0; width: 100vw; max-width: none; }
 .dsh-genui-card:fullscreen .dsh-genui-head { padding-top: max(3px,env(safe-area-inset-top)); padding-right: max(5px,env(safe-area-inset-right)); padding-left: max(7px,env(safe-area-inset-left)); }
@@ -108,12 +119,13 @@ export const cardCss = `
 @media (prefers-color-scheme: dark) {
   .dsh-genui-card { --g-border: rgba(255,255,255,.11); --g-panel: #171717; --g-panel-raised: #1d1d1d; --g-panel-soft: #262624; --g-ink: #eeeeec; --g-muted: #9c9a94; --g-hover: rgba(255,255,255,.075); --g-focus: #e17a5f; --g-success: #67c996; --g-danger: #e27b6d; box-shadow: 0 1px 2px rgba(0,0,0,.18),0 8px 28px rgba(0,0,0,.2); }
   .dsh-genui-receipt-shell { --g-border: rgba(255,255,255,.11); --g-panel-raised: #1d1d1d; --g-ink: #eeeeec; --g-muted: #9c9a94; --g-hover: rgba(255,255,255,.075); --g-focus: #e17a5f; --g-success: #67c996; --g-danger: #e27b6d; }
+  .dsh-genui-progress { --g-border: rgba(255,255,255,.11); --g-panel: #171717; --g-panel-raised: #1d1d1d; --g-ink: #eeeeec; --g-muted: #9c9a94; --g-focus: #e17a5f; }
   .dsh-genui-canvas-placeholder { border-color: rgba(255,255,255,.11); background: #1d1d1d; color: #eeeeec; }
   .dsh-genui-canvas-placeholder:hover { background: #262624; }
   .dsh-genui-canvas-placeholder > svg, .dsh-genui-canvas-placeholder span { color: #e17a5f; }
   .dsh-genui-canvas-placeholder strong { color: #eeeeec; }
 }
-@media (prefers-reduced-motion: reduce) { .dsh-genui-card[data-surface='canvas'] { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .dsh-genui-card[data-surface='canvas'] { animation: none; } .dsh-genui-progress-spinner { animation-duration: 1600ms; } }
 @media (max-width: 640px) {
   .dsh-genui-head { min-height: 48px; padding-right: 3px; padding-left: 3px; }
   .dsh-genui-action { width: 44px; height: 44px; }

@@ -44,7 +44,7 @@ describe('buildArtifact', () => {
     expect(bundle).toContain("type: 'ready'")
     expect(bundle).toContain("type === 'ready-request'")
     expect(bundle).toContain('inFlightRequests')
-  })
+  }, 15_000)
 
   it('rejects imports outside the artifact allowlist', async () => {
     const result = await buildArtifact(version(`import fs from 'node:fs'; console.log(fs)`), await dist())

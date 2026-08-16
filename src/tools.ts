@@ -6,6 +6,7 @@ import type { JsonValue } from '@deepseek-ai/dsh-tools'
 import type { ArtifactRegistry } from './artifacts/registry.ts'
 import { buildArtifact } from './artifacts/builder.ts'
 import { verifyArtifactInBrowser } from './artifacts/browser-verifier.ts'
+import type { BrowserVerificationResult } from './artifacts/browser-verifier.ts'
 import type { ArtifactCapability, ArtifactVersion, BuildDiagnostic, FilePatch, SourceFile } from './artifacts/types.ts'
 import type { DesignStore } from './designs/store.ts'
 import type { CapabilityStore } from './runtime/capabilities.ts'
@@ -114,6 +115,7 @@ async function compile(
   agent: Agent,
   delivery: ToolReceipt['delivery'],
   language: 'en' | 'zh',
+  verifyBrowser: (url: string) => Promise<BrowserVerificationResult>,
 ): Promise<ToolReceipt> {
   const artifact = await registry.get(version.artifactId)
   const result = await buildArtifact(version, registry.distPath(version.artifactId, version.id))
@@ -140,8 +142,12 @@ async function compile(
   }
   const verificationToken = capabilities.issue(version.artifactId, agent, 'verification')
   const verificationUrl = `${routePrefix}/preview/${version.artifactId}/${version.id}?lang=en#token=${verificationToken}`
-  const browser = await verifyArtifactInBrowser(`${previewOrigin}${verificationUrl}`)
-  capabilities.revoke(verificationToken)
+  let browser: BrowserVerificationResult
+  try {
+    browser = await verifyBrowser(`${previewOrigin}${verificationUrl}`)
+  } finally {
+    capabilities.revoke(verificationToken)
+  }
   const settled = await registry.settle(version.artifactId, version.id, {
     checkedAt: new Date().toISOString(),
     build: 'passed',
@@ -307,6 +313,7 @@ export function registerGenuiTools(
   capabilities: CapabilityStore,
   routePrefix: string,
   previewOrigin: string,
+  verifyBrowser: (url: string) => Promise<BrowserVerificationResult> = verifyArtifactInBrowser,
 ): void {
   registerDesignTools(ctx, registry, designs)
   ctx.tools.register(defineTool({
@@ -343,7 +350,7 @@ export function registerGenuiTools(
         capabilities: capabilitiesFromInput(args.capabilities as CapabilityInput[]),
         files: args.files as SourceFile[],
       })
-      const receipt = await compile(registry, capabilities, routePrefix, previewOrigin, version, agent, args.delivery, args.language)
+      const receipt = await compile(registry, capabilities, routePrefix, previewOrigin, version, agent, args.delivery, args.language, verifyBrowser)
       if (receipt.status === 'ready' && receipt.delivery === 'embedded') exec.concludeTurn()
       return receipt
     },
@@ -394,7 +401,7 @@ export function registerGenuiTools(
         ...(args.supersede_requirements === undefined ? {} : { supersedeRequirements: args.supersede_requirements }),
         ...(args.capabilities === undefined ? {} : { capabilities: capabilitiesFromInput(args.capabilities as CapabilityInput[]) }),
       })
-      const receipt = await compile(registry, capabilities, routePrefix, previewOrigin, version, agent, args.delivery, args.language)
+      const receipt = await compile(registry, capabilities, routePrefix, previewOrigin, version, agent, args.delivery, args.language, verifyBrowser)
       if (receipt.status === 'ready' && receipt.delivery === 'embedded') exec.concludeTurn()
       return receipt
     },

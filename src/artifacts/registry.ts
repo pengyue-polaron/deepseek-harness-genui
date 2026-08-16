@@ -265,10 +265,14 @@ export class ArtifactRegistry {
   }
 
   async grantCapability(id: string, sessionId: string, capabilityId: string, grant: ArtifactGrant): Promise<ArtifactRecord> {
+    return this.grantCapabilities(id, sessionId, { [capabilityId]: grant })
+  }
+
+  async grantCapabilities(id: string, sessionId: string, incoming: Record<string, ArtifactGrant>): Promise<ArtifactRecord> {
     return this.withMutationLock(id, async () => {
       const record = await this.get(id)
       const grants = record.grants[sessionId] ?? {}
-      grants[capabilityId] = grant
+      for (const [capabilityId, grant] of Object.entries(incoming)) grants[capabilityId] = grant
       record.grants[sessionId] = grants
       record.updatedAt = new Date().toISOString()
       await this.saveRecord(record)

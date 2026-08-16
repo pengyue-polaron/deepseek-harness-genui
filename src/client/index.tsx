@@ -4,7 +4,7 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type { PropsLocale, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-import { grantPermission, listPermissions, previewUrlForLocale, revokePermission } from './api.ts'
+import { grantAllPermissions, grantPermission, listPermissions, previewUrlForLocale, revokePermission } from './api.ts'
 import { canvasController, useCanvasArtifact, useCanvasSurface } from './canvas.ts'
 import { DesignSettingsCard } from './design-settings.tsx'
 import { ShellIcon } from './icons.tsx'
@@ -38,6 +38,56 @@ function Receipt({ meta, t, onOpen }: {
       <strong>{meta.title}</strong>
       <span>{failed ? t('receipt.failed') : t('receipt.updated')}</span>
       {failed ? null : <button type="button" className="dsh-genui-button" onClick={onOpen}>{t('receipt.openCurrent')}</button>}
+    </div>
+  )
+}
+
+function pendingTitle(argsRaw: string): string | undefined {
+  try {
+    const value: unknown = JSON.parse(argsRaw)
+    if (typeof value !== 'object' || value === null) return undefined
+    const title = (value as Record<string, unknown>).title
+    return typeof title === 'string' && title.trim() !== '' ? title : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function PendingGenui({ block, t }: {
+  block: Extract<ToolCallViewProps['block'], { name: string }>
+  t: TranslateNS<'genui'>
+}) {
+  const [stage, setStage] = useState(0)
+  const updating = block.name === 'genui_update'
+  const restoring = block.name === 'genui_rollback'
+  const steps = restoring
+    ? [t('progress.restore.prepare'), t('progress.restore.apply')]
+    : updating
+      ? [t('progress.update.prepare'), t('progress.update.build'), t('progress.update.check')]
+      : [t('progress.create.prepare'), t('progress.create.build'), t('progress.create.check')]
+  const title = pendingTitle(block.argsRaw) ?? t('app.untitled')
+
+  useEffect(() => {
+    setStage(0)
+    const build = window.setTimeout(() => setStage(1), 900)
+    const check = window.setTimeout(() => setStage(Math.min(2, steps.length - 1)), 2400)
+    return () => {
+      window.clearTimeout(build)
+      window.clearTimeout(check)
+    }
+  }, [block.callId, steps.length])
+
+  return (
+    <div className="dsh-genui-progress" role="status" aria-live="polite">
+      <style>{cardCss}</style>
+      <div className="dsh-genui-progress-head">
+        <span className="dsh-genui-progress-spinner" aria-hidden="true" />
+        <div><strong>{title}</strong><span>{steps[stage]}</span></div>
+      </div>
+      <ol aria-label={t('progress.label')} style={{ gridTemplateColumns: `repeat(${steps.length},minmax(0,1fr))` }}>
+        {steps.map((step, index) => <li key={step} data-state={index < stage ? 'done' : index === stage ? 'active' : 'waiting'}>{step}</li>)}
+      </ol>
+      {updating ? <p>{t('progress.update.safe')}</p> : null}
     </div>
   )
 }
@@ -76,10 +126,19 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
   const [permissionPending, setPermissionPending] = useState(false)
   const [permissionError, setPermissionError] = useState<string>()
   const [permissions, setPermissions] = useState<PermissionStatus[]>()
+  const [permissionsLoadedFor, setPermissionsLoadedFor] = useState<string>()
+  const [permissionIntroDismissedFor, setPermissionIntroDismissedFor] = useState<string>()
+  const [permissionIntroPending, setPermissionIntroPending] = useState(false)
+  const [permissionIntroError, setPermissionIntroError] = useState<string>()
   const [accessOpen, setAccessOpen] = useState(false)
   const [accessPending, setAccessPending] = useState<string>()
   const [accessError, setAccessError] = useState<string>()
   const permissionRequest = permissionQueue[0]
+  const upfrontPermissions = permissions?.filter(item => !item.granted) ?? []
+  const permissionsLoaded = meta !== undefined && permissionsLoadedFor === meta.versionId
+  const permissionIntroOpen = permissionsLoaded
+    && permissionIntroDismissedFor !== meta.versionId && upfrontPermissions.length > 0
+  const frameReadyToOpen = permissionsLoaded && !permissionIntroOpen
 
   const announce = (message: string) => {
     setNotice(message)
@@ -108,19 +167,28 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
   useEffect(() => {
     if (meta === undefined || previewUrl === undefined) {
       setPermissions(undefined)
+      setPermissionsLoadedFor(meta?.versionId)
       return
     }
+    setPermissionsLoadedFor(undefined)
     let active = true
     void listPermissions(meta, meta.versionId).then(result => {
-      if (active) setPermissions(result.permissions)
+      if (active) {
+        setPermissions(result.permissions)
+        if (result.permissions.every(item => item.granted)) setPermissionIntroDismissedFor(meta.versionId)
+        setPermissionsLoadedFor(meta.versionId)
+      }
     }, () => {
-      if (active) setPermissions(undefined)
+      if (active) {
+        setPermissions(undefined)
+        setPermissionsLoadedFor(meta.versionId)
+      }
     })
     return () => { active = false }
   }, [meta?.artifactId, meta?.versionId, previewUrl])
 
   useEffect(() => {
-    if (meta === undefined || previewUrl === undefined) return
+    if (meta === undefined || previewUrl === undefined || !frameReadyToOpen) return
     setFrameState('loading')
     const receive = (event: MessageEvent<unknown>) => {
       if (isGenuiReadyMessage(event, frameRef.current?.contentWindow ?? null, meta.artifactId, meta.versionId)) setFrameState('ready')
@@ -132,7 +200,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
       window.clearTimeout(timeout)
       window.removeEventListener('message', receive)
     }
-  }, [frameKey, meta?.artifactId, meta?.versionId, previewUrl])
+  }, [frameKey, frameReadyToOpen, meta?.artifactId, meta?.versionId, previewUrl])
 
   useEffect(() => {
     if (meta === undefined) return
@@ -185,6 +253,9 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
     permissionQueueRef.current = []
     setPermissionQueue([])
     setPermissionError(undefined)
+    setPermissionIntroDismissedFor(undefined)
+    setPermissionIntroPending(false)
+    setPermissionIntroError(undefined)
   }, [meta?.versionId])
 
   useEffect(() => {
@@ -228,13 +299,14 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
   }, [permissionRequest?.requestId])
 
   useEffect(() => {
-    if (!accessOpen) return
+    if (!accessOpen && !permissionIntroOpen) return
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
     const focusFrame = window.requestAnimationFrame(() => accessCloseRef.current?.focus())
     const keydown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && accessPending === undefined) {
+      if (event.key === 'Escape' && accessPending === undefined && !permissionIntroPending) {
         event.preventDefault()
-        setAccessOpen(false)
+        if (permissionIntroOpen && meta !== undefined) setPermissionIntroDismissedFor(meta.versionId)
+        else setAccessOpen(false)
         return
       }
       if (event.key !== 'Tab') return
@@ -256,9 +328,9 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
       document.removeEventListener('keydown', keydown)
       previousFocus?.focus({ preventScroll: true })
     }
-  }, [accessOpen, accessPending])
+  }, [accessOpen, accessPending, meta?.versionId, permissionIntroOpen, permissionIntroPending])
 
-  if (!('kind' in block)) return <div className="dsh-genui-pending">{t('app.building')}</div>
+  if (!('kind' in block)) return <PendingGenui block={block} t={t} />
   if (meta === undefined) return <span hidden />
 
   if (!primary) {
@@ -322,6 +394,29 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
       setPermissionError(t('permission.failed'))
     } finally {
       setPermissionPending(false)
+    }
+  }
+
+  const dismissPermissionIntro = () => {
+    if (meta === undefined || permissionIntroPending) return
+    setPermissionIntroDismissedFor(meta.versionId)
+    setPermissionIntroError(undefined)
+    setFrameState('loading')
+  }
+
+  const allowAllUpfrontPermissions = async () => {
+    if (meta === undefined || permissionIntroPending) return
+    setPermissionIntroPending(true)
+    setPermissionIntroError(undefined)
+    try {
+      await grantAllPermissions(meta, meta.versionId)
+      setPermissions(current => current?.map(item => ({ ...item, granted: true })))
+      setPermissionIntroDismissedFor(meta.versionId)
+      setFrameState('loading')
+    } catch {
+      setPermissionIntroError(t('permission.failed'))
+    } finally {
+      setPermissionIntroPending(false)
     }
   }
 
@@ -391,6 +486,40 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
 
         {notice === undefined ? null : <div className="dsh-genui-toast" role="status" aria-live="polite">{notice}</div>}
 
+        {!permissionIntroOpen ? null : (
+          <div className="dsh-genui-permission-backdrop">
+            <section ref={accessDialogRef} className="dsh-genui-access" role="dialog" aria-modal="true" aria-labelledby={accessTitleId} aria-describedby={accessDescriptionId}>
+              <div className="dsh-genui-access-head">
+                <div className="dsh-genui-permission-mark"><ShellIcon name="shield" /></div>
+                <div>
+                  <h4 id={accessTitleId}>{t('permission.upfrontTitle')}</h4>
+                  <p id={accessDescriptionId}>{t('permission.upfrontDescription')}</p>
+                </div>
+              </div>
+              <div className="dsh-genui-access-list">
+                {upfrontPermissions.map(item => (
+                  <div className="dsh-genui-access-row" key={item.id}>
+                    <div>
+                      <strong>{item.label}</strong>
+                      <span>{item.reason}</span>
+                      <div className="dsh-genui-access-facts">
+                        <span>{item.access === 'write' ? t('permission.write') : t('permission.read')}</span>
+                        {item.destination === undefined ? null : <span>{t('permission.connect')} {item.destination}</span>}
+                        {item.methods?.length ? <span>{t('permission.methods')} {item.methods.join(' / ')}</span> : null}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {permissionIntroError === undefined ? null : <p className="dsh-genui-permission-error" role="alert">{permissionIntroError}</p>}
+              <div className="dsh-genui-permission-actions">
+                <button ref={accessCloseRef} type="button" className="dsh-genui-button" disabled={permissionIntroPending} onClick={dismissPermissionIntro}>{t('permission.deny')}</button>
+                <button type="button" className="dsh-genui-button dsh-genui-button--strong" disabled={permissionIntroPending} onClick={() => { void allowAllUpfrontPermissions() }}>{permissionIntroPending ? t('permission.allowing') : t('permission.upfrontAllow')}</button>
+              </div>
+            </section>
+          </div>
+        )}
+
         {permissionRequest === undefined ? null : (
           <div className="dsh-genui-permission-backdrop">
             <section ref={permissionDialogRef} className="dsh-genui-permission" role="dialog" aria-modal="true" aria-labelledby={permissionTitleId} aria-describedby={permissionDescriptionId}>
@@ -416,7 +545,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
           </div>
         )}
 
-        {!accessOpen || permissionRequest !== undefined ? null : (
+        {!accessOpen || permissionRequest !== undefined || permissionIntroOpen ? null : (
           <div className="dsh-genui-permission-backdrop">
             <section ref={accessDialogRef} className="dsh-genui-access" role="dialog" aria-modal="true" aria-labelledby={accessTitleId} aria-describedby={accessDescriptionId}>
               <div className="dsh-genui-access-head">
@@ -459,7 +588,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
         ) : (
           <div id={bodyId} className="dsh-genui-body" hidden={collapsed}>
             <div className="dsh-genui-frame-shell">
-              <iframe ref={frameRef} key={frameKey} className="dsh-genui-frame" title={displayTitle} src={previewUrl} sandbox="allow-scripts allow-forms allow-modals allow-downloads" referrerPolicy="no-referrer" onLoad={() => frameRef.current?.contentWindow?.postMessage({ source: 'dsh-genui', type: 'ready-request', artifactId: meta.artifactId, versionId: meta.versionId }, '*')} onError={() => setFrameState('failed')} />
+              {frameReadyToOpen ? <iframe ref={frameRef} key={frameKey} className="dsh-genui-frame" title={displayTitle} src={previewUrl} sandbox="allow-scripts allow-forms allow-modals allow-downloads" referrerPolicy="no-referrer" onLoad={() => frameRef.current?.contentWindow?.postMessage({ source: 'dsh-genui', type: 'ready-request', artifactId: meta.artifactId, versionId: meta.versionId }, '*')} onError={() => setFrameState('failed')} /> : null}
               <div className="dsh-genui-loading" hidden={frameState !== 'loading'} role="status" aria-live="polite">{t('app.loading')}</div>
               <div className="dsh-genui-frame-error" hidden={frameState !== 'failed'} role="alert">
                 <div><span>{t('app.loadFailed')}</span><button type="button" className="dsh-genui-button" onClick={() => { setFrameState('loading'); setFrameKey(value => value + 1) }}><ShellIcon name="refresh" />{t('app.reload')}</button></div>
