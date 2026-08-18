@@ -1,8 +1,8 @@
 node_modules/
-lib/
 dist/
 *.tgz
 *.tsbuildinfo
+lib/**/*.d.ts.map
 .DS_Store
 coverage/
 playwright-report/

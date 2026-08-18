@@ -21,4 +21,8 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm run typecheck
       - run: pnpm test
+      - name: Verify runtime entrypoints are tracked
+        run: git ls-files --error-unmatch lib/index.js lib/client.js lib/invariant.js
       - run: pnpm run build
+      - name: Verify committed build output
+        run: git diff --exit-code -- lib
