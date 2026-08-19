@@ -1,4 +1,4 @@
-export const ARTIFACT_RUNTIME_VERSION = '0.12.2'
+export const ARTIFACT_RUNTIME_VERSION = '0.13.0'
 
 export const STANDALONE_RUNTIME = String.raw`
 const root = document.body
@@ -14,20 +14,21 @@ const permissionList = document.getElementById('permission-list')
 const permissionScope = document.getElementById('permission-scope')
 const permissionError = document.getElementById('permission-error')
 const notice = document.getElementById('notice')
+const errorView = document.getElementById('error')
 const deny = document.getElementById('deny')
 const allow = document.getElementById('allow')
 const token = new URLSearchParams(location.hash.slice(1)).get('token')
 
 if (!token) {
-  document.getElementById('error').hidden = false
+  errorView.hidden = false
 } else {
   const prefix = root.dataset.routePrefix
   const artifactId = root.dataset.artifactId
   const versionId = root.dataset.versionId
   const language = root.dataset.language
   const copy = language === 'zh'
-    ? { read: '读取信息', write: '执行更改', connect: '连接到', methods: '允许请求', queued: '确认后还有 {count} 项访问请求。', failed: '暂时无法完成授权，请重试。', allow: '允许当前任务使用', initialTitle: '这个应用需要以下权限', initialReason: '在打开前一次确认。允许后，这个版本在当前任务中使用这些能力时不会逐项打断你。', initialAllow: '全部允许并打开' }
-    : { read: 'Read information', write: 'Make changes', connect: 'Connect to', methods: 'Allowed requests', queued: 'More access requests are waiting: {count}.', failed: 'Permission could not be saved. Try again.', allow: 'Allow for this task', initialTitle: 'This app needs the following access', initialReason: 'Review it once before opening. If allowed, this version can use these capabilities during the current task without interrupting you one by one.', initialAllow: 'Allow all and open' }
+    ? { read: '读取信息', write: '执行更改', connect: '连接到', methods: '允许请求', queued: '确认后还有 {count} 项访问请求。', failed: '暂时无法完成授权，请重试。', runtimeFailed: '这个应用没有正常打开。请回到任务中让我修复。', allow: '允许当前任务使用', initialTitle: '这个应用需要以下权限', initialReason: '在打开前一次确认。允许后，这个版本在当前任务中使用这些能力时不会逐项打断你。', initialAllow: '全部允许并打开' }
+    : { read: 'Read information', write: 'Make changes', connect: 'Connect to', methods: 'Allowed requests', queued: 'More access requests are waiting: {count}.', failed: 'Permission could not be saved. Try again.', runtimeFailed: 'This app did not open correctly. Return to the task and ask me to repair it.', allow: 'Allow for this task', initialTitle: 'This app needs the following access', initialReason: 'Review it once before opening. If allowed, this version can use these capabilities during the current task without interrupting you one by one.', initialAllow: 'Allow all and open' }
 
   let pending = []
   let initialPermissions = []
@@ -184,6 +185,12 @@ if (!token) {
     const value = event.data
     if (event.source !== frame.contentWindow || value?.source !== 'dsh-genui'
       || value.artifactId !== artifactId || value.versionId !== versionId) return
+    if (value.type === 'runtime-error') {
+      frame.hidden = true
+      errorView.textContent = copy.runtimeFailed
+      errorView.hidden = false
+      return
+    }
     if (value.type === 'state-changed') {
       announceSaved()
       return

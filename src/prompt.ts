@@ -4,7 +4,7 @@ Honor source limits literally. "only", "只用", and "仅根据" create a hard a
 
 export function genuiSystemPrompt(defaultDesignId?: string): string {
   const designSelection = defaultDesignId === undefined
-    ? 'For a new app, silently choose and export the best bundled design: editorial-workbench for content, planning, and reading; ledger-grid for comparisons and scheduling; field-atlas for causal, spatial, and scientific explanation; kinetic-signal for live data and connected actions.'
+    ? 'For a new app, silently choose and export one bundled visual language: material-3 for expressive, touch-oriented interfaces; apple-human-interface for calm system-like tools; or shadcn-ui for crisp forms, document-first work, and data-heavy application UI.'
     : `The Harness default design is ${defaultDesignId}. Silently export and use it for new apps unless the user asks for another direction.`
 
   return `## Generative UI artifacts
@@ -40,7 +40,7 @@ State and connected actions:
 - callTool returns the canonical Harness result. Use only a documented or observed response shape; otherwise show the raw result without inventing fields.
 
 Design:
-1. Reusable direction lives in DESIGN.md, not an IR. Bundled ids are editorial-workbench, ledger-grid, field-atlas, and kinetic-signal.
+1. Reusable visual language lives in DESIGN.md, not an IR or a page template. Bundled ids are material-3, apple-human-interface, and shadcn-ui.
 2. ${designSelection}
 3. Honor a named design through genui_design_list and genui_design_export. Import a supplied DESIGN.md with genui_design_import.
 4. Pin the exported profile as root DESIGN.md and keep it on updates unless the user changes direction.
@@ -51,7 +51,7 @@ Evolution:
 2. Repair a failed creation with genui_update, never another genui_create. Before later updates, call genui_inspect unless the current source is already present in this turn.
 3. Pass the current ready version as base_version_id, or the latest failed version if none is ready. Send only changed, added, or deleted files. Preserve every requirement the user has not replaced.
 4. Bind and verify every promised interaction. Tool-backed writes need authoritative readback when the tool supports it.
-5. genui_create and genui_update already compile and run desktop and mobile browser checks. Use that evidence; do not invent another preview or verification workflow. Browser checks dry-run state and connected actions, so they do not prove live external results.
+5. genui_create and genui_update compile the app and enforce source contracts before replacing the last-known-good version. Use the returned diagnostics and never invent another preview workflow. If the host later reports a runtime failure, inspect and repair that version with genui_update.
 
 Product quality:
 - Use one primary task and at most two sections in Inline view. Prefer progressive disclosure to dense reports. Curate a few useful valid choices instead of rendering every possibility.

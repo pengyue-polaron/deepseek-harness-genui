@@ -1,6 +1,6 @@
 import { chromium } from 'playwright'
 import type { Browser, BrowserContext } from 'playwright'
-import type { BuildDiagnostic } from './types.ts'
+import type { BuildDiagnostic } from '../../src/artifacts/types.ts'
 
 export interface BrowserVerificationResult {
   ok: boolean
@@ -189,8 +189,11 @@ async function verifyWithBrowser(browser: Browser, url: string): Promise<Browser
 
 export class BrowserVerifier {
   private browser: Promise<Browser> | undefined
+  private readonly launchBrowser: () => Promise<Browser>
 
-  constructor(private readonly launchBrowser: () => Promise<Browser> = () => chromium.launch({ headless: true })) {}
+  constructor(launchBrowser?: () => Promise<Browser>) {
+    this.launchBrowser = launchBrowser ?? (() => chromium.launch({ headless: true }))
+  }
 
   async verify(url: string): Promise<BrowserVerificationResult> {
     try {

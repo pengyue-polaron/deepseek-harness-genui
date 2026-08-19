@@ -211,10 +211,9 @@ describe('real MCP artifact bridge', () => {
     }
     expect(initial.default_design_id).toBeNull()
     expect(initial.designs).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'editorial-workbench', builtin: true }),
-      expect.objectContaining({ id: 'field-atlas', builtin: true }),
-      expect.objectContaining({ id: 'kinetic-signal', builtin: true }),
-      expect.objectContaining({ id: 'ledger-grid', builtin: true }),
+      expect.objectContaining({ id: 'material-3', builtin: true }),
+      expect.objectContaining({ id: 'apple-human-interface', builtin: true }),
+      expect.objectContaining({ id: 'shadcn-ui', builtin: true }),
     ]))
 
     const imported = await fetch(`${origin}/genui/manage/designs/import`, {

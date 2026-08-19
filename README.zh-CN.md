@@ -69,18 +69,23 @@ Inline、Canvas、全屏和 CLI/localhost 是同一份任务状态的不同入�
 
 Web 端可以从页面卡片查看或撤回权限。MCP 凭据不会进入生成代码。
 
+## 为什么选择 Code-first
+
+多数生成式 UI 方案要求开发者预先写好 widget，或维护一套受信任的组件目录。这个插件让 Coding Agent 直接为当前任务编写 React；生成代码仍在沙箱内运行，有意义的用户状态留在任务里，连接型操作继续受权限控制，失败更新也不会替换最后一个可用版本。
+
+因此，它比固定组件目录更自由，但也有意比跨客户端 UI 协议更聚焦：它服务于 DeepSeek Harness 及其任务生命周期。
+
 ## DESIGN.md
 
 打开 **设置 → 插件 → 插件配置**，可以为新应用设置默认设计：让插件自动选择、选用内置风格、导入自定义 `DESIGN.md`，或导出当前选中的设计作为起点。选定后，它会成为之后新建应用的默认设计，不必在每个提示词里重复描述风格。已经生成的应用会保留原来的设计。
 
 `DESIGN.md` 控制的是设计语言，不是页面结构。React + TypeScript 仍然可以按任务需要实现模拟器、图形、地图、时间轴、代码图、动画和不规则布局。
 
-| 风格 | 适用场景 |
+| 设计风格 | 视觉语言 |
 | --- | --- |
-| `editorial-workbench` | 阅读、规划、表单和内容密集型任务 |
-| `ledger-grid` | 对比、排程、证据和候选清单 |
-| `field-atlas` | 科学、因果和空间概念解释 |
-| `kinetic-signal` | 变化中的数据、连接工具和用户触发操作 |
+| `material-3` | Google Material 3：色调表面、鲜明主色、清晰层级与友好的触控组件 |
+| `apple-human-interface` | Apple Human Interface：克制、精确、内容优先，使用熟悉的系统感控件 |
+| `shadcn-ui` | shadcn/ui：语义色彩变量、利落边框、紧凑表单与完整交互状态 |
 
 ## 安装
 
@@ -88,24 +93,28 @@ Web 端可以从页面卡片查看或撤回权限。MCP 凭据不会进入生成
 
 ```sh
 dsh plugin --profile web add dsh-plugin-genui
-dsh plugin --profile web exec playwright install chromium
 dsh --profile web
 ```
 
 Web profile 支持 Inline、Canvas、全屏和 localhost 链接。终端 profile 把命令里的 `web` 换成 `tui`；TUI 返回本地链接，不嵌入 Canvas。MCP 仍按原有方式连接到同一个 profile。
 
+插件不会下载或启动浏览器。每个候选版本都必须通过编译和源码契约检查，才能替换最后一个可用版本。仓库 CI 会另外用 Chromium 测试沙箱运行时；插件用户不需要安装它。
+
 ## 安全
 
 生成代码在沙箱中运行。页面直连 API 只支持已声明、无需凭据的公开 HTTPS 接口。临时链接和已授予权限会在 7 天后失效；任务状态在最后一次更新 7 天后过期。用户可以回到任务里的页面卡片查看或收回权限。
 
-插件使用 DeepSeek Harness + Cordis、React 18 + TypeScript、esbuild、Playwright 和 Vitest。
+插件使用 DeepSeek Harness + Cordis、React 18 + TypeScript 和 esbuild。仓库测试使用 Playwright 与 Vitest。
 
 ## 开发
 
 从源码构建需要 pnpm 11。
 
+Chromium 只用于运行仓库的浏览器端到端测试，插件本身不会安装或启动它。
+
 ```sh
 pnpm install
+pnpm exec playwright install chromium
 pnpm run typecheck
 pnpm test
 pnpm run package:plugin

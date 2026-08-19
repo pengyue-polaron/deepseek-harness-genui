@@ -3,6 +3,14 @@ import { randomUUID } from 'node:crypto'
 import { basename, resolve } from 'node:path'
 import { DESIGN_PRESETS } from './presets.ts'
 
+const LEGACY_DESIGN_ALIASES: Record<string, string> = {
+  'editorial-workbench': 'shadcn-ui',
+  'field-atlas': 'material-3',
+  'kinetic-signal': 'apple-human-interface',
+  'ledger-grid': 'shadcn-ui',
+  'notion': 'shadcn-ui',
+}
+
 export interface StoredDesign {
   id: string
   title: string
@@ -44,8 +52,10 @@ export class DesignStore {
       const value = (parsed as Record<string, unknown>).defaultDesignId
       if (value !== null && typeof value !== 'string') throw new Error('defaultDesignId must be a design id or null')
       if (typeof value === 'string') {
-        await this.get(value)
-        this.selectedDefault = value
+        const migrated = LEGACY_DESIGN_ALIASES[value] ?? value
+        await this.get(migrated)
+        this.selectedDefault = migrated
+        if (migrated !== value) await this.persistDefault(migrated)
       }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
@@ -62,25 +72,27 @@ export class DesignStore {
 
   async setDefault(id: string | undefined): Promise<void> {
     const safeId = id === undefined ? undefined : (await this.get(id)).id
-    const path = this.settingsPath()
-    const temporary = `${path}.${randomUUID()}.tmp`
-    await writeFile(temporary, `${JSON.stringify({ defaultDesignId: safeId ?? null }, null, 2)}\n`, {
-      encoding: 'utf8', mode: 0o600,
-    })
-    await rename(temporary, path)
+    await this.persistDefault(safeId)
     this.selectedDefault = safeId
   }
 
   async list(): Promise<Array<Pick<StoredDesign, 'id' | 'title'>>> {
     const entries = await readdir(this.root, { withFileTypes: true })
     const designs = await Promise.all(entries
-      .filter(entry => entry.isFile() && entry.name.endsWith('.md'))
+      .filter(entry => entry.isFile() && entry.name.endsWith('.md')
+        && LEGACY_DESIGN_ALIASES[basename(entry.name, '.md')] === undefined)
       .map(async entry => {
         const id = basename(entry.name, '.md')
         const content = await readFile(this.path(id), 'utf8')
         return { id, title: titleOf(content, id) }
       }))
-    return designs.sort((a, b) => a.id.localeCompare(b.id))
+    const builtinOrder = new Map(DESIGN_PRESETS.map((preset, index) => [preset.id, index]))
+    return designs.sort((a, b) => {
+      const aOrder = builtinOrder.get(a.id)
+      const bOrder = builtinOrder.get(b.id)
+      if (aOrder !== undefined || bOrder !== undefined) return (aOrder ?? Number.MAX_SAFE_INTEGER) - (bOrder ?? Number.MAX_SAFE_INTEGER)
+      return a.id.localeCompare(b.id)
+    })
   }
 
   async get(id: string): Promise<StoredDesign> {
@@ -106,5 +118,14 @@ export class DesignStore {
 
   private settingsPath(): string {
     return resolve(this.root, 'settings.json')
+  }
+
+  private async persistDefault(id: string | undefined): Promise<void> {
+    const path = this.settingsPath()
+    const temporary = `${path}.${randomUUID()}.tmp`
+    await writeFile(temporary, `${JSON.stringify({ defaultDesignId: id ?? null }, null, 2)}\n`, {
+      encoding: 'utf8', mode: 0o600,
+    })
+    await rename(temporary, path)
   }
 }

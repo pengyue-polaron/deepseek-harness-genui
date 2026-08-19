@@ -43,6 +43,7 @@ describe('buildArtifact', () => {
     expect(bundle).toContain("source: 'dsh-genui'")
     expect(bundle).toContain("type: 'ready'")
     expect(bundle).toContain("type === 'ready-request'")
+    expect(bundle).toContain("type: 'runtime-error'")
     expect(bundle).toContain('inFlightRequests')
   }, 15_000)
 

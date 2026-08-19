@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { PropsLocale, PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import {
   importDesign, readDesignSettings, setDefaultDesign,
   type DesignSettings,
@@ -13,6 +13,16 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 }
 
 type DesignSettingsCardProps = PropsRuntime<'settings.plugin.item'> & PropsLocale<'genui'>
+
+function designDescription(id: string | null, t: TranslateNS<'genui'>): string {
+  switch (id) {
+    case null: return t('design.autoDescription')
+    case 'material-3': return t('design.material3Description')
+    case 'apple-human-interface': return t('design.appleDescription')
+    case 'shadcn-ui': return t('design.shadcnDescription')
+    default: return t('design.customDescription')
+  }
+}
 
 export function designIdForImport(fileName: string, content: string, now = Date.now()): string {
   const heading = content.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? ''
@@ -104,6 +114,7 @@ export function DesignSettingsCard({ t }: DesignSettingsCardProps) {
             id={`${inputId}-select`}
             name="genui-default-design"
             autoComplete="off"
+            translate="no"
             value={settings?.default_design_id ?? ''}
             disabled={settings === undefined || pending}
             onChange={event => { void choose(event.target.value) }}
@@ -111,7 +122,10 @@ export function DesignSettingsCard({ t }: DesignSettingsCardProps) {
             <option value="">{t('design.auto')}</option>
             {settings?.designs.map(design => <option key={design.id} value={design.id}>{design.title}</option>)}
           </select>
-          <p>{t('design.hint')}</p>
+          <p className="dsh-genui-design-preview">
+            <strong translate="no">{selectedLabel}</strong>
+            <span>{designDescription(settings?.default_design_id ?? null, t)}</span>
+          </p>
           <div className="dsh-genui-design-actions">
             <input ref={inputRef} id={inputId} name="genui-design-import" type="file" accept=".md,text/markdown,text/plain" aria-label={t('design.import')} hidden onChange={event => { void importFile(event) }} />
             <button type="button" disabled={pending} onClick={() => inputRef.current?.click()}>{t('design.import')}</button>
@@ -140,7 +154,8 @@ const designSettingsCss = `
 .dsh-genui-design-body { margin:0 16px; padding:14px 0 12px; border-top:1px solid var(--dsw-alias-border-l2); }
 .dsh-genui-design-body label { display:block; margin-bottom:6px; font-size:13px; font-weight:600; }
 .dsh-genui-design-body select { width:100%; height:36px; border:1px solid var(--dsw-alias-border-l2); border-radius:8px; padding:0 10px; background:var(--dsw-alias-bg-layer-3); color:var(--dsw-alias-label-primary); font-family:inherit; font-size:13px; line-height:1.4; }
-.dsh-genui-design-body > p { margin:7px 0 14px; color:var(--dsw-alias-label-tertiary); font-size:12px; line-height:1.5; }
+.dsh-genui-design-preview { display:grid; gap:2px; margin:8px 0 14px; color:var(--dsw-alias-label-tertiary); font-size:12px; line-height:1.5; }
+.dsh-genui-design-preview strong { color:var(--dsw-alias-label-secondary); font-size:12px; }
 .dsh-genui-design-actions { display:flex; align-items:center; gap:8px; padding-top:12px; border-top:1px solid var(--dsw-alias-border-l2); }
 .dsh-genui-design-actions button, .dsh-genui-design-actions a, .dsh-genui-design-export-disabled { box-sizing:border-box; display:inline-flex; min-height:32px; align-items:center; justify-content:center; border:1px solid var(--dsw-alias-border-l2); border-radius:8px; padding:0 12px; background:transparent; color:var(--dsw-alias-label-secondary); font-family:inherit; font-size:12px; font-weight:600; line-height:1; text-decoration:none; }
 .dsh-genui-design-actions button, .dsh-genui-design-actions a { cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }

@@ -69,18 +69,23 @@ The terminal profile returns a localhost app. A follow-up can refer to the path 
 
 In Web, access can be reviewed or revoked from the app card. MCP credentials never enter generated code.
 
+## Why Code-First
+
+Most generative UI systems ask developers to prebuild widgets or maintain a trusted component catalog. This plugin lets the Coding Agent build task-specific React instead. The generated code still runs inside a sandbox, meaningful user state stays with the task, connected actions remain permission-gated, and a failed update never replaces the last working version.
+
+That makes GenUI more expressive than a fixed component catalog, but deliberately narrower than a cross-client UI protocol: it is built for DeepSeek Harness and its task lifecycle.
+
 ## DESIGN.md
 
 Open **Settings → Plugins → Plugin configuration** to set the default design for new apps. Choose automatic selection or a built-in profile, import a custom `DESIGN.md`, or export the selected one as a starting point. Once selected, it becomes the default for apps created later, so the style does not need to be repeated in every prompt. Existing apps keep their original design.
 
 `DESIGN.md` controls the design language, not the page structure. React + TypeScript remains free to implement simulations, graphics, maps, timelines, code graphs, animation, and irregular layouts.
 
-| Profile | Best fit |
+| Design | Visual language |
 | --- | --- |
-| `editorial-workbench` | Reading, planning, forms, and content-heavy work |
-| `ledger-grid` | Comparisons, schedules, evidence, and shortlists |
-| `field-atlas` | Scientific, causal, and spatial explanations |
-| `kinetic-signal` | Changing data, connected tools, and user-triggered actions |
+| `material-3` | Google Material 3: tonal surfaces, expressive color, clear hierarchy, and touch-friendly controls |
+| `apple-human-interface` | Apple Human Interface: calm, precise, content-led, and familiar system-like controls |
+| `shadcn-ui` | shadcn/ui: semantic tokens, crisp borders, compact forms, and complete interaction states |
 
 ## Install
 
@@ -88,24 +93,28 @@ Use Node.js `^22.19.0 || >=24`. The plugin supports DeepSeek Harness `^0.1.0-rc.
 
 ```sh
 dsh plugin --profile web add dsh-plugin-genui
-dsh plugin --profile web exec playwright install chromium
 dsh --profile web
 ```
 
 The Web profile supports Inline, Canvas, fullscreen, and localhost links. For a terminal profile, replace `web` with `tui`; TUI returns localhost links and does not embed Canvas. Connect MCP servers to the same profile as usual.
 
+The plugin does not download or launch a browser. Every candidate is compiled and checked against the source contracts before it can replace the last working version. The repository CI separately exercises the sandboxed runtime in Chromium; plugin users do not need it.
+
 ## Safety
 
 Generated code runs in a sandbox. Direct API requests are limited to declared, credential-free public HTTPS routes. Temporary links and grants expire after 7 days; saved task state expires 7 days after its last update. Return to the app card in the task to review or remove access.
 
-The plugin uses DeepSeek Harness + Cordis, React 18 + TypeScript, esbuild, Playwright, and Vitest.
+The plugin uses DeepSeek Harness + Cordis, React 18 + TypeScript, and esbuild. Repository tests use Playwright and Vitest.
 
 ## Development
 
 Building from source requires pnpm 11.
 
+Chromium is needed only to run the repository's browser end-to-end tests. It is not installed or launched by the plugin.
+
 ```sh
 pnpm install
+pnpm exec playwright install chromium
 pnpm run typecheck
 pnpm test
 pnpm run package:plugin

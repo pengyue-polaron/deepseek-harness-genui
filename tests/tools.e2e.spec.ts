@@ -108,6 +108,9 @@ createRoot(document.getElementById('root')!).render(<App />)`,
       }],
     })
     expect(repaired).toMatchObject({ artifact_id: created.artifact_id, status: 'ready' })
+    expect(repaired.message).toBe('Artifact compiled and became the last-known-good version.')
+    expect((await registry.getVersion(String(repaired.artifact_id), String(repaired.version_id))).evidence)
+      .toMatchObject({ build: 'passed', browser: 'not-run' })
     expect(lastConcludesTurn).toBe(true)
     expect(lastRenderedContent).toEqual([{
       type: 'text',
@@ -249,10 +252,9 @@ createRoot(document.getElementById('root')!).render(<App />)`
   it('lists, imports, and exports DESIGN.md profiles', async () => {
     const listed = await execute('genui_design_list', {})
     expect(listed.designs).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'editorial-workbench' }),
-      expect.objectContaining({ id: 'field-atlas' }),
-      expect.objectContaining({ id: 'kinetic-signal' }),
-      expect.objectContaining({ id: 'ledger-grid' }),
+      expect.objectContaining({ id: 'material-3' }),
+      expect.objectContaining({ id: 'apple-human-interface' }),
+      expect.objectContaining({ id: 'shadcn-ui' }),
     ]))
 
     await execute('genui_design_import', {

@@ -5,152 +5,116 @@ export interface DesignPreset {
 
 export const DESIGN_PRESETS: DesignPreset[] = [
   {
-    id: 'editorial-workbench',
-    content: `# Editorial Workbench
+    id: 'material-3',
+    content: `# Material 3
 
-## Intent
-Build a quiet, content-first workspace that feels edited rather than decorated. Let the user's words, choices, and source material carry the visual weight.
+## Visual language
+Use Google's Material 3 design language: expressive but systematic, with tonal color, clear hierarchy, purposeful elevation, and controls that feel direct and touch-friendly. This file controls appearance, not page structure.
 
 ## Color
-- Support light and dark mode with CSS custom properties and prefers-color-scheme.
-- Light canvas: #ffffff; raised surface: #f6f5f2; primary ink: #302f2c; muted ink: #74716b.
-- Dark canvas: #191919; raised surface: #222220; primary ink: #eeeeeb; muted ink: #a19e97.
-- Use one muted semantic accent only when an action or state needs it. No gradients or neon glow.
+- Define semantic light and dark roles for background, surface, surface-container, outline, primary, secondary, tertiary, success, warning, and error.
+- Build the interface from tonal surfaces rather than stacking shadows. Reserve the strongest primary color for the main action and current selection.
+- Keep text and controls at WCAG AA contrast. Never rely on color alone for state.
 
-## Type
-- Use a precise sans face for controls and a restrained serif for an occasional editorial heading.
-- Body text is 14-16px with a relaxed 1.5-1.65 line height.
-- Use sentence case. Avoid oversized hero type and decorative all-caps labels.
+## Typography
+- Use Roboto when available, then a clean system sans-serif fallback.
+- Use a deliberate type scale with distinct display, headline, title, body, label, and numeric roles.
+- Prefer medium weight and size changes for hierarchy. Keep body copy at 14–16px with comfortable line height.
 
-## Layout
-- Keep the main reading column between 720px and 980px.
-- Use 8px spacing increments, generous page margins, and compact controls.
-- Prefer document flow, simple tables, checklists, and inline properties over nested cards.
+## Shape and elevation
+- Use a coherent shape scale: 8px for small controls, 12–16px for fields and cards, and 24–28px only for prominent containers.
+- Pills are reserved for filters, compact status, and segmented choices.
+- Use tonal elevation first. Add soft shadows only when a surface must visibly float above another.
+
+## Layout rhythm
+- Use an 8px spacing grid with 4px for tight internal adjustments.
+- Keep touch targets at least 44px. Let layouts reflow instead of shrinking controls on narrow screens.
+- Use whitespace and surface tone to group content; do not wrap every block in a card.
 
 ## Components
-- Borders are 1px and low contrast. Radius stays between 4px and 8px.
-- Buttons look like quiet controls until hovered; destructive actions remain explicit.
-- Use icons sparingly and never as decoration.
-- Empty states say what is missing and offer one next action.
+- Buttons, fields, sliders, switches, chips, dialogs, and navigation should share the same color, state, shape, and focus conventions.
+- Give every interactive control clear hover, pressed, selected, disabled, and keyboard-focus states.
+- Keep labels visible and place validation or recovery text next to the affected control.
 
 ## Motion
-- Use 120-180ms fades or small position changes only when they explain a state transition.
-- Respect prefers-reduced-motion.
-
-## Copy
-- Use concrete nouns and verbs from the user's situation.
-- Labels stay short: "Add recipe", "Packed", "Saturday".
-- Do not mention AI, prompts, architecture, or design systems unless the user asks.
+- Use Material-style emphasized easing for meaningful changes in selection, expansion, and shared position.
+- Keep transitions brief, interruptible, and limited to transform and opacity when possible.
+- Respect prefers-reduced-motion and keep the final state fully understandable without animation.
 `,
   },
   {
-    id: 'field-atlas',
-    content: `# Field Atlas
+    id: 'apple-human-interface',
+    content: `# Apple Human Interface
 
-## Intent
-Turn a difficult causal, spatial, or scientific idea into a manipulable field guide. The visual model is the center; controls and notes support it.
+## Visual language
+Use an Apple Human Interface–inspired visual language: calm, precise, content-led, and familiar. Controls should feel native and immediately understandable. This file controls appearance, not page structure.
 
-## Color
-- Use mineral neutrals with one vivid field color and one contrasting signal color.
-- Keep diagrams legible in light and dark mode; encode important states with labels or shape as well as color.
-- Avoid decorative gradients. A restrained gradient is allowed only when it carries scale, depth, energy, or direction.
+## Color and materials
+- Use semantic system-like colors that adapt cleanly to light and dark mode.
+- Build hierarchy with grouped backgrounds, separators, and restrained translucent material. Do not apply glass, blur, or gradients to every surface.
+- Keep body text, secondary text, separators, selection, success, warning, and destructive states distinct at WCAG AA contrast.
 
-## Type
-- Pair a compact sans face with tabular numerals and a readable serif for short explanatory notes.
-- Use a clear hierarchy: 12px labels, 14-16px body, 20-30px section titles.
-- Keep units attached to values and align comparable numbers.
+## Typography
+- Use -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", and a system sans-serif fallback.
+- Use larger display text sparingly. Most interface text should use 13–17px sizes with compact, readable line height.
+- Use weight, alignment, and whitespace before adding color. Use tabular numerals for changing or comparable values.
 
-## Layout
-- Use one control group, one main model, and one changing takeaway.
-- Put controls beside the model on wide screens and below it on narrow screens.
-- Keep legends close to the marks they explain. Prefer direct labels over distant keys.
+## Shape and depth
+- Use continuous-feeling rounded rectangles: 8–10px for controls and 12–16px for grouped surfaces.
+- Prefer hairline separators and subtle material changes over visible card borders.
+- Shadows are soft and rare, reserved for menus, sheets, and temporary floating layers.
+
+## Layout rhythm
+- Keep the content hierarchy obvious with generous outer margins and compact internal spacing.
+- Align labels, values, and controls precisely. Preserve breathing room around the primary content.
+- Keep pointer and touch targets at least 44px and account for safe-area insets on full-screen layouts.
 
 ## Components
-- Sliders show current value and unit. Toggles state the consequence, not just the variable name.
-- Use cross-sections, paths, scales, and annotated landmarks before generic cards.
-- Reveal definitions and caveats progressively so the model remains readable.
+- Use familiar labels and symbols. Icon-only controls require accessible names and should not replace a clearer text action.
+- Primary actions are visually clear without becoming oversized. Destructive actions stay explicit and separated from routine actions.
+- Use sheets, popovers, and dialogs only for temporary decisions; keep the underlying context visible when useful.
 
 ## Motion
-- Animate only changes that help the user track cause, movement, scale, or viewpoint.
-- Keep transitions interruptible and provide a reduced-motion state.
-
-## Copy
-- Name the current limiting factor or spatial relationship directly.
-- Separate observation, inference, and simplification.
-- Avoid classroom cheerleading and generic discovery language.
+- Use quick, natural transitions that reinforce continuity and direct manipulation.
+- Avoid decorative looping animation and exaggerated bounce.
+- Respect prefers-reduced-motion and keep every action usable without motion.
 `,
   },
   {
-    id: 'kinetic-signal',
-    content: `# Kinetic Signal
+    id: 'shadcn-ui',
+    content: `# shadcn/ui
 
-## Intent
-Build a responsive working surface for live data, connected tools, and user-triggered actions. Expression follows state changes and never competes with the task.
+## Visual language
+Use the crisp, neutral visual language associated with shadcn/ui: semantic tokens, strong component states, thin borders, restrained radius, and excellent form ergonomics. Recreate the visual principles with ordinary CSS; do not assume Tailwind or shadcn components are installed. This file controls appearance, not page structure.
 
-## Color
-- Define light and dark semantic roles for canvas, surface, outline, primary, success, warning, and error.
-- Reserve the strongest color for the current selection or primary action.
-- Meet WCAG AA contrast and never place body text on a busy background.
+## Tokens and color
+- Define light and dark semantic tokens for background, foreground, card, popover, primary, secondary, muted, accent, destructive, border, input, and ring.
+- Use background/foreground pairs so text and icons always match their surface.
+- Start from a neutral, zinc, stone, or slate base and add one purposeful brand accent. Keep charts and status colors distinct and accessible.
 
-## Type
-- Use a variable sans face when available, otherwise a rounded or humanist sans.
-- Use a clear scale: 12px labels, 14-16px body, 20-28px section titles, and at most one 36-44px display line.
-- Use weight and spacing before adding more colors.
+## Typography
+- Use a modern system sans-serif such as Inter or Geist when available, then a system fallback.
+- Keep interface text compact: 12px labels, 14–16px body, and 20–30px section headings.
+- Use medium and semibold weights for control hierarchy and tabular numerals for aligned values.
 
-## Shape
-- Use 10-12px radii for fields, 16-20px for interactive groups, and pills only for compact filters or status.
-- Do not put every text block in a card. Containers must express grouping or interaction.
+## Shape and borders
+- Use a shared radius token around 10px, deriving smaller radii for fields and larger radii for dialogs.
+- Use 1px borders and visible focus rings. Prefer borders and surface contrast over heavy shadows.
+- Do not put every text block inside a card; a card must express a real group or interaction boundary.
 
-## Layout
-- Build an adaptive grid that collapses cleanly at 840px and 560px.
-- Touch targets are at least 44px. Important actions remain reachable on mobile.
-- Use tonal surface changes to show depth; keep shadows soft and rare.
-
-## Motion
-- Use 180-260ms emphasized easing for expansion, selection, and shared-axis changes.
-- Animate one meaningful transition at a time and respect prefers-reduced-motion.
-
-## Copy
-- Make the next action obvious and specific.
-- Prefer "Plan Friday dinner" over "Unlock your culinary journey".
-- Do not mention AI, prompts, architecture, or design systems unless the user asks.
-`,
-  },
-  {
-    id: 'ledger-grid',
-    content: `# Ledger Grid
-
-## Intent
-Make comparisons, shortlists, schedules, and evidence easy to scan without turning the page into a dashboard. Density is useful only when alignment reveals a decision.
-
-## Color
-- Use an off-white or charcoal canvas, quiet row separators, and one saturated selection color.
-- Status colors must include text or icons. Keep unselected data neutral.
-- Support light and dark mode with equal information hierarchy.
-
-## Type
-- Use a compact sans face with tabular numerals for values, dates, scores, and durations.
-- Keep column labels at 11-12px and row content at 13-15px.
-- Truncate long secondary text, but keep the primary identifier visible.
-
-## Layout
-- Align comparable values in real rows or a consistent grid.
-- Pin the few controls that change the comparison; hide low-value filters.
-- On narrow screens, turn rows into ordered comparison blocks without losing labels.
+## Layout rhythm
+- Use a disciplined 4px spacing scale and responsive grid or flex layouts.
+- Keep forms compact but never reduce touch targets below 44px on mobile.
+- Place labels, descriptions, errors, and actions consistently so users can scan repeated controls.
 
 ## Components
-- Use checkboxes for a shortlist, radio controls for one choice, and explicit buttons for actions.
-- Show why an option is unavailable next to it. Never silently disable a choice.
-- Keep totals and recommendations close to the affected rows.
+- Give buttons, inputs, selects, tabs, tables, dialogs, popovers, tooltips, and toasts consistent hover, active, disabled, and focus-visible states.
+- Use explicit labels and concise helper text. Keep errors next to their field and preserve user input after failure.
+- Tables and data rows use aligned columns, quiet dividers, and responsive alternatives rather than horizontal overflow.
 
 ## Motion
-- Use brief highlight and reordering transitions so changes remain trackable.
-- Avoid animated counters and decorative chart entrances. Respect prefers-reduced-motion.
-
-## Copy
-- Use factual column labels and short decision notes.
-- State trade-offs directly; do not manufacture scores or certainty.
-- Keep source and freshness information visible when it affects the decision.
+- Use 120–200ms opacity and transform transitions for popovers, dialogs, selection, and disclosure.
+- Never use transition: all. Keep motion interruptible and honor prefers-reduced-motion.
 `,
   },
 ]

@@ -125,7 +125,7 @@ export const cardCss = `
   .dsh-genui-canvas-placeholder > svg, .dsh-genui-canvas-placeholder span { color: #e17a5f; }
   .dsh-genui-canvas-placeholder strong { color: #eeeeec; }
 }
-@media (prefers-reduced-motion: reduce) { .dsh-genui-card[data-surface='canvas'] { animation: none; } .dsh-genui-progress-spinner { animation-duration: 1600ms; } }
+@media (prefers-reduced-motion: reduce) { .dsh-genui-card[data-surface='canvas'] { animation: none; } .dsh-genui-progress-spinner { animation: none; } }
 @media (max-width: 640px) {
   .dsh-genui-head { min-height: 48px; padding-right: 3px; padding-left: 3px; }
   .dsh-genui-action { width: 44px; height: 44px; }

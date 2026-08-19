@@ -11,7 +11,7 @@ import { ShellIcon } from './icons.tsx'
 import { artifactCardLedger, usePrimaryArtifactCard } from './ledger.ts'
 import { en, NS, zh } from './locales.ts'
 import { enqueuePermission, settlePermission } from './permission-queue.ts'
-import { isGenuiReadyMessage } from './readiness.ts'
+import { isGenuiReadyMessage, isGenuiRuntimeErrorMessage } from './readiness.ts'
 import { cardCss } from './styles.ts'
 import { readMeta } from './types.ts'
 import type { GenuiMeta, PermissionRequest, PermissionStatus } from './types.ts'
@@ -192,8 +192,9 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
     setFrameState('loading')
     const receive = (event: MessageEvent<unknown>) => {
       if (isGenuiReadyMessage(event, frameRef.current?.contentWindow ?? null, meta.artifactId, meta.versionId)) setFrameState('ready')
+      else if (isGenuiRuntimeErrorMessage(event, frameRef.current?.contentWindow ?? null, meta.artifactId, meta.versionId)) setFrameState('failed')
     }
-    const timeout = window.setTimeout(() => setFrameState(state => state === 'loading' ? 'failed' : state), 12_000)
+    const timeout = window.setTimeout(() => setFrameState(state => state === 'loading' ? 'failed' : state), 8_000)
     window.addEventListener('message', receive)
     frameRef.current?.contentWindow?.postMessage({ source: 'dsh-genui', type: 'ready-request', artifactId: meta.artifactId, versionId: meta.versionId }, '*')
     return () => {

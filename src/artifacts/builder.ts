@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { dirname, extname, posix } from 'node:path'
-import { build, type BuildResult, type Loader, type Message, type Plugin } from 'esbuild-wasm'
+import { build, type BuildResult, type Loader, type Message, type Plugin } from 'esbuild'
 import type { ArtifactVersion, BuildDiagnostic } from './types.ts'
 
 const ALLOWED_IMPORTS = new Set([
@@ -256,6 +256,16 @@ export async function buildArtifact(version: ArtifactVersion, distPath: string):
       target: ['es2022'],
       jsx: 'automatic',
       sourcemap: 'external',
+      banner: {
+        js: `(() => {
+  const reportGenuiRuntimeError = () => {
+    const root = document.getElementById('root')
+    parent.postMessage({ source: 'dsh-genui', type: 'runtime-error', artifactId: root?.dataset.artifactId, versionId: root?.dataset.versionId }, '*')
+  }
+  addEventListener('error', reportGenuiRuntimeError)
+  addEventListener('unhandledrejection', reportGenuiRuntimeError)
+})()`,
+      },
       footer: {
         js: `const postGenuiReady = () => {
   const root = document.getElementById('root')

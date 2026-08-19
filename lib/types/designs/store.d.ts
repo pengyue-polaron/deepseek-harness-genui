@@ -16,5 +16,6 @@ export declare class DesignStore {
     put(id: string, content: string): Promise<StoredDesign>;
     private path;
     private settingsPath;
+    private persistDefault;
 }
 //# sourceMappingURL=store.d.ts.map

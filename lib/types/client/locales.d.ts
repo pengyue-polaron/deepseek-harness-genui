@@ -18,10 +18,10 @@ export declare const zh: {
     readonly 'progress.label': "应用生成进度";
     readonly 'progress.create.prepare': "正在准备界面";
     readonly 'progress.create.build': "正在构建应用";
-    readonly 'progress.create.check': "正在检查交互与布局";
+    readonly 'progress.create.check': "正在完成应用";
     readonly 'progress.update.prepare': "正在准备这次修改";
     readonly 'progress.update.build': "正在构建候选版本";
-    readonly 'progress.update.check': "正在确认修改可以安全使用";
+    readonly 'progress.update.check': "正在完成候选版本";
     readonly 'progress.update.safe': "检查完成前，当前可用版本不会被替换。";
     readonly 'progress.restore.prepare': "正在确认可恢复版本";
     readonly 'progress.restore.apply': "正在恢复应用";
@@ -64,6 +64,11 @@ export declare const zh: {
     readonly 'design.auto': "自动选择（推荐）";
     readonly 'design.autoShort': "自动选择";
     readonly 'design.hint': "只影响之后新建的应用；已经生成的应用会保留原来的风格。";
+    readonly 'design.autoDescription': "按任务自动挑选视觉语言。只影响之后新建的应用。";
+    readonly 'design.material3Description': "Google Material 3：色调表面、清晰层级、鲜明主色与友好的触控组件。";
+    readonly 'design.appleDescription': "Apple Human Interface：克制、精确、内容优先，使用熟悉的系统感控件。";
+    readonly 'design.shadcnDescription': "shadcn/ui：语义色彩变量、利落边框、紧凑表单与完整交互状态。";
+    readonly 'design.customDescription': "自定义 DESIGN.md。只影响之后新建的应用。";
     readonly 'design.import': "导入 DESIGN.md";
     readonly 'design.export': "导出当前设计";
     readonly 'design.saved': "已保存";
@@ -133,6 +138,11 @@ export declare const en: {
     'design.auto': string;
     'design.autoShort': string;
     'design.hint': string;
+    'design.autoDescription': string;
+    'design.material3Description': string;
+    'design.appleDescription': string;
+    'design.shadcnDescription': string;
+    'design.customDescription': string;
     'design.import': string;
     'design.export': string;
     'design.saved': string;

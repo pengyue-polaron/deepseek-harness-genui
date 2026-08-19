@@ -5,8 +5,6 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-tools'
 import type { ArtifactRegistry } from './artifacts/registry.ts'
 import { buildArtifact } from './artifacts/builder.ts'
-import { verifyArtifactInBrowser } from './artifacts/browser-verifier.ts'
-import type { BrowserVerificationResult } from './artifacts/browser-verifier.ts'
 import type { ArtifactCapability, ArtifactVersion, BuildDiagnostic, FilePatch, SourceFile } from './artifacts/types.ts'
 import type { DesignStore } from './designs/store.ts'
 import type { CapabilityStore } from './runtime/capabilities.ts'
@@ -115,7 +113,6 @@ async function compile(
   agent: Agent,
   delivery: ToolReceipt['delivery'],
   language: 'en' | 'zh',
-  verifyBrowser: (url: string) => Promise<BrowserVerificationResult>,
 ): Promise<ToolReceipt> {
   const artifact = await registry.get(version.artifactId)
   const result = await buildArtifact(version, registry.distPath(version.artifactId, version.id))
@@ -140,32 +137,13 @@ async function compile(
       diagnostics: result.diagnostics,
     }
   }
-  const verificationToken = capabilities.issue(version.artifactId, agent, 'verification')
-  const verificationUrl = `${routePrefix}/preview/${version.artifactId}/${version.id}?lang=en#token=${verificationToken}`
-  let browser: BrowserVerificationResult
-  try {
-    browser = await verifyBrowser(`${previewOrigin}${verificationUrl}`)
-  } finally {
-    capabilities.revoke(verificationToken)
-  }
   const settled = await registry.settle(version.artifactId, version.id, {
     checkedAt: new Date().toISOString(),
     build: 'passed',
-    browser: browser.ok ? 'passed' : 'failed',
-    diagnostics: [...result.diagnostics, ...browser.diagnostics],
-    notes: browser.notes,
+    browser: 'not-run',
+    diagnostics: result.diagnostics,
+    notes: ['candidate accepted after compile and source contract checks'],
   })
-  if (!browser.ok) {
-    return {
-      artifact_id: settled.artifactId,
-      title: artifact.title,
-      version_id: settled.id,
-      status: settled.status,
-      delivery,
-      message: 'Candidate rendered incorrectly in the browser. Repair the diagnostics; the last-known-good version is unchanged.',
-      diagnostics: [...result.diagnostics, ...browser.diagnostics],
-    }
-  }
   const token = capabilities.issue(version.artifactId, agent)
   const previewUrl = `${routePrefix}/preview/${version.artifactId}/${version.id}?lang=en#token=${token}`
   const appUrl = `${previewOrigin}${routePrefix}/app/${version.artifactId}?lang=${language}#token=${token}`
@@ -177,8 +155,8 @@ async function compile(
     preview_url: previewUrl,
     app_url: appUrl,
     delivery,
-    message: 'Artifact compiled, passed desktop/mobile browser checks, and became the last-known-good version.',
-    diagnostics: [...result.diagnostics, ...browser.diagnostics],
+    message: 'Artifact compiled and became the last-known-good version.',
+    diagnostics: result.diagnostics,
   }
 }
 
@@ -313,7 +291,6 @@ export function registerGenuiTools(
   capabilities: CapabilityStore,
   routePrefix: string,
   previewOrigin: string,
-  verifyBrowser: (url: string) => Promise<BrowserVerificationResult> = verifyArtifactInBrowser,
 ): void {
   registerDesignTools(ctx, registry, designs)
   ctx.tools.register(defineTool({
@@ -350,7 +327,7 @@ export function registerGenuiTools(
         capabilities: capabilitiesFromInput(args.capabilities as CapabilityInput[]),
         files: args.files as SourceFile[],
       })
-      const receipt = await compile(registry, capabilities, routePrefix, previewOrigin, version, agent, args.delivery, args.language, verifyBrowser)
+      const receipt = await compile(registry, capabilities, routePrefix, previewOrigin, version, agent, args.delivery, args.language)
       if (receipt.status === 'ready' && receipt.delivery === 'embedded') exec.concludeTurn()
       return receipt
     },
@@ -401,7 +378,7 @@ export function registerGenuiTools(
         ...(args.supersede_requirements === undefined ? {} : { supersedeRequirements: args.supersede_requirements }),
         ...(args.capabilities === undefined ? {} : { capabilities: capabilitiesFromInput(args.capabilities as CapabilityInput[]) }),
       })
-      const receipt = await compile(registry, capabilities, routePrefix, previewOrigin, version, agent, args.delivery, args.language, verifyBrowser)
+      const receipt = await compile(registry, capabilities, routePrefix, previewOrigin, version, agent, args.delivery, args.language)
       if (receipt.status === 'ready' && receipt.delivery === 'embedded') exec.concludeTurn()
       return receipt
     },

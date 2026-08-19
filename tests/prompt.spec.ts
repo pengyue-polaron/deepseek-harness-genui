@@ -25,6 +25,7 @@ describe('GenUI system prompt', () => {
     expect(GENUI_SYSTEM_PROMPT).toContain('Do not fetch the same data before creation and again on open')
     expect(GENUI_SYSTEM_PROMPT).toContain('Repair a failed creation with genui_update, never another genui_create')
     expect(GENUI_SYSTEM_PROMPT).toContain('Pin the exported profile as root DESIGN.md')
+    expect(GENUI_SYSTEM_PROMPT).toContain('Bundled ids are material-3, apple-human-interface, and shadcn-ui')
     expect(GENUI_SYSTEM_PROMPT).toContain('one control group, one main visual, and one changing takeaway')
     expect(GENUI_SYSTEM_PROMPT).toContain('Use semantic controls, accessible names, visible keyboard focus')
     expect(GENUI_SYSTEM_PROMPT).toContain('without horizontal overflow at 260 CSS pixels')
@@ -49,10 +50,10 @@ describe('GenUI system prompt', () => {
   })
 
   it('honors a Harness default design without changing the automatic default', () => {
-    expect(GENUI_SYSTEM_PROMPT).toContain('silently choose and export the best bundled design')
+    expect(GENUI_SYSTEM_PROMPT).toContain('silently choose and export one bundled visual language')
     const custom = genuiSystemPrompt('home-journal')
     expect(custom).toContain('The Harness default design is home-journal')
     expect(custom).toContain('Silently export and use it for new apps unless the user asks for another direction')
-    expect(custom).not.toContain('silently choose and export the best bundled design')
+    expect(custom).not.toContain('silently choose and export one bundled visual language')
   })
 })
