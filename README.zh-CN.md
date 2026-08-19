@@ -5,7 +5,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.19-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-202124)](LICENSE)
 
-<img src="assets/hero-zh-CN.png" width="1280" alt="DeepSeek Harness 同时展示保存过选择的路线 Inline 和银河尺度 Canvas">
+<img src="https://raw.githubusercontent.com/pengyue-polaron/deepseek-harness-genui/main/assets/hero-zh-CN.png" width="1280" alt="DeepSeek Harness 同时展示保存过选择的路线 Inline 和银河尺度 Canvas">
 
 有些任务用文字来回描述很别扭。DeepSeek Harness GenUI 让 Agent 可以为当前任务生成一个聚焦界面，用来讲清复杂关系，或收集难以用一段话表达的用户选择。
 
@@ -18,15 +18,15 @@
 <table>
   <tr>
     <td><strong>选择日历时段</strong><br><br>把候选空闲时间变成一组可以直接操作的 90 分钟时段。<br><br>页面把选中的三个时段保存回任务；后续如需写入日历，仍要单独申请授权。</td>
-    <td><img src="screenshots/zh-CN/calendar-planner.jpg" width="280" alt="选择三个写作时段的中文界面"></td>
+    <td><img src="https://raw.githubusercontent.com/pengyue-polaron/deepseek-harness-genui/main/screenshots/zh-CN/calendar-planner.jpg" width="280" alt="选择三个写作时段的中文界面"></td>
   </tr>
   <tr>
     <td><strong>探索光合作用</strong><br><br>改变光照、二氧化碳、温度和气孔开度，找到限制反应的环节。<br><br>图示会跟随控制项变化，用户可以直接观察各变量如何影响结果。</td>
-    <td><img src="screenshots/zh-CN/photosynthesis-explorer.jpg" width="280" alt="可以改变四个条件的光合作用瓶颈模型"></td>
+    <td><img src="https://raw.githubusercontent.com/pengyue-polaron/deepseek-harness-genui/main/screenshots/zh-CN/photosynthesis-explorer.jpg" width="280" alt="可以改变四个条件的光合作用瓶颈模型"></td>
   </tr>
   <tr>
     <td><strong>追踪代码路径</strong><br><br>从 CLI 要求 Agent 根据真实项目源码解释一条执行链路。<br><br>返回的本地页面列出文件、函数、分支，以及用户当前选中的路径。</td>
-    <td><img src="screenshots/zh-CN/code-path-explorer.jpg" width="280" alt="通过 CLI 请求生成的中文代码路径解释器"></td>
+    <td><img src="https://raw.githubusercontent.com/pengyue-polaron/deepseek-harness-genui/main/screenshots/zh-CN/code-path-explorer.jpg" width="280" alt="通过 CLI 请求生成的中文代码路径解释器"></td>
   </tr>
 </table>
 
@@ -36,7 +36,7 @@
 
 | Inline | Canvas |
 | --- | --- |
-| <img src="screenshots/zh-CN/photosynthesis-inline.jpg" width="620" alt="在 DeepSeek Harness 对话中内联显示的光合作用交互模型"> | <img src="screenshots/zh-CN/photosynthesis-canvas-current.jpg" width="620" alt="DeepSeek Harness 会话侧边栏、对话区和右侧光合作用 Canvas 同时可见"> |
+| <img src="https://raw.githubusercontent.com/pengyue-polaron/deepseek-harness-genui/main/screenshots/zh-CN/photosynthesis-inline.jpg" width="620" alt="在 DeepSeek Harness 对话中内联显示的光合作用交互模型"> | <img src="https://raw.githubusercontent.com/pengyue-polaron/deepseek-harness-genui/main/screenshots/zh-CN/photosynthesis-canvas-current.jpg" width="620" alt="DeepSeek Harness 会话侧边栏、对话区和右侧光合作用 Canvas 同时可见"> |
 | 适合紧凑的控制项或聚焦选择。 | 提供更大空间，同时保留对话。 |
 
 Inline、Canvas、全屏和 CLI/localhost 是同一份任务状态的不同入口。在任一入口保存的选择和输入，都可以在 Agent 后续轮次继续使用。
@@ -75,6 +75,18 @@ Web 端可以从页面卡片查看或撤回权限。MCP 凭据不会进入生成
 
 因此，它比固定组件目录更自由，但也有意比跨客户端 UI 协议更聚焦：它服务于 DeepSeek Harness 及其任务生命周期。
 
+## 任务应用，还是组件树？
+
+两种路线都成立，只是适合的任务不同：
+
+| 更适合组件协议的情况 | 更适合这个插件的情况 |
+| --- | --- |
+| 用已知组件拼一张紧凑卡片、表格、图表或表单。 | 需要按当前任务编写一个事先无法确定结构和交互的 React 应用。 |
+| 更在意模型输出短小、结构可预测，以及跨客户端渲染。 | 更在意自由模拟、空间工具、连接型工作流或多步骤状态。 |
+| 一次操作可以表示成一个组件事件。 | 用户的选择和修改需要成为任务状态，供下一轮 Agent 继续读取。 |
+
+这个项目不替代轻量的 `dsh-ui` 组件渲染器，它覆盖的是 code-first、按任务生成应用的 GenUI 场景。
+
 ## DESIGN.md
 
 打开 **设置 → 插件 → 插件配置**，可以为新应用设置默认设计：让插件自动选择、选用内置风格、导入自定义 `DESIGN.md`，或导出当前选中的设计作为起点。选定后，它会成为之后新建应用的默认设计，不必在每个提示词里重复描述风格。已经生成的应用会保留原来的设计。
@@ -99,6 +111,32 @@ dsh --profile web
 Web profile 支持 Inline、Canvas、全屏和 localhost 链接。终端 profile 把命令里的 `web` 换成 `tui`；TUI 返回本地链接，不嵌入 Canvas。MCP 仍按原有方式连接到同一个 profile。
 
 插件不会下载或启动浏览器。每个候选版本都必须通过编译和源码契约检查，才能替换最后一个可用版本。仓库 CI 会另外用 Chromium 测试沙箱运行时；插件用户不需要安装它。
+
+## 两分钟试一下
+
+新建一个 Web 会话，复制下面任意一段：
+
+```text
+帮我规划一个周六行程，包含美术馆、滨江花园和晚餐。做成可以直接调整时间的界面，
+并让我能把花园设为下雨时跳过。
+```
+
+```text
+根据当前仓库源码，解释生成页面如何进入带权限控制的运行时。做一个可交互的代码
+路径图，并标出文件、函数和权限检查。
+```
+
+```text
+做一个可交互的双缝干涉实验，让我调整波长、缝间距和屏幕距离，并实时观察条纹变化。
+```
+
+在界面里修改并保存以后，再问一句：
+
+```text
+我刚才在界面里选了什么？请按保存结果继续。
+```
+
+真正要验证的不只是“页面出现了”，而是下一轮 Agent 能不能接着刚才的操作继续做。
 
 ## 安全
 

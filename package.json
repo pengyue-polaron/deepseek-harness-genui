@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-genui",
-  "description": "Code-first generative UI artifacts for DeepSeek Harness",
-  "version": "0.13.0",
+  "description": "Task-specific React apps for DeepSeek Harness with state carried into the next Agent turn",
+  "version": "0.13.1",
   "keywords": [
     "deepseek-harness",
     "dsh-plugin",

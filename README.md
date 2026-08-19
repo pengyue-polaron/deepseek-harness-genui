@@ -5,7 +5,7 @@ English | [简体中文](README.zh-CN.md)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.19-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-202124)](LICENSE)
 
-<img src="assets/hero-en.png" width="1280" alt="DeepSeek Harness with an interactive day plan inline and a scientific model open in Canvas">
+<img src="https://raw.githubusercontent.com/pengyue-polaron/deepseek-harness-genui/main/assets/hero-en.png" width="1280" alt="DeepSeek Harness with an interactive day plan inline and a scientific model open in Canvas">
 
 Some tasks are awkward in text. DeepSeek Harness GenUI lets an Agent create a focused interface for the current task: something that explains a difficult relationship or collects a complex user response.
 
@@ -18,15 +18,15 @@ Use an interface when the user needs to see a difficult relationship or make sev
 <table>
   <tr>
     <td><strong>Pick calendar slots</strong><br><br>Turn candidate availability into a short list of useful 90-minute writing blocks.<br><br>The interface saves the three choices to the task. A later calendar action remains separate and asks for approval.</td>
-    <td><img src="screenshots/en/calendar-planner.jpg" width="280" alt="English interface for choosing three writing slots"></td>
+    <td><img src="https://raw.githubusercontent.com/pengyue-polaron/deepseek-harness-genui/main/screenshots/en/calendar-planner.jpg" width="280" alt="English interface for choosing three writing slots"></td>
   </tr>
   <tr>
     <td><strong>Explore photosynthesis</strong><br><br>Move light, carbon dioxide, temperature, and stomatal controls to find the limiting step.<br><br>The diagram changes with the controls, making each variable's effect easier to explore than to describe.</td>
-    <td><img src="screenshots/en/photosynthesis-explorer.jpg" width="280" alt="English interactive photosynthesis model with four causal controls"></td>
+    <td><img src="https://raw.githubusercontent.com/pengyue-polaron/deepseek-harness-genui/main/screenshots/en/photosynthesis-explorer.jpg" width="280" alt="English interactive photosynthesis model with four causal controls"></td>
   </tr>
   <tr>
     <td><strong>Trace a code path</strong><br><br>Ask from the CLI for a source-grounded explanation of a real project flow.<br><br>The result is a local explorer with files, functions, branches, and the path selected by the user.</td>
-    <td><img src="screenshots/en/code-path-explorer.jpg" width="280" alt="English source-grounded code path explorer returned from a CLI request"></td>
+    <td><img src="https://raw.githubusercontent.com/pengyue-polaron/deepseek-harness-genui/main/screenshots/en/code-path-explorer.jpg" width="280" alt="English source-grounded code path explorer returned from a CLI request"></td>
   </tr>
 </table>
 
@@ -36,7 +36,7 @@ The same app can sit inside the answer or open beside the conversation.
 
 | Inline | Canvas |
 | --- | --- |
-| <img src="screenshots/en/code-path-inline.jpg" width="620" alt="An interactive code path shown inline in a DeepSeek Harness conversation"> | <img src="screenshots/en/code-path-canvas.jpg" width="620" alt="The DeepSeek Harness sidebar, conversation, and code-path explorer visible together in the right-side Canvas"> |
+| <img src="https://raw.githubusercontent.com/pengyue-polaron/deepseek-harness-genui/main/screenshots/en/code-path-inline.jpg" width="620" alt="An interactive code path shown inline in a DeepSeek Harness conversation"> | <img src="https://raw.githubusercontent.com/pengyue-polaron/deepseek-harness-genui/main/screenshots/en/code-path-canvas.jpg" width="620" alt="The DeepSeek Harness sidebar, conversation, and code-path explorer visible together in the right-side Canvas"> |
 | A compact control or focused choice. | More room without covering the conversation. |
 
 Inline, Canvas, fullscreen, and CLI/localhost are different surfaces over the same task state. Selections and inputs saved in one surface remain available to later Agent turns.
@@ -75,6 +75,18 @@ Most generative UI systems ask developers to prebuild widgets or maintain a trus
 
 That makes GenUI more expressive than a fixed component catalog, but deliberately narrower than a cross-client UI protocol: it is built for DeepSeek Harness and its task lifecycle.
 
+## Task Apps or Component Trees?
+
+Both approaches are useful, but they optimize for different work:
+
+| Choose a component-schema renderer when... | Choose this plugin when... |
+| --- | --- |
+| The result is a compact card, table, chart, or form assembled from a known catalog. | The task needs a purpose-built React app whose structure and interactions are not known in advance. |
+| Small, predictable model output and portable rendering matter most. | Free-form simulations, spatial tools, connected workflows, or multi-step state matter most. |
+| An interaction can be represented as a component event. | The user's selections and edits need to become task state that the next Agent turn can read. |
+
+This project does not replace lightweight `dsh-ui` component renderers. It covers the code-first, task-specific side of GenUI.
+
 ## DESIGN.md
 
 Open **Settings → Plugins → Plugin configuration** to set the default design for new apps. Choose automatic selection or a built-in profile, import a custom `DESIGN.md`, or export the selected one as a starting point. Once selected, it becomes the default for apps created later, so the style does not need to be repeated in every prompt. Existing apps keep their original design.
@@ -99,6 +111,33 @@ dsh --profile web
 The Web profile supports Inline, Canvas, fullscreen, and localhost links. For a terminal profile, replace `web` with `tui`; TUI returns localhost links and does not embed Canvas. Connect MCP servers to the same profile as usual.
 
 The plugin does not download or launch a browser. Every candidate is compiled and checked against the source contracts before it can replace the last working version. The repository CI separately exercises the sandboxed runtime in Chromium; plugin users do not need it.
+
+## Try It in Two Minutes
+
+Start a new Web session and paste one of these prompts:
+
+```text
+Plan a Saturday route with a museum, a riverside garden, and dinner. Build an
+interface where I can change the times and make the garden optional.
+```
+
+```text
+Trace how a generated app reaches the permission-gated runtime in this
+repository. Build an interactive code-path explorer grounded in the source.
+```
+
+```text
+Build an interactive double-slit experiment. Let me change wavelength, slit
+spacing, and screen distance and see the interference pattern update.
+```
+
+After changing and saving something in the interface, ask:
+
+```text
+What did I just choose in the interface? Continue from the saved result.
+```
+
+The useful proof is not only that an interface appears—it is that the next Agent turn can continue from the interaction.
 
 ## Safety
 
