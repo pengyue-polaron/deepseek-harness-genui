@@ -12,6 +12,7 @@ import { artifactCardLedger, usePrimaryArtifactCard } from './ledger.ts'
 import { en, NS, zh } from './locales.ts'
 import { enqueuePermission, settlePermission } from './permission-queue.ts'
 import { isGenuiReadyMessage, isGenuiRuntimeErrorMessage } from './readiness.ts'
+import { settingsSlotRegistration } from './settings-slot.ts'
 import { cardCss } from './styles.ts'
 import { readMeta } from './types.ts'
 import type { GenuiMeta, PermissionRequest, PermissionStatus } from './types.ts'
@@ -617,9 +618,6 @@ export function apply(ctx: ClientContext): void {
     }
   })
   ctx.slots.inject('settings.plugin.item', () => ctx.slots.register({
-    name: 'settings.plugin.item',
-    id: 'genui-design',
-    order: 30,
-    locale: NS,
+    ...settingsSlotRegistration(),
   }, DesignSettingsCard))
 }
