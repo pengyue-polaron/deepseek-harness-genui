@@ -1,4 +1,5 @@
 import { NS } from './locales.ts'
+import { DESIGN_SETTINGS_NAMESPACE } from '../settings-namespace.ts'
 
 /**
  * Registration contract for the `settings.plugin.item` slot.
@@ -13,9 +14,10 @@ import { NS } from './locales.ts'
  *
  * The DSH slot store accepts both optional `key` and `id` fields and only
  * *requires* the one matching the host's declared kind, so providing both
- * keeps the plugin loadable on every host version. Kept as a pure, exported
- * helper so this contract is unit-testable without booting the client
- * runtime.
+ * keeps the plugin loadable on every host version. Keyed hosts also dispatch
+ * only namespaces advertised by the Host settings service; the server half
+ * registers the matching marker namespace. Kept as a pure, exported helper so
+ * this contract is unit-testable without booting the client runtime.
  */
 export interface SettingsSlotRegistration {
   name: 'settings.plugin.item'
@@ -30,8 +32,8 @@ export interface SettingsSlotRegistration {
 export function settingsSlotRegistration(): SettingsSlotRegistration {
   return {
     name: 'settings.plugin.item',
-    key: 'genui-design',
-    id: 'genui-design',
+    key: DESIGN_SETTINGS_NAMESPACE,
+    id: DESIGN_SETTINGS_NAMESPACE,
     order: 30,
     locale: NS,
   }
