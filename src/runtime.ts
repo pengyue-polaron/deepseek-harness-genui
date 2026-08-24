@@ -11,12 +11,14 @@ import { ArtifactRegistry } from './artifacts/registry.ts'
 import { DesignStore } from './designs/store.ts'
 import { CapabilityStore } from './runtime/capabilities.ts'
 import { registerDiscoveryBudget } from './runtime/discovery-budget.ts'
+import { registerDesignSettingsNamespace } from './runtime/settings-namespace.ts'
 import { createHttpRuntime } from './runtime/server.ts'
 import { registerGenuiTools } from './tools.ts'
 import { GENUI_BEHAVIOR_PROMPT, genuiSystemPrompt } from './prompt.ts'
 
 export async function apply(ctx: Context, config: Config): Promise<() => void> {
   const resolved = resolveConfig(config)
+  void registerDesignSettingsNamespace(ctx)
   const registry = new ArtifactRegistry(resolve(process.cwd(), resolved.artifactRoot), resolved.maxSourceBytes)
   await registry.init()
   const designs = new DesignStore(resolve(registry.root, '.designs'))
