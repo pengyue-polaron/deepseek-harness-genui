@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-genui",
   "description": "Task-specific React apps for DeepSeek Harness with state carried into the next Agent turn",
-  "version": "0.13.1",
+  "version": "0.13.2",
   "keywords": [
     "deepseek-harness",
     "dsh-plugin",
