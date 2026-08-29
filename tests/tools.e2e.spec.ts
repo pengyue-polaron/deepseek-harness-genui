@@ -112,10 +112,12 @@ createRoot(document.getElementById('root')!).render(<App />)`,
     expect((await registry.getVersion(String(repaired.artifact_id), String(repaired.version_id))).evidence)
       .toMatchObject({ build: 'passed', browser: 'not-run' })
     expect(lastConcludesTurn).toBe(true)
-    expect(lastRenderedContent).toEqual([{
+    expect(lastRenderedContent).toEqual([expect.objectContaining({
       type: 'text',
-      text: 'This successful result must be the last emitted item. Emit no text and run no tools after it.',
-    }])
+      text: expect.stringMatching(/^This successful result must be the last emitted item\. Emit no text and run no tools after it\.\n<!--dsh-genui-receipt:[A-Za-z0-9_-]+-->$/),
+    })])
+    expect(JSON.stringify(lastRenderedContent)).not.toContain(String(repaired.preview_url))
+    expect(JSON.stringify(lastRenderedContent)).not.toContain(new URL(String(repaired.preview_url), 'http://localhost').hash.slice(1))
 
     await registry.updateState(created.artifact_id as string, String(agent.id), state => ({ ...state, feedback: { choice: 'quiet route' } }))
     const submitted = await execute('genui_state_read', { artifact_id: 'tool-flow' })
@@ -142,10 +144,9 @@ createRoot(document.getElementById('root')!).render(<App />)`,
     expect(updated).toMatchObject({ artifact_id: created.artifact_id, status: 'ready' })
     expect(lastConcludesTurn).toBeUndefined()
     expect(updated.app_url).toBe(repaired.app_url)
-    expect(lastRenderedContent).toEqual([{
-      type: 'text',
-      text: `Tool flow\n${String(updated.app_url)}`,
-    }])
+    const renderedLocalLink = (lastRenderedContent as Array<{ type: string; text: string }>)[0]?.text ?? ''
+    expect(renderedLocalLink).toBe(`Tool flow\n${String(updated.app_url)}`)
+    expect(renderedLocalLink).not.toContain('<!--dsh-genui-receipt:')
     expect(String(updated.app_url)).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/genui\/app\/s-[a-f0-9]{12}-tool-flow\?lang=en#token=/)
 
     const stableDocument = await fetch(String(updated.app_url)).then(response => response.text())

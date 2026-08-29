@@ -29,6 +29,10 @@ export declare class ArtifactRegistry {
     }): Promise<ArtifactVersion>;
     settle(id: string, versionId: string, evidence: VerificationEvidence): Promise<ArtifactVersion>;
     rollback(id: string, versionId: string): Promise<ArtifactRecord>;
+    reportRuntimeFailure(id: string, versionId: string): Promise<{
+        failedVersionId: string;
+        fallbackVersionId?: string;
+    }>;
     readState(id: string, sessionId: string): Promise<ArtifactSessionState | undefined>;
     updateState(id: string, sessionId: string, updater: (state: Record<string, unknown>) => Record<string, unknown>): Promise<ArtifactRecord>;
     grantCapability(id: string, sessionId: string, capabilityId: string, grant: ArtifactGrant): Promise<ArtifactRecord>;

@@ -55,6 +55,7 @@ export interface ArtifactSessionState {
     values: Record<string, unknown>;
 }
 export interface ArtifactVersion {
+    schemaVersion?: 1;
     id: string;
     artifactId: string;
     parentVersionId?: string;
@@ -67,6 +68,7 @@ export interface ArtifactVersion {
     evidence: VerificationEvidence;
 }
 export interface ArtifactRecord {
+    schemaVersion?: 1;
     id: string;
     title: string;
     createdAt: string;

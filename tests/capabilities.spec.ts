@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import { CapabilityStore } from '../src/runtime/capabilities.ts'
+import { artifactSessionPrefix, CapabilityStore } from '../src/runtime/capabilities.ts'
 import { TASK_TTL_MS, VERIFICATION_TOKEN_TTL_MS } from '../src/lifecycle.ts'
 
 const roots: string[] = []
@@ -40,6 +40,20 @@ describe('CapabilityStore', () => {
     expect(store.resolve(token, 'candidate')?.mode).toBe('verification')
     store.revoke(token)
     expect(store.resolve(token, 'candidate')).toBeUndefined()
+  })
+
+  it('issues receipt access only for the resolved owner session and its scoped artifact', () => {
+    const agent = { id: SessionId('receipt-session') } as Agent
+    const artifactId = `${artifactSessionPrefix(String(agent.id))}nested-app`
+    const store = new CapabilityStore(sessionId => sessionId === String(agent.id) ? agent : undefined)
+    const token = store.issueForSession(artifactId, String(agent.id))
+    expect(token).toBeDefined()
+    expect(store.resolve(token ?? '', artifactId)).toMatchObject({ sessionId: String(agent.id), agent })
+    expect(store.issueForSession('another-task-app', String(agent.id))).toBeUndefined()
+    expect(store.issueForSession(artifactId, 'another-session')).toBeUndefined()
+
+    const mismatched = new CapabilityStore(() => ({ id: SessionId('different-agent') }) as Agent)
+    expect(mismatched.issueForSession(artifactId, String(agent.id))).toBeUndefined()
   })
 
   it('expires interactive links after the task lifetime', () => {

@@ -19,10 +19,11 @@ const ALLOWED_IMPORTS = new Set([
 const DEPENDENCY_ROOT = dirname(createRequire(import.meta.url).resolve('react/package.json'))
 
 const SDK_SOURCE = String.raw`
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const permissionWaiters = new Map()
 const inFlightRequests = new Map()
+const stateWriteQueues = new Map()
 
 addEventListener('message', (event) => {
   if (event.source !== parent || event.data?.source !== 'dsh-genui' || event.data?.type !== 'permission-result') return
@@ -36,11 +37,14 @@ const runtime = () => {
   const root = document.getElementById('root')
   const artifactId = root?.dataset.artifactId
   const versionId = root?.dataset.versionId
-  const apiBase = root?.dataset.apiBase
-  if (!artifactId || !versionId || !apiBase) throw new Error('GenUI runtime metadata is missing')
-  const token = new URLSearchParams(location.hash.slice(1)).get('token')
-  if (!token) throw new Error('GenUI capability token is missing')
-  return { artifactId, versionId, apiBase, token }
+  if (!artifactId || !versionId) throw new Error('GenUI runtime metadata is missing')
+  return { artifactId, versionId }
+}
+
+const bridge = () => {
+  const value = globalThis.__dshGenuiBridge
+  if (!value || typeof value.request !== 'function') throw new Error('GenUI host bridge is unavailable')
+  return value
 }
 
 const askPermission = (permission) => new Promise((resolve) => {
@@ -51,19 +55,15 @@ const askPermission = (permission) => new Promise((resolve) => {
 })
 
 const sendRequest = async (action, body, mayAsk) => {
-  const { apiBase, token, versionId } = runtime()
-  const response = await fetch(apiBase + '/' + action, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
-    body: JSON.stringify({ ...body, version_id: versionId }),
-  })
-  const value = await response.json()
-  if (!response.ok && mayAsk && value.code === 'approval_required' && value.permission) {
+  const { versionId } = runtime()
+  const response = await bridge().request(action, { ...body, version_id: versionId })
+  const value = response.value
+  if (!response.ok && mayAsk && value?.code === 'approval_required' && value.permission) {
     const granted = await askPermission(value.permission)
     if (!granted) throw new Error('Permission was not granted')
     return sendRequest(action, body, false)
   }
-  if (!response.ok) throw new Error(value.error || ('GenUI request failed: ' + response.status))
+  if (!response.ok) throw new Error(value?.error || ('GenUI request failed: ' + response.status))
   return value
 }
 
@@ -78,6 +78,54 @@ const request = (action, body) => {
     () => { inFlightRequests.delete(key) },
   )
   return pending
+}
+
+const flushStateWrites = async (key, queue) => {
+  if (queue.running) return
+  queue.running = true
+  while (queue.queued) {
+    const batch = queue.queued
+    queue.queued = undefined
+    try {
+      const answer = await sendRequest('state/write', { key, value: batch.value }, true)
+      batch.waiters.forEach(waiter => waiter.resolve(answer))
+    } catch (cause) {
+      batch.waiters.forEach(waiter => waiter.reject(cause))
+    }
+  }
+  queue.running = false
+  if (!queue.queued && stateWriteQueues.get(key) === queue) {
+    stateWriteQueues.delete(key)
+    queue.resolveIdle()
+  } else {
+    void flushStateWrites(key, queue)
+  }
+}
+
+const writeState = (key, value) => {
+  let queue = stateWriteQueues.get(key)
+  if (!queue) {
+    let resolveIdle
+    const idle = new Promise(resolve => { resolveIdle = resolve })
+    queue = { running: false, queued: undefined, idle, resolveIdle }
+    stateWriteQueues.set(key, queue)
+  }
+  const pending = new Promise((resolve, reject) => {
+    if (queue.queued) {
+      queue.queued.value = value
+      queue.queued.waiters.push({ resolve, reject })
+    } else {
+      queue.queued = { value, waiters: [{ resolve, reject }] }
+    }
+  })
+  void flushStateWrites(key, queue)
+  return pending
+}
+
+const readState = async (key) => {
+  const queue = stateWriteQueues.get(key)
+  if (queue) await queue.idle
+  return sendRequest('state/read', { key }, true)
 }
 
 export const artifactContext = () => {
@@ -100,7 +148,7 @@ const notifyStateChanged = (key) => {
 }
 
 export const reportResult = async (value) => {
-  const answer = await request('state/write', { key: '__result', value })
+  const answer = await writeState('__result', value)
   notifyStateChanged('__result')
   return answer
 }
@@ -127,12 +175,29 @@ export function useArtifactState(key, initialValue) {
   const [value, setValue] = useState(initialValue)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState(null)
+  const [pendingWrites, setPendingWrites] = useState(0)
+  const valueRef = useRef(initialValue)
+  const revisionRef = useRef(0)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
 
   useEffect(() => {
     let active = true
-    request('state/read', { key }).then((answer) => {
+    const readRevision = ++revisionRef.current
+    valueRef.current = initialValue
+    setValue(initialValue)
+    setReady(false)
+    setError(null)
+    readState(key).then((answer) => {
       if (!active) return
-      if (answer.found) setValue(answer.value)
+      if (answer.found && revisionRef.current === readRevision) {
+        valueRef.current = answer.value
+        setValue(answer.value)
+      }
       setReady(true)
     }).catch((cause) => {
       if (!active) return
@@ -143,15 +208,24 @@ export function useArtifactState(key, initialValue) {
   }, [key])
 
   const update = useCallback((next) => {
-    setValue((previous) => {
-      const resolved = typeof next === 'function' ? next(previous) : next
-      request('state/write', { key, value: resolved }).then(() => notifyStateChanged(key))
-        .catch((cause) => { setError(cause instanceof Error ? cause : new Error(String(cause))) })
-      return resolved
+    const resolved = typeof next === 'function' ? next(valueRef.current) : next
+    revisionRef.current += 1
+    valueRef.current = resolved
+    setValue(resolved)
+    setPendingWrites(current => current + 1)
+    setError(null)
+    void writeState(key, resolved).then(() => {
+      if (!mountedRef.current) return
+      setError(null)
+      notifyStateChanged(key)
+    }, (cause) => {
+      if (mountedRef.current) setError(cause instanceof Error ? cause : new Error(String(cause)))
+    }).finally(() => {
+      if (mountedRef.current) setPendingWrites(current => Math.max(0, current - 1))
     })
   }, [key])
 
-  return [value, update, { ready, error }]
+  return [value, update, { ready, error, saving: pendingWrites > 0 }]
 }
 `
 
@@ -198,7 +272,9 @@ function sourcePlugin(version: ArtifactVersion): Plugin {
       context.onResolve({ filter: /^@dsh-genui\/sdk$/ }, () => ({ path: '@dsh-genui/sdk', namespace: 'genui-sdk' }))
       context.onLoad({ filter: /.*/, namespace: 'genui-sdk' }, () => ({ contents: SDK_SOURCE, loader: 'js', resolveDir: DEPENDENCY_ROOT }))
       context.onResolve({ filter: /.*/, namespace: 'genui-source' }, (args) => {
-        if (args.path.startsWith('data:')) return { path: args.path, external: true }
+        if (args.path.startsWith('data:')) {
+          return { errors: [{ text: 'Data URL imports are not allowed in GenUI artifacts' }] }
+        }
         if (args.path.startsWith('.') || args.path.startsWith('/')) {
           const resolved = resolveRelative(args.path, args.importer)
           return resolved === undefined
@@ -239,8 +315,37 @@ function stateContractDiagnostics(version: ArtifactVersion): BuildDiagnostic[] {
   }]
 }
 
+const SANDBOX_SOURCE_RULES: Array<{ pattern: RegExp; text: string }> = [
+  {
+    pattern: /\bfetch\s*\(|\b(?:XMLHttpRequest|WebSocket|EventSource|WebTransport)\b|\bnavigator\s*(?:\.\s*sendBeacon|\[\s*['"]sendBeacon['"]\s*\])/,
+    text: 'Generated apps must use callTool or requestExternal instead of raw browser networking APIs.',
+  },
+  {
+    pattern: /\b(?:window|globalThis|self)\s*(?:\.\s*open\b|\[\s*['"]open['"]\s*\])|\b(?:window|globalThis|self|document)\s*(?:\.\s*location\b|\[\s*['"]location['"]\s*\])|(?:^|[;{}]\s*)location\s*=|(?:^|[^\w$.])location\s*\.\s*(?:href|assign|replace|reload)\b/m,
+    text: 'Generated apps cannot navigate browsing contexts; keep external access inside requestExternal.',
+  },
+  {
+    pattern: /<\s*(?:a|meta)\b|<\s*(?:form|button|input)\b[^>]*\b(?:action|formAction|target)\s*=|\b(?:React\s*\.\s*)?createElement\s*\(\s*['"](?:a|meta)['"]\s*[,)]|\.\s*(?:submit|requestSubmit)\s*\(/i,
+    text: 'Generated apps cannot create navigable links, refresh markup, form targets, or native form submissions; use buttons and SDK actions.',
+  },
+  {
+    pattern: /\b(?:dangerouslySetInnerHTML|innerHTML|outerHTML|insertAdjacentHTML)\b|\bdocument\s*\.\s*write\s*\(/,
+    text: 'Generated apps cannot inject unchecked HTML because it can create navigation paths outside the SDK.',
+  },
+]
+
+function sandboxContractDiagnostics(version: ArtifactVersion): BuildDiagnostic[] {
+  const found: BuildDiagnostic[] = []
+  for (const file of version.files) {
+    if (!/\.(?:[cm]?[jt]s|[jt]sx)$/.test(file.path)) continue
+    const rule = SANDBOX_SOURCE_RULES.find(candidate => candidate.pattern.test(file.content))
+    if (rule !== undefined) found.push({ severity: 'error', text: rule.text, file: file.path })
+  }
+  return found
+}
+
 export async function buildArtifact(version: ArtifactVersion, distPath: string): Promise<ArtifactBuildResult> {
-  const contractDiagnostics = stateContractDiagnostics(version)
+  const contractDiagnostics = [...stateContractDiagnostics(version), ...sandboxContractDiagnostics(version)]
   if (contractDiagnostics.length > 0) return { ok: false, diagnostics: contractDiagnostics, outputFiles: [] }
   let result: BuildResult
   try {
@@ -258,9 +363,31 @@ export async function buildArtifact(version: ArtifactVersion, distPath: string):
       sourcemap: 'external',
       banner: {
         js: `(() => {
+  globalThis.__dshGenuiReady = false
+  const preventDefault = Event.prototype.preventDefault
+  const composedPath = Event.prototype.composedPath
+  const Anchor = HTMLAnchorElement
+  const cancelDefault = (event) => { preventDefault.call(event) }
+  const cancelAnchorDefault = (event) => {
+    if (composedPath.call(event).some(node => node instanceof Anchor)) preventDefault.call(event)
+  }
+  addEventListener('submit', cancelDefault, true)
+  addEventListener('click', cancelAnchorDefault, true)
+  addEventListener('auxclick', cancelAnchorDefault, true)
+  const navigationController = globalThis.navigation
+  if (navigationController && typeof navigationController.addEventListener === 'function') {
+    EventTarget.prototype.addEventListener.call(navigationController, 'navigate', cancelDefault)
+  }
+  addEventListener('message', (event) => {
+    if (event.source !== parent || event.data?.source !== 'dsh-genui' || event.data?.type !== 'theme'
+      || (event.data.theme !== 'dark' && event.data.theme !== 'light')) return
+    document.documentElement.toggleAttribute('data-ds-dark-theme', event.data.theme === 'dark')
+    document.documentElement.toggleAttribute('data-ds-light-theme', event.data.theme === 'light')
+    document.documentElement.style.colorScheme = event.data.theme
+  })
   const reportGenuiRuntimeError = () => {
     const root = document.getElementById('root')
-    parent.postMessage({ source: 'dsh-genui', type: 'runtime-error', artifactId: root?.dataset.artifactId, versionId: root?.dataset.versionId }, '*')
+    parent.postMessage({ source: 'dsh-genui', type: 'runtime-error', phase: globalThis.__dshGenuiReady ? 'interactive' : 'startup', artifactId: root?.dataset.artifactId, versionId: root?.dataset.versionId }, '*')
   }
   addEventListener('error', reportGenuiRuntimeError)
   addEventListener('unhandledrejection', reportGenuiRuntimeError)
@@ -269,14 +396,26 @@ export async function buildArtifact(version: ArtifactVersion, distPath: string):
       footer: {
         js: `const postGenuiReady = () => {
   const root = document.getElementById('root')
+  globalThis.__dshGenuiReady = true
   parent.postMessage({ source: 'dsh-genui', type: 'ready', artifactId: root?.dataset.artifactId, versionId: root?.dataset.versionId }, '*')
 }
 addEventListener('message', (event) => {
   const root = document.getElementById('root')
   if (event.source === parent && event.data?.source === 'dsh-genui' && event.data?.type === 'ready-request'
-    && event.data?.artifactId === root?.dataset.artifactId && event.data?.versionId === root?.dataset.versionId) postGenuiReady()
+    && event.data?.artifactId === root?.dataset.artifactId && event.data?.versionId === root?.dataset.versionId
+    && globalThis.__dshGenuiReady) postGenuiReady()
 })
-requestAnimationFrame(() => requestAnimationFrame(postGenuiReady))`,
+const waitForGenuiMount = () => {
+  const root = document.getElementById('root')
+  if (!root || root.childNodes.length === 0) {
+    requestAnimationFrame(waitForGenuiMount)
+    return
+  }
+  setTimeout(() => {
+    if (!globalThis.__dshGenuiReady && root.isConnected && root.childNodes.length > 0) postGenuiReady()
+  }, 0)
+}
+requestAnimationFrame(() => requestAnimationFrame(waitForGenuiMount))`,
       },
       metafile: true,
       logLevel: 'silent',

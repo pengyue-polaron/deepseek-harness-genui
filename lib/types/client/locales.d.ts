@@ -31,6 +31,7 @@ export declare const zh: {
     readonly 'action.closeCanvas': "收回到对话";
     readonly 'feedback.fullscreenFailed': "无法进入全屏，请重试";
     readonly 'feedback.saved': "已保存";
+    readonly 'feedback.restored': "已恢复到上一个可用版本";
     readonly 'permission.title': "需要你的同意";
     readonly 'permission.read': "读取信息";
     readonly 'permission.write': "执行更改";
@@ -53,6 +54,8 @@ export declare const zh: {
     readonly 'access.revoking': "正在收回…";
     readonly 'access.close': "完成";
     readonly 'access.failed': "暂时无法更新权限，请重试。";
+    readonly 'access.checkFailed': "暂时无法检查应用权限。连接能力会保持关闭。";
+    readonly 'access.checkAgain': "重新检查";
     readonly 'access.revoked': "权限已收回";
     readonly 'receipt.updated': "应用已更新";
     readonly 'receipt.failed': "这次修改没有生效，应用保持原样";
@@ -71,6 +74,9 @@ export declare const zh: {
     readonly 'design.customDescription': "自定义 DESIGN.md。只影响之后新建的应用。";
     readonly 'design.import': "导入 DESIGN.md";
     readonly 'design.export': "导出当前设计";
+    readonly 'design.loading': "正在读取设置…";
+    readonly 'design.loadFailed': "暂时无法读取设置，请重试。";
+    readonly 'design.retry': "重新读取";
     readonly 'design.saved': "已保存";
     readonly 'design.saving': "正在保存…";
     readonly 'design.imported': "已导入并设为默认";
@@ -105,6 +111,7 @@ export declare const en: {
     'action.closeCanvas': string;
     'feedback.fullscreenFailed': string;
     'feedback.saved': string;
+    'feedback.restored': string;
     'permission.title': string;
     'permission.read': string;
     'permission.write': string;
@@ -127,6 +134,8 @@ export declare const en: {
     'access.revoking': string;
     'access.close': string;
     'access.failed': string;
+    'access.checkFailed': string;
+    'access.checkAgain': string;
     'access.revoked': string;
     'receipt.updated': string;
     'receipt.failed': string;
@@ -145,6 +154,9 @@ export declare const en: {
     'design.customDescription': string;
     'design.import': string;
     'design.export': string;
+    'design.loading': string;
+    'design.loadFailed': string;
+    'design.retry': string;
     'design.saved': string;
     'design.saving': string;
     'design.imported': string;

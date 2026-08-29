@@ -12,20 +12,22 @@ import { requestExternal } from './external.ts'
 import {
   capabilityById, capabilityFingerprint, externalCapability, isGranted, permissionView, toolCapability,
 } from './permissions.ts'
+import { BRIDGE_RUNTIME } from './bridge.ts'
 import { ARTIFACT_RUNTIME_VERSION, STANDALONE_RUNTIME, standaloneHtml } from './standalone.ts'
 
-const CSP = [
+const CSP_BASE = [
   "default-src 'none'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self'",
-  "frame-src 'self'",
   "object-src 'none'",
   "base-uri 'none'",
+  "form-action 'none'",
   "frame-ancestors 'self'",
-].join('; ')
+]
+const HOST_CSP = [...CSP_BASE, "connect-src 'self'", "frame-src 'self'"].join('; ')
+const PREVIEW_CSP = [...CSP_BASE, "connect-src 'none'", "frame-src 'none'", 'sandbox allow-scripts allow-modals'].join('; ')
 
 const MIME: Record<string, string> = {
   '.js': 'text/javascript; charset=utf-8',
@@ -37,6 +39,17 @@ const MIME: Record<string, string> = {
   '.jpeg': 'image/jpeg',
   '.webp': 'image/webp',
 }
+
+const MAX_STATE_KEYS = 128
+const MAX_STATE_BYTES = 512 * 1024
+const ARTIFACT_ID_PATTERN = /^[a-z0-9][a-z0-9-]{2,63}$/
+const VERSION_ID_PATTERN = /^v-[a-f0-9-]{36}$/
+const HOST_CONTROL_ACTIONS = new Set([
+  'permission/grant',
+  'permission/grant-all',
+  'permission/revoke',
+  'version/report-runtime-failure',
+])
 
 function json(res: ServerResponse, status: number, value: unknown, req?: IncomingMessage): void {
   res.writeHead(status, {
@@ -68,7 +81,26 @@ function bearer(req: IncomingMessage): string | undefined {
 }
 
 function acceptsManagementRequest(req: IncomingMessage): boolean {
-  return req.headers['sec-fetch-site'] !== 'cross-site'
+  const fetchSite = req.headers['sec-fetch-site']
+  if (fetchSite !== undefined && fetchSite !== 'same-origin') return false
+  if (req.method !== 'POST') return true
+  return req.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase() === 'application/json'
+}
+
+function acceptsHostControlRequest(req: IncomingMessage): boolean {
+  return req.headers.origin !== 'null' && req.headers['sec-fetch-site'] !== 'cross-site'
+}
+
+function acceptsReceiptAccessRequest(req: IncomingMessage): boolean {
+  const origin = req.headers.origin
+  const host = req.headers.host
+  if (typeof origin !== 'string' || typeof host !== 'string' || req.headers['sec-fetch-site'] !== 'same-origin') return false
+  try {
+    const parsed = new URL(origin)
+    return parsed.origin === origin && parsed.host === host && (parsed.protocol === 'http:' || parsed.protocol === 'https:')
+  } catch {
+    return false
+  }
 }
 
 async function designSettings(designs: DesignStore): Promise<Record<string, unknown>> {
@@ -78,11 +110,19 @@ async function designSettings(designs: DesignStore): Promise<Record<string, unkn
   }
 }
 
-function html(routePrefix: string, artifactId: string, versionId: string, hasCss: boolean, language: 'en' | 'zh'): string {
+function html(
+  routePrefix: string,
+  artifactId: string,
+  versionId: string,
+  hasCss: boolean,
+  language: 'en' | 'zh',
+  theme?: 'dark' | 'light',
+): string {
   const css = hasCss ? `<link rel="stylesheet" href="${routePrefix}/assets/${artifactId}/${versionId}/app.css?runtime=${ARTIFACT_RUNTIME_VERSION}">` : ''
+  const appSrc = `${routePrefix}/assets/${artifactId}/${versionId}/app.js?runtime=${ARTIFACT_RUNTIME_VERSION}`
   return `<!doctype html>
-<html lang="${language}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="theme-color" content="#faf9f6" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)">${css}</head>
-<body><div id="root" data-artifact-id="${artifactId}" data-version-id="${versionId}" data-api-base="${routePrefix}/api/${artifactId}"></div><script type="module" src="${routePrefix}/assets/${artifactId}/${versionId}/app.js?runtime=${ARTIFACT_RUNTIME_VERSION}"></script></body></html>`
+	<html lang="${language}"${theme === 'dark' ? ' data-ds-dark-theme' : theme === 'light' ? ' data-ds-light-theme' : ''}${theme === undefined ? '' : ` style="color-scheme:${theme}"`}><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="theme-color" content="#faf9f6" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)">${css}</head>
+	<body><div id="root" data-artifact-id="${artifactId}" data-version-id="${versionId}" data-api-base="${routePrefix}/api/${artifactId}" data-app-src="${appSrc}"></div><script src="${routePrefix}/bridge.js?runtime=${ARTIFACT_RUNTIME_VERSION}"></script></body></html>`
 }
 
 export interface GenuiHttpRuntime {
@@ -109,11 +149,21 @@ export function createHttpRuntime(
         if (req.method === 'GET' && relative.length === 1 && relative[0] === 'standalone.js') {
           res.writeHead(200, {
             'content-type': 'text/javascript; charset=utf-8',
-            'content-security-policy': CSP,
+            'content-security-policy': HOST_CSP,
             'cache-control': 'private, max-age=31536000, immutable',
             'x-content-type-options': 'nosniff',
           })
           res.end(STANDALONE_RUNTIME)
+          return
+        }
+        if (req.method === 'GET' && relative.length === 1 && relative[0] === 'bridge.js') {
+          res.writeHead(200, {
+            'content-type': 'text/javascript; charset=utf-8',
+            'content-security-policy': HOST_CSP,
+            'cache-control': 'private, max-age=31536000, immutable',
+            'x-content-type-options': 'nosniff',
+          })
+          res.end(BRIDGE_RUNTIME)
           return
         }
         if (req.method === 'GET' && relative[0] === 'app' && relative.length === 2) {
@@ -125,7 +175,7 @@ export function createHttpRuntime(
           const version = await registry.getVersion(artifactId, artifact.currentVersionId)
           res.writeHead(200, {
             'content-type': 'text/html; charset=utf-8',
-            'content-security-policy': CSP,
+            'content-security-policy': HOST_CSP,
             'cache-control': 'no-store',
             'x-content-type-options': 'nosniff',
             'referrer-policy': 'no-referrer',
@@ -171,22 +221,57 @@ export function createHttpRuntime(
           }
           return json(res, 404, { error: 'unknown GenUI management action' })
         }
+        if (req.method === 'OPTIONS' && relative.length === 2
+          && relative[0] === 'host-control' && relative[1] === 'preview-access') {
+          return json(res, 403, { error: 'preview access requires the same-origin Harness host' }, req)
+        }
+        if (req.method === 'POST' && relative.length === 2
+          && relative[0] === 'host-control' && relative[1] === 'preview-access') {
+          if (!acceptsReceiptAccessRequest(req)) {
+            return json(res, 403, { error: 'preview access requires the same-origin Harness host' }, req)
+          }
+          const input = await body(req, 16 * 1024)
+          if (Object.keys(input).some(key => !['artifact_id', 'version_id', 'session_id'].includes(key))
+            || typeof input.artifact_id !== 'string' || typeof input.version_id !== 'string'
+            || typeof input.session_id !== 'string' || input.session_id.length === 0 || input.session_id.length > 512
+            || !ARTIFACT_ID_PATTERN.test(input.artifact_id) || !VERSION_ID_PATTERN.test(input.version_id)) {
+            throw new Error('artifact_id, version_id, and session_id are required')
+          }
+          const artifactId = input.artifact_id
+          const artifact = await registry.get(artifactId)
+          if (artifact.currentVersionId === undefined) return json(res, 409, { error: 'app has no ready version' }, req)
+          const currentVersion = await registry.getVersion(artifactId, artifact.currentVersionId)
+          if (currentVersion.status !== 'ready' || currentVersion.artifactId !== artifactId) {
+            return json(res, 409, { error: 'app has no current ready version' }, req)
+          }
+          const token = capabilities.issueForSession(artifactId, input.session_id)
+          if (token === undefined) return json(res, 403, { error: 'artifact does not belong to this live task' }, req)
+          json(res, 200, {
+            artifact_id: artifactId,
+            title: artifact.title,
+            version_id: currentVersion.id,
+            preview_url: `${routePrefix}/preview/${encodeURIComponent(artifactId)}/${encodeURIComponent(currentVersion.id)}?lang=en#token=${token}`,
+          }, req)
+          return
+        }
         if (req.method === 'GET' && relative[0] === 'preview' && relative.length === 3) {
           const [, artifactId = '', versionId = ''] = relative
           const language = url.searchParams.get('lang')
+          const requestedTheme = url.searchParams.get('theme')
           if (language !== 'en' && language !== 'zh') return json(res, 400, { error: 'preview language must be en or zh' })
+          if (requestedTheme !== null && requestedTheme !== 'dark' && requestedTheme !== 'light') return json(res, 400, { error: 'preview theme must be dark or light' })
           const version = await registry.getVersion(artifactId, versionId)
           if (version.status === 'failed') return json(res, 409, { error: 'artifact version failed validation' })
           const cssPath = safeJoin(registry.distPath(artifactId, versionId), 'app.css')
           const hasCss = await stat(cssPath).then(() => true, () => false)
           res.writeHead(200, {
             'content-type': 'text/html; charset=utf-8',
-            'content-security-policy': CSP,
+            'content-security-policy': PREVIEW_CSP,
             'cache-control': 'no-store',
             'x-content-type-options': 'nosniff',
             'referrer-policy': 'no-referrer',
           })
-          res.end(html(routePrefix, artifactId, versionId, hasCss, language))
+          res.end(html(routePrefix, artifactId, versionId, hasCss, language, requestedTheme ?? undefined))
           return
         }
         if (req.method === 'GET' && relative[0] === 'assets' && relative.length >= 4) {
@@ -196,7 +281,7 @@ export function createHttpRuntime(
           const content = await readFile(assetPath)
           res.writeHead(200, {
             'content-type': MIME[extname(assetPath)] ?? 'application/octet-stream',
-            'content-security-policy': CSP,
+            'content-security-policy': PREVIEW_CSP,
             'cache-control': 'private, max-age=31536000, immutable',
             'x-content-type-options': 'nosniff',
             ...(req.headers.origin === 'null' ? { 'access-control-allow-origin': 'null', vary: 'Origin' } : {}),
@@ -220,8 +305,11 @@ export function createHttpRuntime(
           const [, artifactId = '', ...actionParts] = relative
           const capability = capabilities.resolve(bearer(req) ?? '', artifactId)
           if (capability === undefined) return json(res, 401, { error: 'invalid or expired artifact capability' }, req)
-          const input = await body(req)
           const action = actionParts.join('/')
+          if (HOST_CONTROL_ACTIONS.has(action) && !acceptsHostControlRequest(req)) {
+            return json(res, 403, { error: 'sandboxed apps cannot perform host control actions' }, req)
+          }
+          const input = await body(req)
           if (action === 'state/read') {
             if (typeof input.key !== 'string' || input.key.length > 128) throw new Error('invalid state key')
             if (capability.mode === 'verification') return json(res, 200, { found: false }, req)
@@ -233,13 +321,43 @@ export function createHttpRuntime(
           if (action === 'state/write') {
             if (typeof input.key !== 'string' || input.key.length > 128) throw new Error('invalid state key')
             const serialized = JSON.stringify(input.value)
-            if (serialized === undefined || Buffer.byteLength(serialized) > 64 * 1024) throw new Error('state value must be JSON under 64 KiB')
+            if (serialized === undefined) throw new Error('state value must be JSON')
+            const nextValueBytes = Buffer.byteLength(serialized)
             if (capability.mode === 'verification') {
               json(res, 200, { ok: true, persisted: false }, req)
               return
             }
-            await registry.updateState(artifactId, capability.sessionId, state => ({ ...state, [input.key as string]: input.value }))
+            await registry.updateState(artifactId, capability.sessionId, state => {
+              const currentSerialized = JSON.stringify(state[input.key as string])
+              const currentValueBytes = currentSerialized === undefined ? 0 : Buffer.byteLength(currentSerialized)
+              if (nextValueBytes > 64 * 1024 && nextValueBytes > currentValueBytes) {
+                throw new Error('state value cannot grow beyond 64 KiB')
+              }
+              const next = { ...state, [input.key as string]: input.value }
+              const currentKeyCount = Object.keys(state).length
+              const nextKeyCount = Object.keys(next).length
+              const currentBytes = Buffer.byteLength(JSON.stringify(state))
+              const nextBytes = Buffer.byteLength(JSON.stringify(next))
+              if (nextKeyCount > MAX_STATE_KEYS && nextKeyCount > currentKeyCount) {
+                throw new Error(`task state cannot exceed ${MAX_STATE_KEYS} keys`)
+              }
+              if (nextBytes > MAX_STATE_BYTES && nextBytes > currentBytes) {
+                throw new Error(`task state cannot exceed ${MAX_STATE_BYTES} bytes`)
+              }
+              return next
+            })
             json(res, 200, { ok: true, persisted: true }, req)
+            return
+          }
+          if (action === 'version/report-runtime-failure') {
+            if (capability.mode === 'verification') return json(res, 403, { error: 'runtime failures cannot be reported during verification' }, req)
+            if (typeof input.version_id !== 'string') throw new Error('version_id is required')
+            const recovery = await registry.reportRuntimeFailure(artifactId, input.version_id)
+            json(res, 200, {
+              reported: true,
+              failed_version_id: recovery.failedVersionId,
+              ...(recovery.fallbackVersionId === undefined ? {} : { fallback_version_id: recovery.fallbackVersionId }),
+            }, req)
             return
           }
           if (action === 'permission/grant') {
@@ -274,9 +392,15 @@ export function createHttpRuntime(
           }
           if (action === 'permission/list') {
             if (typeof input.version_id !== 'string') throw new Error('version_id is required')
-            const version = await registry.getVersion(artifactId, input.version_id)
+            const artifact = await registry.get(artifactId)
+            if (artifact.currentVersionId === undefined) {
+              return json(res, 409, { code: 'no_ready_version', error: 'app has no ready version' }, req)
+            }
+            const canonicalVersionId = artifact.currentVersionId
+            const version = await registry.getVersion(artifactId, canonicalVersionId)
             const grants = capability.mode === 'verification' ? {} : await registry.readGrants(artifactId, capability.sessionId)
             json(res, 200, {
+              version_id: version.id,
               permissions: version.capabilities.map(item => ({
                 ...permissionView(item),
                 granted: grants[item.id]?.fingerprint === capabilityFingerprint(item),
@@ -294,13 +418,16 @@ export function createHttpRuntime(
           if (action === 'tool') {
             if (typeof input.version_id !== 'string' || typeof input.name !== 'string' || input.name.startsWith('genui_')) throw new Error('invalid connected action')
             const version = await registry.getVersion(artifactId, input.version_id)
+            const record = capability.mode === 'verification' ? undefined : await registry.get(artifactId)
+            if (record !== undefined && record.currentVersionId !== version.id) {
+              return json(res, 409, { code: 'version_not_current', error: 'this app version is no longer active' }, req)
+            }
             const requested = toolCapability(version, input.name)
             if (requested === undefined) return json(res, 403, { code: 'capability_not_declared', error: 'this app did not declare the connected action' }, req)
             if (capability.mode === 'verification') {
               return json(res, 200, { content: [], structuredContent: null, verification: true }, req)
             }
-            const record = await registry.get(artifactId)
-            if (!isGranted(record, capability.sessionId, requested)) {
+            if (!isGranted(record!, capability.sessionId, requested)) {
               return json(res, 403, { code: 'approval_required', permission: permissionView(requested) }, req)
             }
             const result = await ctx.tools.execute({
@@ -319,13 +446,16 @@ export function createHttpRuntime(
             const method = typeof input.method === 'string' ? input.method.toUpperCase() : 'GET'
             const target = new URL(input.url)
             const version = await registry.getVersion(artifactId, input.version_id)
+            const record = capability.mode === 'verification' ? undefined : await registry.get(artifactId)
+            if (record !== undefined && record.currentVersionId !== version.id) {
+              return json(res, 409, { code: 'version_not_current', error: 'this app version is no longer active' }, req)
+            }
             const requested = externalCapability(version, target, method)
             if (requested === undefined) return json(res, 403, { code: 'capability_not_declared', error: 'this app did not declare access to that service' }, req)
             if (capability.mode === 'verification') {
               return json(res, 200, { status: 204, headers: {}, body: 'null', verification: true }, req)
             }
-            const record = await registry.get(artifactId)
-            if (!isGranted(record, capability.sessionId, requested)) {
+            if (!isGranted(record!, capability.sessionId, requested)) {
               return json(res, 403, { code: 'approval_required', permission: permissionView(requested) }, req)
             }
             const result = await requestExternal({

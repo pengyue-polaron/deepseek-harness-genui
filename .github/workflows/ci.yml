@@ -9,12 +9,20 @@ permissions:
 
 jobs:
   test:
+    name: Test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['22.19.0', '24']
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 24
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
           package-manager-cache: false
       - run: npm install --global pnpm@11.17.0
       - run: pnpm install --frozen-lockfile
@@ -24,5 +32,32 @@ jobs:
       - name: Verify runtime entrypoints are tracked
         run: git ls-files --error-unmatch lib/index.js lib/client.js lib/invariant.js
       - run: pnpm run build
+      - run: pnpm run verify:bundle
       - name: Verify committed build output
-        run: git diff --exit-code -- lib
+        run: |
+          git diff --exit-code -- lib
+          test -z "$(git ls-files --others --exclude-standard -- lib)"
+
+  host-compat:
+    name: Host compatibility (${{ matrix.host-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        host-version: ['0.1.0-rc.7', '0.1.0-rc.8', '0.1.1-rc.1', '0.1.1-rc.2']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: npm install --global pnpm@11.17.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Verify against DeepSeek Harness ${{ matrix.host-version }}
+        run: node scripts/verify-host-compat.mjs "$HOST_VERSION"
+        env:
+          HOST_VERSION: ${{ matrix.host-version }}

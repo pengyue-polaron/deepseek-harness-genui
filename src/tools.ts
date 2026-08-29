@@ -7,7 +7,7 @@ import type { ArtifactRegistry } from './artifacts/registry.ts'
 import { buildArtifact } from './artifacts/builder.ts'
 import type { ArtifactCapability, ArtifactVersion, BuildDiagnostic, FilePatch, SourceFile } from './artifacts/types.ts'
 import type { DesignStore } from './designs/store.ts'
-import type { CapabilityStore } from './runtime/capabilities.ts'
+import { artifactSessionPrefix, type CapabilityStore } from './runtime/capabilities.ts'
 
 const diagnosticsSchema = {
   type: 'array' as const,
@@ -52,7 +52,29 @@ interface ToolReceipt {
   diagnostics?: BuildDiagnostic[]
 }
 
-function renderReceipt(value: unknown): { type: 'text'; text: string }[] {
+const RECEIPT_MARKER_PREFIX = '<!--dsh-genui-receipt:'
+
+function receiptMarker(receipt: ToolReceipt): string {
+  const encoded = Buffer.from(JSON.stringify({
+    v: 1,
+    card: 'genui',
+    artifactId: receipt.artifact_id,
+    title: receipt.title,
+    versionId: receipt.version_id,
+  }), 'utf8').toString('base64url')
+  return `${RECEIPT_MARKER_PREFIX}${encoded}-->`
+}
+
+function receiptText(receipt: ToolReceipt, text: string): string {
+  // PTC/run_code child results currently retain content but can omit
+  // presentationMeta. The versioned marker lets our own client reconstruct the
+  // card without treating ordinary result prose or call arguments as metadata.
+  // The marker is deliberately secret-free: browser access is resolved later
+  // from the host-owned session rather than persisted in model-visible content.
+  return `${text}\n${receiptMarker(receipt)}`
+}
+
+export function renderReceipt(value: unknown): { type: 'text'; text: string }[] {
   const receipt = value as ToolReceipt
   if (receipt.status === 'ready') {
     if (receipt.delivery === 'local-link') {
@@ -63,7 +85,7 @@ function renderReceipt(value: unknown): { type: 'text'; text: string }[] {
     }
     return [{
       type: 'text',
-      text: 'This successful result must be the last emitted item. Emit no text and run no tools after it.',
+      text: receiptText(receipt, 'This successful result must be the last emitted item. Emit no text and run no tools after it.'),
     }]
   }
   const diagnosticText = receipt.diagnostics?.length
@@ -71,7 +93,7 @@ function renderReceipt(value: unknown): { type: 'text'; text: string }[] {
     : ''
   return [{
     type: 'text',
-    text: `This attempt needs correction. Do not call genui_create again for this artifact. Follow the repair instruction below with genui_update, then continue silently.\nArtifact: ${receipt.title} (${receipt.artifact_id})\nVersion: ${receipt.version_id}\nRepair instruction: ${receipt.message}${diagnosticText}`,
+    text: receiptText(receipt, `This attempt needs correction. Do not call genui_create again for this artifact. Follow the repair instruction below with genui_update, then continue silently.\nArtifact: ${receipt.title} (${receipt.artifact_id})\nVersion: ${receipt.version_id}\nRepair instruction: ${receipt.message}${diagnosticText}`),
   }]
 }
 
@@ -81,7 +103,7 @@ function requireAgent(agent: Agent | undefined): Agent {
 }
 
 function taskArtifactId(agent: Agent, requested: string): string {
-  const prefix = `s-${createHash('sha256').update(String(agent.id)).digest('hex').slice(0, 12)}-`
+  const prefix = artifactSessionPrefix(String(agent.id))
   if (requested.startsWith(prefix)) return requested
   const available = 64 - prefix.length
   const local = requested.length <= available
@@ -179,7 +201,7 @@ const capabilitySpec = {
     reason: { type: 'string' as const, required: true, description: 'Concrete user-facing explanation of why the app needs this permission.' },
     access: { type: 'string' as const, required: true, enum: ['read', 'write'] },
     tool: { type: 'string' as const, description: 'Exact connected Harness, MCP, or Skill tool name when kind is tool. Prefer this whenever a suitable connected tool exists.' },
-    url_prefix: { type: 'string' as const, description: 'Credential-free HTTPS URL prefix when kind is external. Use only when no suitable connected tool exists.' },
+    url_prefix: { type: 'string' as const, description: 'Credential-free HTTPS route when kind is external. It covers the exact path and slash-delimited descendants; a declared query must match exactly. Use only when no suitable connected tool exists.' },
     methods: { type: 'array' as const, items: { type: 'string' as const }, description: 'Allowed HTTP methods when kind is external.' },
   },
 } as const

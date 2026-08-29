@@ -20,7 +20,7 @@ describe('GenUI system prompt', () => {
     expect(GENUI_SYSTEM_PROMPT).toContain('genui_state_read must be the first tool call')
     expect(GENUI_SYSTEM_PROMPT).toContain('Treat its values and __result as authoritative')
     expect(GENUI_SYSTEM_PROMPT).toContain('Do not invent venue availability, popularity, prices, travel times, or booking rules')
-    expect(GENUI_SYSTEM_PROMPT).toContain('Declare only the exact tool or credential-free HTTPS prefix needed')
+    expect(GENUI_SYSTEM_PROMPT).toContain('Declare only the exact tool or credential-free HTTPS route needed')
     expect(GENUI_SYSTEM_PROMPT).toContain('Use requestExternal only when no matching connected tool exists')
     expect(GENUI_SYSTEM_PROMPT).toContain('Do not fetch the same data before creation and again on open')
     expect(GENUI_SYSTEM_PROMPT).toContain('Repair a failed creation with genui_update, never another genui_create')

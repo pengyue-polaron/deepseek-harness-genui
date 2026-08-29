@@ -4,7 +4,11 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type { PropsLocale, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-import { grantAllPermissions, grantPermission, listPermissions, previewUrlForLocale, revokePermission } from './api.ts'
+import {
+  connectArtifactBridge, grantAllPermissions, grantPermission, listPermissions, previewUrlForLocale,
+  previewUrlWithBridgeNonce, reportRuntimeFailure, resolveReceiptAccess, revokePermission,
+} from './api.ts'
+import type { ArtifactBridgeConnection } from './api.ts'
 import { canvasController, useCanvasArtifact, useCanvasSurface } from './canvas.ts'
 import { DesignSettingsCard } from './design-settings.tsx'
 import { ShellIcon } from './icons.tsx'
@@ -14,7 +18,7 @@ import { enqueuePermission, settlePermission } from './permission-queue.ts'
 import { isGenuiReadyMessage, isGenuiRuntimeErrorMessage } from './readiness.ts'
 import { settingsSlotRegistration } from './settings-slot.ts'
 import { cardCss } from './styles.ts'
-import { readMeta } from './types.ts'
+import { readMetaResult } from './types.ts'
 import type { GenuiMeta, PermissionRequest, PermissionStatus } from './types.ts'
 
 interface GenuiToolViewProps extends ToolCallViewProps, PropsLocale<'genui'> {}
@@ -54,10 +58,31 @@ function pendingTitle(argsRaw: string): string | undefined {
   }
 }
 
+function currentHostTheme(): 'dark' | 'light' {
+  if (typeof document === 'undefined') return 'light'
+  return document.body.hasAttribute('data-ds-dark-theme') || document.documentElement.hasAttribute('data-ds-dark-theme')
+    ? 'dark'
+    : 'light'
+}
+
+function useHostTheme(): 'dark' | 'light' {
+  const [theme, setTheme] = useState<'dark' | 'light'>(currentHostTheme)
+  useEffect(() => {
+    const update = () => setTheme(currentHostTheme())
+    const observer = new MutationObserver(update)
+    observer.observe(document.body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
+    update()
+    return () => observer.disconnect()
+  }, [])
+  return theme
+}
+
 function PendingGenui({ block, t }: {
   block: Extract<ToolCallViewProps['block'], { name: string }>
   t: TranslateNS<'genui'>
 }) {
+  const hostTheme = useHostTheme()
   const [stage, setStage] = useState(0)
   const updating = block.name === 'genui_update'
   const restoring = block.name === 'genui_rollback'
@@ -79,7 +104,7 @@ function PendingGenui({ block, t }: {
   }, [block.callId, steps.length])
 
   return (
-    <div className="dsh-genui-progress" role="status" aria-live="polite">
+    <div className="dsh-genui-progress" data-genui-theme={hostTheme} role="status" aria-live="polite">
       <style>{cardCss}</style>
       <div className="dsh-genui-progress-head">
         <span className="dsh-genui-progress-spinner" aria-hidden="true" />
@@ -94,14 +119,30 @@ function PendingGenui({ block, t }: {
 }
 
 export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProps) {
-  const meta = readMeta(block)
+  const canvasSessionId = String(sessionId)
+  const parsedMeta = readMetaResult(block)
+  const receiptAccessKey = parsedMeta?.source === 'receipt'
+    ? JSON.stringify([canvasSessionId, parsedMeta.meta.artifactId, parsedMeta.meta.versionId])
+    : undefined
+  const [receiptAccess, setReceiptAccess] = useState<{ key: string; meta?: GenuiMeta }>()
+  const [receiptAccessAttempt, setReceiptAccessAttempt] = useState(0)
+  const receiptAccessPending = receiptAccessKey !== undefined && receiptAccess?.key !== receiptAccessKey
+  const receiptAccessFailed = receiptAccessKey !== undefined && receiptAccess?.key === receiptAccessKey
+    && receiptAccess.meta === undefined
+  const meta = receiptAccessKey !== undefined && receiptAccess?.key === receiptAccessKey && receiptAccess.meta !== undefined
+    ? receiptAccess.meta
+    : parsedMeta?.meta
   const [cardElement, setCardElement] = useState<HTMLElement | null>(null)
   const frameRef = useRef<HTMLIFrameElement>(null)
+  const bridgeRef = useRef<ArtifactBridgeConnection>()
   const noticeTimerRef = useRef<number>()
   const permissionDialogRef = useRef<HTMLElement>(null)
   const permissionDenyRef = useRef<HTMLButtonElement>(null)
   const permissionPendingRef = useRef(false)
   const permissionQueueRef = useRef<PermissionRequest[]>([])
+  const runtimeFailureRef = useRef<string>()
+  const recoveryNoticeRef = useRef<string>()
+  const frameReadyRef = useRef(false)
   const accessDialogRef = useRef<HTMLElement>(null)
   const accessCloseRef = useRef<HTMLButtonElement>(null)
   const bodyId = useId()
@@ -111,13 +152,22 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
   const accessTitleId = `${titleId}-access`
   const accessDescriptionId = `${titleId}-access-description`
   const locale = t('locale.code') as 'en' | 'zh'
-  const canvasSessionId = String(sessionId)
   const artifactKey = meta?.artifactId ?? `pending:${callId}`
   const displayTitle = meta?.title || t('app.untitled')
-  const primary = usePrimaryArtifactCard(artifactKey, callId, cardElement, meta?.previewUrl !== undefined)
+  const primary = usePrimaryArtifactCard(artifactKey, callId, cardElement, meta?.previewUrl !== undefined || receiptAccessKey !== undefined)
   const canvasOpen = useCanvasArtifact(canvasSessionId, artifactKey)
   const canvasSurface = useCanvasSurface(canvasOpen, cardElement)
-  const previewUrl = meta?.previewUrl === undefined ? undefined : previewUrlForLocale(meta, locale)
+  const [runtimeRecovery, setRuntimeRecovery] = useState<{ sourceVersionId: string; fallbackVersionId: string }>()
+  const hostTheme = useHostTheme()
+  const activeVersionId = runtimeRecovery !== undefined && runtimeRecovery.sourceVersionId === meta?.versionId
+    ? runtimeRecovery.fallbackVersionId
+    : meta?.versionId
+  const previewThemeRef = useRef<{ key: string; theme: 'dark' | 'light' }>({ key: '', theme: hostTheme })
+  const previewThemeKey = `${meta?.artifactId ?? ''}:${activeVersionId ?? ''}`
+  if (previewThemeRef.current.key !== previewThemeKey) previewThemeRef.current = { key: previewThemeKey, theme: hostTheme }
+  const previewUrl = meta?.previewUrl === undefined || activeVersionId === undefined
+    ? undefined
+    : previewUrlForLocale(meta, locale, activeVersionId, previewThemeRef.current.theme)
   const [notice, setNotice] = useState<string>()
   const [fullscreen, setFullscreen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
@@ -128,6 +178,8 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
   const [permissionError, setPermissionError] = useState<string>()
   const [permissions, setPermissions] = useState<PermissionStatus[]>()
   const [permissionsLoadedFor, setPermissionsLoadedFor] = useState<string>()
+  const [permissionLoadFailedFor, setPermissionLoadFailedFor] = useState<string>()
+  const [permissionLoadAttempt, setPermissionLoadAttempt] = useState(0)
   const [permissionIntroDismissedFor, setPermissionIntroDismissedFor] = useState<string>()
   const [permissionIntroPending, setPermissionIntroPending] = useState(false)
   const [permissionIntroError, setPermissionIntroError] = useState<string>()
@@ -136,10 +188,12 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
   const [accessError, setAccessError] = useState<string>()
   const permissionRequest = permissionQueue[0]
   const upfrontPermissions = permissions?.filter(item => !item.granted) ?? []
-  const permissionsLoaded = meta !== undefined && permissionsLoadedFor === meta.versionId
+  const permissionsLoaded = activeVersionId !== undefined && permissionsLoadedFor === activeVersionId
+  const permissionLoadFailed = activeVersionId !== undefined && permissionLoadFailedFor === activeVersionId
   const permissionIntroOpen = permissionsLoaded
-    && permissionIntroDismissedFor !== meta.versionId && upfrontPermissions.length > 0
+    && permissionIntroDismissedFor !== activeVersionId && upfrontPermissions.length > 0
   const frameReadyToOpen = permissionsLoaded && !permissionIntroOpen
+  const modalOpen = permissionIntroOpen || permissionRequest !== undefined || accessOpen
 
   const announce = (message: string) => {
     setNotice(message)
@@ -157,99 +211,256 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
     if (noticeTimerRef.current !== undefined) window.clearTimeout(noticeTimerRef.current)
   }, [])
 
+  useEffect(() => {
+    if (receiptAccessKey === undefined || parsedMeta?.source !== 'receipt') return
+    let active = true
+    void resolveReceiptAccess(parsedMeta.meta, canvasSessionId).then(resolved => {
+      if (active) setReceiptAccess({ key: receiptAccessKey, meta: resolved })
+    }, () => {
+      if (active) setReceiptAccess({ key: receiptAccessKey })
+    })
+    return () => { active = false }
+  }, [canvasSessionId, receiptAccessAttempt, receiptAccessKey])
+
+  useEffect(() => {
+    runtimeFailureRef.current = undefined
+    recoveryNoticeRef.current = undefined
+    setRuntimeRecovery(undefined)
+  }, [meta?.artifactId, meta?.versionId])
+
+  useEffect(() => {
+    if (meta === undefined || activeVersionId === undefined) return
+    bridgeRef.current?.setTheme(hostTheme)
+    frameRef.current?.contentWindow?.postMessage({
+      source: 'dsh-genui', type: 'theme', theme: hostTheme,
+      artifactId: meta.artifactId, versionId: activeVersionId,
+    }, '*')
+  }, [activeVersionId, frameKey, hostTheme, meta?.artifactId])
+
+  useEffect(() => {
+    if (cardElement === null) return
+    const background = cardElement.querySelectorAll<HTMLElement>('[data-genui-modal-background]')
+    for (const element of background) {
+      if (modalOpen) element.setAttribute('inert', '')
+      else element.removeAttribute('inert')
+    }
+    return () => {
+      for (const element of background) element.removeAttribute('inert')
+    }
+  }, [cardElement, modalOpen])
+
   useEffect(() => () => {
     if (canvasController.isOpen(canvasSessionId, artifactKey)) canvasController.close(canvasSessionId, artifactKey)
   }, [artifactKey, canvasSessionId])
 
   useEffect(() => {
+    frameReadyRef.current = false
     setFrameState('loading')
-  }, [previewUrl, meta?.versionId])
+  }, [activeVersionId, previewUrl])
 
   useEffect(() => {
-    if (meta === undefined || previewUrl === undefined) {
+    bridgeRef.current?.close()
+    bridgeRef.current = undefined
+    const frame = frameRef.current
+    if (frame === null || meta === undefined || previewUrl === undefined || activeVersionId === undefined || !frameReadyToOpen) return
+    const nonce = crypto.randomUUID()
+    let connection: ArtifactBridgeConnection | undefined
+    let active = true
+    let trustedPreviewStarted = false
+    const failNavigatedPreview = () => {
+      if (!active) return
+      frameReadyRef.current = false
+      frame.style.visibility = 'hidden'
+      permissionQueueRef.current = []
+      setPermissionQueue([])
+      setPermissionError(undefined)
+      setFrameState('failed')
+    }
+    const receiveBridge = (event: MessageEvent<unknown>) => {
+      if (connection !== undefined) return
+      const accepted = connectArtifactBridge(event, frame.contentWindow!, meta, activeVersionId, nonce, {
+        onStarted() {
+          if (!active) return
+          trustedPreviewStarted = true
+          window.setTimeout(() => {
+            if (!active) return
+            frame.contentWindow?.postMessage({
+              source: 'dsh-genui', type: 'ready-request', artifactId: meta.artifactId, versionId: activeVersionId,
+            }, '*')
+          }, 0)
+        },
+        onLeaving: failNavigatedPreview,
+      })
+      if (accepted === undefined) return
+      connection = accepted
+      bridgeRef.current = accepted
+      accepted.setTheme(hostTheme)
+    }
+    const loaded = () => {
+      if (!trustedPreviewStarted) return
+      connection?.close()
+      failNavigatedPreview()
+    }
+    window.addEventListener('message', receiveBridge)
+    frame.addEventListener('load', loaded)
+    frame.style.visibility = ''
+    frame.src = previewUrlWithBridgeNonce(previewUrl, nonce)
+    return () => {
+      active = false
+      window.removeEventListener('message', receiveBridge)
+      frame.removeEventListener('load', loaded)
+      connection?.close()
+      if (bridgeRef.current === connection) bridgeRef.current = undefined
+    }
+  }, [activeVersionId, frameKey, frameReadyToOpen, meta?.artifactId, previewUrl])
+
+  useEffect(() => {
+    if (meta === undefined || previewUrl === undefined || activeVersionId === undefined) {
       setPermissions(undefined)
-      setPermissionsLoadedFor(meta?.versionId)
+      setPermissionLoadFailedFor(undefined)
+      setPermissionsLoadedFor(activeVersionId)
       return
     }
     setPermissionsLoadedFor(undefined)
+    setPermissionLoadFailedFor(undefined)
     let active = true
-    void listPermissions(meta, meta.versionId).then(result => {
-      if (active) {
-        setPermissions(result.permissions)
-        if (result.permissions.every(item => item.granted)) setPermissionIntroDismissedFor(meta.versionId)
-        setPermissionsLoadedFor(meta.versionId)
+    void listPermissions(meta, activeVersionId).then(result => {
+      if (!active) return
+      const resolvedVersionId = typeof result.version_id === 'string' && result.version_id.length > 0
+        ? result.version_id
+        : activeVersionId
+      if (resolvedVersionId !== activeVersionId) {
+        recoveryNoticeRef.current = resolvedVersionId
+        setRuntimeRecovery({ sourceVersionId: meta.versionId, fallbackVersionId: resolvedVersionId })
+        return
       }
+      setPermissions(result.permissions)
+      setPermissionLoadFailedFor(undefined)
+      if (result.permissions.every(item => item.granted)) setPermissionIntroDismissedFor(activeVersionId)
+      setPermissionsLoadedFor(activeVersionId)
     }, () => {
       if (active) {
         setPermissions(undefined)
-        setPermissionsLoadedFor(meta.versionId)
+        setPermissionsLoadedFor(undefined)
+        setPermissionLoadFailedFor(activeVersionId)
       }
     })
     return () => { active = false }
-  }, [meta?.artifactId, meta?.versionId, previewUrl])
+  }, [activeVersionId, meta?.artifactId, permissionLoadAttempt, previewUrl])
 
   useEffect(() => {
-    if (meta === undefined || previewUrl === undefined || !frameReadyToOpen) return
+    if (meta === undefined || activeVersionId === undefined || previewUrl === undefined || !frameReadyToOpen) return
     setFrameState('loading')
+    let active = true
     const receive = (event: MessageEvent<unknown>) => {
-      if (isGenuiReadyMessage(event, frameRef.current?.contentWindow ?? null, meta.artifactId, meta.versionId)) setFrameState('ready')
-      else if (isGenuiRuntimeErrorMessage(event, frameRef.current?.contentWindow ?? null, meta.artifactId, meta.versionId)) setFrameState('failed')
+      const ready = isGenuiReadyMessage(event, frameRef.current?.contentWindow ?? null, meta.artifactId, activeVersionId)
+      const runtimeError = isGenuiRuntimeErrorMessage(event, frameRef.current?.contentWindow ?? null, meta.artifactId, activeVersionId)
+      if (!ready && !runtimeError) return
+      const bridge = bridgeRef.current
+      if (bridge === undefined) return
+      void bridge.verifyCurrentDocument().then(alive => {
+        if (!active || !alive || bridgeRef.current !== bridge) return
+        if (ready) {
+          frameReadyRef.current = true
+          setFrameState('ready')
+          if (recoveryNoticeRef.current === activeVersionId) {
+            recoveryNoticeRef.current = undefined
+            announce(t('feedback.restored'))
+          }
+          return
+        }
+        if (frameReadyRef.current) {
+          setFrameState('failed')
+          return
+        }
+        if (runtimeFailureRef.current === activeVersionId) return
+        runtimeFailureRef.current = activeVersionId
+        void reportRuntimeFailure(meta, activeVersionId).then(result => {
+          if (!active) return
+          if (result.fallback_version_id === undefined) setFrameState('failed')
+          else {
+            recoveryNoticeRef.current = result.fallback_version_id
+            setRuntimeRecovery({ sourceVersionId: meta.versionId, fallbackVersionId: result.fallback_version_id })
+          }
+        }, () => {
+          if (active) setFrameState('failed')
+        })
+      })
     }
     const timeout = window.setTimeout(() => setFrameState(state => state === 'loading' ? 'failed' : state), 8_000)
     window.addEventListener('message', receive)
-    frameRef.current?.contentWindow?.postMessage({ source: 'dsh-genui', type: 'ready-request', artifactId: meta.artifactId, versionId: meta.versionId }, '*')
+    frameRef.current?.contentWindow?.postMessage({ source: 'dsh-genui', type: 'ready-request', artifactId: meta.artifactId, versionId: activeVersionId }, '*')
     return () => {
+      active = false
       window.clearTimeout(timeout)
       window.removeEventListener('message', receive)
     }
-  }, [frameKey, frameReadyToOpen, meta?.artifactId, meta?.versionId, previewUrl])
+  }, [activeVersionId, frameKey, frameReadyToOpen, meta?.artifactId, previewUrl])
 
   useEffect(() => {
-    if (meta === undefined) return
+    if (meta === undefined || activeVersionId === undefined) return
     const receive = (event: MessageEvent<unknown>) => {
       if (event.source !== frameRef.current?.contentWindow || typeof event.data !== 'object' || event.data === null) return
       const value = event.data as Record<string, unknown>
-      if (value.source === 'dsh-genui' && value.type === 'state-changed'
-        && value.artifactId === meta.artifactId && value.versionId === meta.versionId) announce(t('feedback.saved'))
-    }
-    window.addEventListener('message', receive)
-    return () => window.removeEventListener('message', receive)
-  }, [meta?.artifactId, meta?.versionId])
-
-  useEffect(() => {
-    if (meta === undefined) return
-    const receive = (event: MessageEvent<unknown>) => {
-      if (event.source !== frameRef.current?.contentWindow || typeof event.data !== 'object' || event.data === null) return
-      const value = event.data as Record<string, unknown>
-      if (value.source !== 'dsh-genui' || value.type !== 'permission-request'
-        || value.artifactId !== meta.artifactId || value.versionId !== meta.versionId || typeof value.requestId !== 'string'
-        || typeof value.permission !== 'object' || value.permission === null) return
-      const permission = value.permission as Record<string, unknown>
-      if (typeof permission.id !== 'string' || typeof permission.label !== 'string' || typeof permission.reason !== 'string'
-        || (permission.kind !== 'tool' && permission.kind !== 'external')
-        || (permission.access !== 'read' && permission.access !== 'write')) return
-      setPermissionError(undefined)
-      const request: PermissionRequest = {
-        requestId: value.requestId,
-        permission: {
-          id: permission.id,
-          kind: permission.kind,
-          label: permission.label,
-          reason: permission.reason,
-          access: permission.access,
-          ...(typeof permission.destination === 'string' ? { destination: permission.destination } : {}),
-          ...(Array.isArray(permission.methods) ? { methods: permission.methods.filter(item => typeof item === 'string') as string[] } : {}),
-        },
-      }
-      setPermissionQueue(current => {
-        const next = enqueuePermission(current, request)
-        permissionQueueRef.current = next
-        return next
+      if (value.source !== 'dsh-genui' || value.type !== 'state-changed'
+        || value.artifactId !== meta.artifactId || value.versionId !== activeVersionId) return
+      const bridge = bridgeRef.current
+      if (bridge === undefined) return
+      void bridge.verifyCurrentDocument().then(alive => {
+        if (alive && bridgeRef.current === bridge) announce(t('feedback.saved'))
       })
     }
     window.addEventListener('message', receive)
     return () => window.removeEventListener('message', receive)
-  }, [meta?.artifactId, meta?.versionId])
+  }, [activeVersionId, meta?.artifactId])
+
+  useEffect(() => {
+    if (meta === undefined || activeVersionId === undefined) return
+    const receive = (event: MessageEvent<unknown>) => {
+      if (event.source !== frameRef.current?.contentWindow || typeof event.data !== 'object' || event.data === null) return
+      const value = event.data as Record<string, unknown>
+      if (value.source !== 'dsh-genui' || value.type !== 'permission-request'
+        || value.artifactId !== meta.artifactId || value.versionId !== activeVersionId || typeof value.requestId !== 'string'
+        || typeof value.permission !== 'object' || value.permission === null) return
+      const permission = value.permission as Record<string, unknown>
+      if (typeof permission.id !== 'string') return
+      const requestId = value.requestId as string
+      const bridge = bridgeRef.current
+      if (bridge === undefined) return
+      void bridge.verifyCurrentDocument().then(alive => {
+        if (!alive || bridgeRef.current !== bridge) return
+        const canonical = permissions?.find(item => item.id === permission.id)
+        if (canonical === undefined) {
+          frameRef.current?.contentWindow?.postMessage({ source: 'dsh-genui', type: 'permission-result', requestId, granted: false }, '*')
+          return
+        }
+        if (canonical.granted) {
+          frameRef.current?.contentWindow?.postMessage({ source: 'dsh-genui', type: 'permission-result', requestId, granted: true }, '*')
+          return
+        }
+        setPermissionError(undefined)
+        const request: PermissionRequest = {
+          requestId,
+          permission: {
+            id: canonical.id,
+            kind: canonical.kind,
+            label: canonical.label,
+            reason: canonical.reason,
+            access: canonical.access,
+            ...(canonical.destination === undefined ? {} : { destination: canonical.destination }),
+            ...(canonical.methods === undefined ? {} : { methods: canonical.methods }),
+          },
+        }
+        setPermissionQueue(current => {
+          const next = enqueuePermission(current, request)
+          permissionQueueRef.current = next
+          return next
+        })
+      })
+    }
+    window.addEventListener('message', receive)
+    return () => window.removeEventListener('message', receive)
+  }, [activeVersionId, meta?.artifactId, permissions])
 
   useEffect(() => {
     permissionQueueRef.current = []
@@ -258,7 +469,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
     setPermissionIntroDismissedFor(undefined)
     setPermissionIntroPending(false)
     setPermissionIntroError(undefined)
-  }, [meta?.versionId])
+  }, [activeVersionId])
 
   useEffect(() => {
     permissionPendingRef.current = permissionPending
@@ -307,7 +518,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
     const keydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && accessPending === undefined && !permissionIntroPending) {
         event.preventDefault()
-        if (permissionIntroOpen && meta !== undefined) setPermissionIntroDismissedFor(meta.versionId)
+        if (permissionIntroOpen && activeVersionId !== undefined) setPermissionIntroDismissedFor(activeVersionId)
         else setAccessOpen(false)
         return
       }
@@ -330,14 +541,14 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
       document.removeEventListener('keydown', keydown)
       previousFocus?.focus({ preventScroll: true })
     }
-  }, [accessOpen, accessPending, meta?.versionId, permissionIntroOpen, permissionIntroPending])
+  }, [accessOpen, accessPending, activeVersionId, permissionIntroOpen, permissionIntroPending])
 
   if (!('kind' in block)) return <PendingGenui block={block} t={t} />
   if (meta === undefined) return <span hidden />
 
   if (!primary) {
     return (
-      <div ref={setCardElement} className="dsh-genui-receipt-shell">
+      <div ref={setCardElement} className="dsh-genui-receipt-shell" data-genui-theme={hostTheme}>
         <style>{cardCss}</style>
         <Receipt meta={meta} t={t} onOpen={() => artifactCardLedger.focusPrimary(meta.artifactId)} />
       </div>
@@ -386,7 +597,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
     setPermissionPending(true)
     setPermissionError(undefined)
     try {
-      await grantPermission(meta, meta.versionId, permissionRequest.permission.id)
+      await grantPermission(meta, activeVersionId ?? meta.versionId, permissionRequest.permission.id)
       setPermissions(current => current?.map(item => item.id === permissionRequest.permission.id ? { ...item, granted: true } : item))
       const settled = settlePermission(permissionQueueRef.current, permissionRequest.permission.id)
       settled.answered.forEach(request => answerPermission(request.requestId, true))
@@ -401,7 +612,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
 
   const dismissPermissionIntro = () => {
     if (meta === undefined || permissionIntroPending) return
-    setPermissionIntroDismissedFor(meta.versionId)
+    setPermissionIntroDismissedFor(activeVersionId ?? meta.versionId)
     setPermissionIntroError(undefined)
     setFrameState('loading')
   }
@@ -411,9 +622,9 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
     setPermissionIntroPending(true)
     setPermissionIntroError(undefined)
     try {
-      await grantAllPermissions(meta, meta.versionId)
+      await grantAllPermissions(meta, activeVersionId ?? meta.versionId)
       setPermissions(current => current?.map(item => ({ ...item, granted: true })))
-      setPermissionIntroDismissedFor(meta.versionId)
+      setPermissionIntroDismissedFor(activeVersionId ?? meta.versionId)
       setFrameState('loading')
     } catch {
       setPermissionIntroError(t('permission.failed'))
@@ -426,7 +637,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
     setAccessOpen(true)
     setAccessError(undefined)
     try {
-      const result = await listPermissions(meta, meta.versionId)
+      const result = await listPermissions(meta, activeVersionId ?? meta.versionId)
       setPermissions(result.permissions)
     } catch {
       setAccessError(t('access.failed'))
@@ -449,17 +660,17 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
   }
 
   return (
-    <div className="dsh-genui-anchor" data-canvas-open={canvasOpen || undefined}>
+    <div className="dsh-genui-anchor" data-canvas-open={canvasOpen || undefined} data-genui-theme={hostTheme}>
       {canvasOpen ? (
-        <button type="button" className="dsh-genui-canvas-placeholder" onClick={() => { void toggleCanvas() }}>
+        <button type="button" className="dsh-genui-canvas-placeholder" disabled={modalOpen} onClick={() => { void toggleCanvas() }}>
           <ShellIcon name="panel-right" />
           <strong>{displayTitle}</strong>
           <span>{t('app.canvasReturn')}</span>
         </button>
       ) : null}
-      <section ref={setCardElement} tabIndex={-1} className="dsh-genui-card" data-collapsed={collapsed} data-surface={canvasOpen ? 'canvas' : 'inline'} data-canvas-layout={canvasOpen ? canvasSurface.mode : undefined} aria-labelledby={titleId}>
+      <section ref={setCardElement} tabIndex={-1} className="dsh-genui-card" data-genui-theme={hostTheme} data-collapsed={collapsed} data-surface={canvasOpen ? 'canvas' : 'inline'} data-canvas-layout={canvasOpen ? canvasSurface.mode : undefined} aria-labelledby={titleId}>
         <style>{cardCss}</style>
-        <header className="dsh-genui-head">
+        <header className="dsh-genui-head" data-genui-modal-background aria-hidden={modalOpen || undefined}>
           {previewUrl === undefined ? null : (
             <IconAction className="dsh-genui-collapse" label={collapsed ? t('app.show') : t('app.hide')} aria-expanded={!collapsed} aria-controls={bodyId} onClick={() => setCollapsed(value => !value)}>
               <ShellIcon name={collapsed ? 'chevron-down' : 'chevron-up'} />
@@ -586,14 +797,25 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
         )}
 
         {previewUrl === undefined ? (
-          <div className="dsh-genui-error" role="status">{t('receipt.unavailable')}</div>
+          <div className="dsh-genui-error" role={receiptAccessFailed ? 'alert' : 'status'}>
+            {receiptAccessPending ? t('app.loading') : receiptAccessFailed ? (
+              <div><span>{t('access.checkFailed')}</span><button type="button" className="dsh-genui-button" onClick={() => {
+                setReceiptAccess(undefined)
+                setReceiptAccessAttempt(value => value + 1)
+              }}><ShellIcon name="refresh" />{t('access.checkAgain')}</button></div>
+            ) : t('receipt.unavailable')}
+          </div>
         ) : (
-          <div id={bodyId} className="dsh-genui-body" hidden={collapsed}>
+          <div id={bodyId} className="dsh-genui-body" data-genui-modal-background hidden={collapsed} aria-hidden={modalOpen || undefined}>
             <div className="dsh-genui-frame-shell">
-              {frameReadyToOpen ? <iframe ref={frameRef} key={frameKey} className="dsh-genui-frame" title={displayTitle} src={previewUrl} sandbox="allow-scripts allow-forms allow-modals allow-downloads" referrerPolicy="no-referrer" onLoad={() => frameRef.current?.contentWindow?.postMessage({ source: 'dsh-genui', type: 'ready-request', artifactId: meta.artifactId, versionId: meta.versionId }, '*')} onError={() => setFrameState('failed')} /> : null}
-              <div className="dsh-genui-loading" hidden={frameState !== 'loading'} role="status" aria-live="polite">{t('app.loading')}</div>
-              <div className="dsh-genui-frame-error" hidden={frameState !== 'failed'} role="alert">
-                <div><span>{t('app.loadFailed')}</span><button type="button" className="dsh-genui-button" onClick={() => { setFrameState('loading'); setFrameKey(value => value + 1) }}><ShellIcon name="refresh" />{t('app.reload')}</button></div>
+              {frameReadyToOpen ? <iframe ref={frameRef} key={frameKey} className="dsh-genui-frame" title={displayTitle} sandbox="allow-scripts allow-modals" referrerPolicy="no-referrer" onError={() => setFrameState('failed')} /> : null}
+              <div className="dsh-genui-loading" hidden={frameState !== 'loading' || permissionLoadFailed} role="status" aria-live="polite">{t('app.loading')}</div>
+              <div className="dsh-genui-frame-error" hidden={frameState !== 'failed' && !permissionLoadFailed} role="alert">
+                {permissionLoadFailed ? (
+                  <div><span>{t('access.checkFailed')}</span><button type="button" className="dsh-genui-button" onClick={() => { setPermissionLoadFailedFor(undefined); setPermissionLoadAttempt(value => value + 1) }}><ShellIcon name="refresh" />{t('access.checkAgain')}</button></div>
+                ) : (
+                  <div><span>{t('app.loadFailed')}</span><button type="button" className="dsh-genui-button" onClick={() => { setFrameState('loading'); setFrameKey(value => value + 1) }}><ShellIcon name="refresh" />{t('app.reload')}</button></div>
+                )}
               </div>
             </div>
           </div>

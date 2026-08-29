@@ -2,7 +2,14 @@ packages:
   - .
 
 allowBuilds:
+  # The pinned DSH CLI is release-test tooling. Its terminal/native optional
+  # helpers are not needed to install or boot the Web profile exercised here.
+  '@deepseek-ai/dsh-subprocess-local': false
+  '@google/genai': false
   esbuild: true
+  koffi: false
+  node-pty: false
+  protobufjs: false
 
 # Harness release candidates are intentionally consumed immediately in this
 # local integration package.

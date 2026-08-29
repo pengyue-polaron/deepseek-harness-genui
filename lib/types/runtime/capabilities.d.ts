@@ -7,6 +7,7 @@ interface Capability {
     mode: CapabilityMode;
 }
 type AgentResolver = (sessionId: string) => Agent | undefined;
+export declare function artifactSessionPrefix(sessionId: string): string;
 export declare class CapabilityStore {
     private readonly resolveAgent?;
     private readonly secret;
@@ -16,6 +17,7 @@ export declare class CapabilityStore {
     constructor(resolveAgent?: AgentResolver | undefined, secret?: Buffer<ArrayBufferLike>);
     static persistent(path: string, resolveAgent: AgentResolver): Promise<CapabilityStore>;
     issue(artifactId: string, agent: Agent, mode?: CapabilityMode): string;
+    issueForSession(artifactId: string, sessionId: string): string | undefined;
     resolve(token: string, artifactId: string): Capability | undefined;
     revoke(token: string): void;
     clear(): void;

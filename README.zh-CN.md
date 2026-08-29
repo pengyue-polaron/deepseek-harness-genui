@@ -3,7 +3,7 @@
 [English](README.md) | 简体中文
 
 [![npm version](https://img.shields.io/npm/v/dsh-plugin-genui?logo=npm)](https://www.npmjs.com/package/dsh-plugin-genui)
-[![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.19-339933?logo=nodedotjs&logoColor=white)](package.json)
+[![Node.js](https://img.shields.io/badge/Node.js-22.19%20%7C%2024-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![dsh.so risk](https://www.dsh.so/badge/deepseek-harness-genui.svg)](https://www.dsh.so/zh/artifact/deepseek-harness-genui/)
 [![License](https://img.shields.io/badge/license-MIT-202124)](LICENSE)
 
@@ -47,7 +47,7 @@ Inline、Canvas、全屏和 CLI/localhost 是同一份任务状态的不同入�
 
 ## CLI 示例
 
-终端 profile 会返回 localhost 页面。下一轮可以直接引用用户刚才在页面里选择的路径。
+在 Web profile 中明确要求本地链接时，会返回 localhost 页面。下一轮可以直接引用用户刚才在页面里选择的路径。
 
 ```text
 ❯ 解释这个仓库里生成页面如何进入带权限控制的运行时。做一个交互式代码路径页面，
@@ -69,9 +69,9 @@ Inline、Canvas、全屏和 CLI/localhost 是同一份任务状态的不同入�
 1. Agent 编写普通的 React + TypeScript，插件负责构建和检查。
 2. 界面把选择、表单答案、草稿和进度等有意义的结果保存到当前任务。用户继续追问时，Agent 可以读取这些结果，不必让用户重新描述。
 3. 页面只声明实际需要的 Harness/MCP/Skill 工具，或无需凭据的公开 HTTPS 接口。打开连接型应用前，Harness 会集中展示完整权限清单，由用户一次确认；能力发生变化时会重新询问，未声明的调用仍会被拒绝。
-4. 后续修改更新同一个页面。失败的更新不会覆盖当前可用版本。
+4. 后续修改更新同一个页面。未通过构建或源码契约门禁的候选不会覆盖当前可用版本；如果当前沙箱报告启动崩溃，插件会隔离这个版本，并在存在可用旧版本时自动恢复。
 
-Web 端可以从页面卡片查看或撤回权限。MCP 凭据不会进入生成代码。
+Web 端可以从页面卡片查看或撤回权限。MCP 凭据和任务 capability token 都不会进入生成代码。
 
 ## 为什么选择 Code-first
 
@@ -91,6 +91,16 @@ Web 端可以从页面卡片查看或撤回权限。MCP 凭据不会进入生成
 
 这个项目不替代轻量的 `dsh-ui` 组件渲染器，它覆盖的是 code-first、按任务生成应用的 GenUI 场景。
 
+相近项目选择了不同而且各自合理的取舍：
+
+| 路线 | 更适合 | 这个插件的区别 |
+| --- | --- | --- |
+| [`dsh-genui`](https://github.com/omdsh-dev/dsh-genui) | 用受约束的组件目录稳定拼出卡片、表格、图表和表单。 | Agent 可以编写任意的任务型 React 应用；明确保存的语义状态能跨 Inline、Canvas、全屏和 localhost 进入下一轮 Agent。 |
+| [`dsh-visualize`](https://github.com/Nagi-ovo/dsh-visualize) | 在 DeepSeek Harness Web 中快速生成轻量 HTML 可视化。 | 这里还提供任务应用生命周期、状态交接、连接能力，以及从受支持 Web profile 打开的 localhost 入口。 |
+| [A2UI](https://a2ui.org/introduction/what-is-a2ui/) / [MCP Apps](https://modelcontextprotocol.io/extensions/apps/overview) | 跨平台声明式 UI，或可由多个宿主复用的服务端应用资源。 | 本插件有意只服务 DeepSeek Harness，并为当前任务即时生成代码，而不是定义跨客户端协议。 |
+
+小而可预测的结果通常更适合组件目录，需要可移植性时应优先考虑跨客户端协议。本插件最有优势的场景，是结构事先无法枚举，而且保存结果还要继续进入同一个 Harness 任务。
+
 ## DESIGN.md
 
 打开 **设置 → 插件 → 插件配置**，可以为新应用设置默认设计：让插件自动选择、选用内置风格、导入自定义 `DESIGN.md`，或导出当前选中的设计作为起点。选定后，它会成为之后新建应用的默认设计，不必在每个提示词里重复描述风格。已经生成的应用会保留原来的设计。
@@ -105,16 +115,24 @@ Web 端可以从页面卡片查看或撤回权限。MCP 凭据不会进入生成
 
 ## 安装
 
-使用 Node.js `^22.19.0 || >=24`。插件支持 DeepSeek Harness `^0.1.0-rc.6`。
+使用 Node.js `^22.19.0 || ^24.0.0`。本版明确支持并测试 DeepSeek Harness `0.1.0-rc.6` 至 `0.1.0-rc.8`，以及 `0.1.1-rc.1` 至 `0.1.1-rc.2`。较新的 `0.1.2` alpha 线不在 v0.14 的兼容承诺中。
 
 ```sh
-dsh plugin --profile web add dsh-plugin-genui
+dsh plugin --profile web add dsh-plugin-genui --allow-build=esbuild
 dsh --profile web
 ```
 
-Web profile 支持 Inline、Canvas、全屏和 localhost 链接。终端 profile 把命令里的 `web` 换成 `tui`；TUI 返回本地链接，不嵌入 Canvas。MCP 仍按原有方式连接到同一个 profile。
+查看发布说明后，如需升级已有 Web profile，执行：
 
-插件不会下载或启动浏览器。每个候选版本都必须通过编译和源码契约检查，才能替换最后一个可用版本。仓库 CI 会另外用 Chromium 测试沙箱运行时；插件用户不需要安装它。
+```sh
+dsh plugin --profile web add dsh-plugin-genui@0.14.0 --save-exact --allow-build=esbuild
+```
+
+v0.14 兼容门禁会从真实安装的 v0.13.2 开始升级，并检查已有 app、语义化任务状态、授权和版本引用仍可读取；这不代表对所有未发布版本或更早历史版本作泛化承诺。
+
+本版支持 Web profile，包括 Inline、Canvas、全屏和 localhost 链接。v0.14 不支持 TUI/headless profile，因为插件依赖 Web 宿主服务。MCP 仍按原有方式连接到同一个 Web profile。
+
+`--allow-build=esbuild` 只批准 esbuild 在本机准备对应平台的原生编译器；它不会安装、下载、启动或依赖 Chrome/Chromium。每个候选版本都必须通过编译和源码契约检查，才能替换最后一个可用版本。仓库 CI 会另外用 Chromium 测试沙箱运行时；插件用户不需要安装它。
 
 ## 两分钟试一下
 
@@ -144,22 +162,32 @@ Web profile 支持 Inline、Canvas、全屏和 localhost 链接。终端 profile
 
 ## 安全
 
-生成代码在沙箱中运行。页面直连 API 只支持已声明、无需凭据的公开 HTTPS 接口。临时链接和已授予权限会在 7 天后失效；任务状态在最后一次更新 7 天后过期。用户可以回到任务里的页面卡片查看或收回权限。
+生成代码在 opaque-origin 沙箱中运行。可信父页面保管真实的任务 capability token，只代理状态、已声明工具和已声明的无凭据公开 HTTPS 接口；生成 iframe 不会拿到可用的 bearer token。临时链接和已授予权限会在 7 天后失效；任务状态在最后一次更新 7 天后过期。用户可以回到任务里的页面卡片查看或收回权限。
+
+这条边界能保护宿主凭据与能力，但不能让已经获准读取某些数据的蓄意恶意代码变得可信。源码检查和 CSP 是纵深防御。不要把秘密写进生成页面状态，也不要授权页面读取不应展示的数据；精确威胁模型见 [Security](SECURITY.md)。
 
 插件使用 DeepSeek Harness + Cordis、React 18 + TypeScript 和 esbuild。仓库测试使用 Playwright 与 Vitest。
 
 ## 开发
 
-从源码构建需要 pnpm 11。
-
-Chromium 只用于运行仓库的浏览器端到端测试，插件本身不会安装或启动它。
+从源码构建需要 pnpm 11。类型检查和构建不需要另外安装浏览器：
 
 ```sh
 pnpm install
-pnpm exec playwright install chromium
 pnpm run typecheck
-pnpm test
-pnpm run package:plugin
+pnpm run build
 ```
 
-[验收场景](examples/real-user-scenarios.md) · [参与贡献](CONTRIBUTING.md) · MIT
+只有维护者执行确定性的浏览器 E2E 套件时，才需要另外安装 Playwright 隔离的测试 Chromium。它只是 CI/测试工具，不在插件发布包或用户安装路径中：
+
+```sh
+pnpm exec playwright install chromium
+pnpm test
+pnpm run package:plugin
+pnpm run verify:clean-install
+pnpm run verify:upgrade
+```
+
+其中有一个真实 Open-Meteo 场景故意设为显式开启，避免普通 CI 依赖外部服务：`GENUI_LIVE_E2E=1 pnpm exec vitest run tests/browser-verifier.e2e.spec.ts`。
+
+[验收场景](examples/real-user-scenarios.md) · [v0.14 社区发布手册](docs/community-launch-v0.14.md) · [参与贡献](CONTRIBUTING.md) · MIT

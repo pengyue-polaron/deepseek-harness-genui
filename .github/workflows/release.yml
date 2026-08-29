@@ -1,62 +1,225 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Package version reviewed and approved (for example 0.14.0)
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH after completing the manual release checklist
+        required: true
+        type: string
+
+concurrency:
+  group: dsh-plugin-genui-release
+  cancel-in-progress: false
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 jobs:
-  release:
+  preflight:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      version: ${{ steps.release.outputs.version }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Check reviewed release state
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Releases must be dispatched from main, not $GITHUB_REF"
+            exit 1
+          fi
+          if [ "$RELEASE_CONFIRMATION" != "PUBLISH" ]; then
+            echo "::error::Release confirmation must be exactly PUBLISH"
+            exit 1
+          fi
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          if [ "$REQUESTED_VERSION" != "$version" ]; then
+            echo "::error::Requested version $REQUESTED_VERSION does not match package version $version"
+            exit 1
+          fi
+          if ! gh api "repos/$GITHUB_REPOSITORY/environments/release" >/tmp/genui-release-environment 2>&1; then
+            cat /tmp/genui-release-environment
+            echo "::error::Create the release environment and configure at least one required reviewer before dispatching"
+            exit 1
+          fi
+          reviewer_count=$(jq '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length' /tmp/genui-release-environment)
+          if [ "$reviewer_count" -lt 1 ]; then
+            echo "::error::The release environment must have at least one required reviewer"
+            exit 1
+          fi
+          ci_ok=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --status completed --limit 20 --json conclusion --jq 'any(.[]; .conclusion == "success")')
+          if [ "$ci_ok" != "true" ]; then
+            echo "::error::This exact commit does not have a successful completed CI run"
+            exit 1
+          fi
+          if npm view "$name@$version" version >/tmp/genui-npm-state 2>&1; then
+            npm_state=exists
+          elif grep -Eq 'E404|404 Not Found' /tmp/genui-npm-state; then
+            npm_state=missing
+          else
+            cat /tmp/genui-npm-state
+            echo "::error::Could not determine npm release state"
+            exit 1
+          fi
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/v$version" >/tmp/genui-gh-state 2>&1; then
+            github_state=exists
+          elif grep -q 'HTTP 404' /tmp/genui-gh-state; then
+            github_state=missing
+          else
+            cat /tmp/genui-gh-state
+            echo "::error::Could not determine GitHub release state"
+            exit 1
+          fi
+          if [ "$npm_state" != "$github_state" ]; then
+            echo "::error::npm and GitHub are in a partial release state; recover manually from the already-published tarball"
+            exit 1
+          fi
+          if [ "$npm_state" = exists ]; then
+            echo "::error::Version $version is already published"
+            exit 1
+          fi
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v$version" >/tmp/genui-tag-state 2>&1; then
+            echo "::error::Tag v$version already exists without a matching release"
+            exit 1
+          elif ! grep -q 'HTTP 404' /tmp/genui-tag-state; then
+            cat /tmp/genui-tag-state
+            echo "::error::Could not determine Git tag state"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - run: npm install --global pnpm@11.17.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --prod
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm run package:plugin
+      - name: Exercise the opt-in live HTTPS scenario
+        run: pnpm exec vitest run tests/browser-verifier.e2e.spec.ts
+        env:
+          GENUI_LIVE_E2E: '1'
+      - name: Verify committed build output
+        run: |
+          git diff --exit-code -- lib
+          test -z "$(git ls-files --others --exclude-standard -- lib)"
+      - name: Verify packed plugin in a clean DSH profile
+        run: pnpm run verify:clean-install
+      - name: Verify upgrade from the previous published version
+        run: pnpm run verify:upgrade
+      - name: Prepare immutable release artifact
+        run: |
+          mv "dist/dsh-plugin-genui-${{ steps.release.outputs.version }}.tgz" dist/dsh-plugin-genui.tgz
+          cp "docs/release-notes-v${{ steps.release.outputs.version }}.md" dist/release-notes.md
+          cd dist
+          sha256sum dsh-plugin-genui.tgz > dsh-plugin-genui.tgz.sha256
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dsh-plugin-genui-release
+          path: |
+            dist/dsh-plugin-genui.tgz
+            dist/dsh-plugin-genui.tgz.sha256
+            dist/release-notes.md
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dsh-plugin-genui-release
+          path: dist
+      - name: Verify release artifact integrity
+        run: cd dist && sha256sum --check dsh-plugin-genui.tgz.sha256
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           package-manager-cache: false
           registry-url: https://registry.npmjs.org
-      - name: Check release state
-        id: release
+      - name: Fail closed if release state changed during preflight
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.preflight.outputs.version }}
         run: |
-          name=$(node -p "require('./package.json').name")
-          version=$(node -p "require('./package.json').version")
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          if npm view "$name@$version" version >/dev/null 2>&1; then
-            echo "npm_exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "npm_exists=false" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          if npm view "dsh-plugin-genui@$VERSION" version >/tmp/genui-npm-state 2>&1; then
+            echo "::error::npm version appeared during preflight"
+            exit 1
+          elif ! grep -Eq 'E404|404 Not Found' /tmp/genui-npm-state; then
+            cat /tmp/genui-npm-state
+            echo "::error::Could not re-check npm release state"
+            exit 1
           fi
-          if gh release view "v$version" >/dev/null 2>&1; then
-            echo "github_exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "github_exists=false" >> "$GITHUB_OUTPUT"
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/v$VERSION" >/tmp/genui-gh-state 2>&1; then
+            echo "::error::GitHub release appeared during preflight"
+            exit 1
+          elif ! grep -q 'HTTP 404' /tmp/genui-gh-state; then
+            cat /tmp/genui-gh-state
+            echo "::error::Could not re-check GitHub release state"
+            exit 1
           fi
-      - if: steps.release.outputs.npm_exists == 'false' || steps.release.outputs.github_exists == 'false'
-        run: npm install --global pnpm@11.17.0
-      - if: steps.release.outputs.npm_exists == 'false' || steps.release.outputs.github_exists == 'false'
-        run: pnpm install --frozen-lockfile
-      - if: steps.release.outputs.npm_exists == 'false' || steps.release.outputs.github_exists == 'false'
-        run: pnpm exec playwright install --with-deps chromium
-      - if: steps.release.outputs.npm_exists == 'false' || steps.release.outputs.github_exists == 'false'
-        run: pnpm run package:plugin
-      - name: Prepare stable asset name
-        if: steps.release.outputs.npm_exists == 'false' || steps.release.outputs.github_exists == 'false'
-        run: mv dist/dsh-plugin-genui-*.tgz dist/dsh-plugin-genui.tgz
-      - name: Publish GitHub release
-        if: steps.release.outputs.github_exists == 'false'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          version="${{ steps.release.outputs.version }}"
-          gh release create "v$version" dist/dsh-plugin-genui.tgz --target "$GITHUB_SHA" --generate-notes --title "v$version"
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v$VERSION" >/tmp/genui-tag-state 2>&1; then
+            echo "::error::Git tag appeared during preflight"
+            exit 1
+          elif ! grep -q 'HTTP 404' /tmp/genui-tag-state; then
+            cat /tmp/genui-tag-state
+            echo "::error::Could not re-check Git tag state"
+            exit 1
+          fi
       - name: Publish npm package
-        if: steps.release.outputs.npm_exists == 'false'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish ./dist/dsh-plugin-genui.tgz --access public --provenance
+      - name: Verify npm serves the exact reviewed tarball
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          set -euo pipefail
+          published_url=
+          for attempt in $(seq 1 20); do
+            if published_url=$(npm view "dsh-plugin-genui@$VERSION" dist.tarball --registry=https://registry.npmjs.org 2>/tmp/genui-npm-view); then
+              break
+            fi
+            if [ "$attempt" -eq 20 ]; then
+              cat /tmp/genui-npm-view
+              echo "::error::npm metadata did not become readable after publication"
+              exit 1
+            fi
+            sleep 5
+          done
+          if [ -z "$published_url" ]; then
+            echo "::error::npm returned an empty tarball URL"
+            exit 1
+          fi
+          curl --fail --location --retry 10 --retry-all-errors --retry-delay 3 --output /tmp/dsh-plugin-genui-npm.tgz "$published_url"
+          cmp dist/dsh-plugin-genui.tgz /tmp/dsh-plugin-genui-npm.tgz
+      - name: Publish GitHub release from the same tarball
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: gh release create "v$VERSION" dist/dsh-plugin-genui.tgz dist/dsh-plugin-genui.tgz.sha256 --target "$GITHUB_SHA" --notes-file dist/release-notes.md --title "v$VERSION"

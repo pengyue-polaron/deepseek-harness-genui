@@ -3,7 +3,7 @@
 English | [简体中文](README.zh-CN.md)
 
 [![npm version](https://img.shields.io/npm/v/dsh-plugin-genui?logo=npm)](https://www.npmjs.com/package/dsh-plugin-genui)
-[![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.19-339933?logo=nodedotjs&logoColor=white)](package.json)
+[![Node.js](https://img.shields.io/badge/Node.js-22.19%20%7C%2024-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![dsh.so risk](https://www.dsh.so/badge/deepseek-harness-genui.svg)](https://www.dsh.so/artifact/deepseek-harness-genui/)
 [![License](https://img.shields.io/badge/license-MIT-202124)](LICENSE)
 
@@ -47,7 +47,7 @@ Inline, Canvas, fullscreen, and CLI/localhost are different surfaces over the sa
 
 ## CLI Example
 
-The terminal profile returns a localhost app. A follow-up can refer to the path already selected in that app.
+The Web profile can return a localhost app when a prompt explicitly asks for a local link. A follow-up can refer to the path already selected in that app.
 
 ```text
 ❯ Explain how a generated app reaches the permission-gated runtime in this
@@ -69,9 +69,9 @@ The terminal profile returns a localhost app. A follow-up can refer to the path 
 1. The Agent writes ordinary React + TypeScript and the plugin builds and checks it.
 2. The interface saves semantic values—selections, form answers, drafts, and progress—to the current task. A follow-up can read those values instead of asking the user to repeat them.
 3. The app declares only the Harness/MCP/Skill tools or credential-free public HTTPS routes it needs. Before opening a connected app, Harness presents the complete access list for one task-scoped decision; changed capabilities are shown again, and undeclared calls are blocked.
-4. Later edits update the same app. A failed update never replaces the current working version.
+4. Later edits update the same app. A candidate that fails the build or source-contract gate does not replace the current ready version. If the active sandbox reports a startup crash, the plugin quarantines that version and restores the newest ready version when one exists.
 
-In Web, access can be reviewed or revoked from the app card. MCP credentials never enter generated code.
+In Web, access can be reviewed or revoked from the app card. MCP credentials and the task capability token never enter generated code.
 
 ## Why Code-First
 
@@ -91,6 +91,16 @@ Both approaches are useful, but they optimize for different work:
 
 This project does not replace lightweight `dsh-ui` component renderers. It covers the code-first, task-specific side of GenUI.
 
+Related projects make different, useful trade-offs:
+
+| Approach | Best fit | Where this plugin differs |
+| --- | --- | --- |
+| [`dsh-genui`](https://github.com/omdsh-dev/dsh-genui) | Predictable cards, tables, charts, and forms assembled from a constrained component catalog. | The Agent can write an arbitrary task-specific React app, and explicitly saved semantic state is available to the next Agent turn across Inline, Canvas, fullscreen, and localhost. |
+| [`dsh-visualize`](https://github.com/Nagi-ovo/dsh-visualize) | Lightweight HTML visualizations inside DeepSeek Harness Web. | This plugin adds a task-app lifecycle, state handoff, connected capabilities, and localhost delivery from the supported Web profile. |
+| [A2UI](https://a2ui.org/introduction/what-is-a2ui/) / [MCP Apps](https://modelcontextprotocol.io/extensions/apps/overview) | Cross-platform declarative UI or reusable server-owned app resources. | This plugin is intentionally DeepSeek Harness-specific and generates code for the current task instead of defining a cross-client protocol. |
+
+Component catalogs are usually the better choice for small, predictable output; cross-client protocols are the better choice for portability. This plugin's strongest case is a structure that cannot be known in advance and whose saved result needs to continue the same Harness task.
+
 ## DESIGN.md
 
 Open **Settings → Plugins → Plugin configuration** to set the default design for new apps. Choose automatic selection or a built-in profile, import a custom `DESIGN.md`, or export the selected one as a starting point. Once selected, it becomes the default for apps created later, so the style does not need to be repeated in every prompt. Existing apps keep their original design.
@@ -105,16 +115,24 @@ Open **Settings → Plugins → Plugin configuration** to set the default design
 
 ## Install
 
-Use Node.js `^22.19.0 || >=24`. The plugin supports DeepSeek Harness `^0.1.0-rc.6`.
+Use Node.js `^22.19.0 || ^24.0.0`. The supported and tested DeepSeek Harness range is `0.1.0-rc.6` through `0.1.0-rc.8`, plus `0.1.1-rc.1` through `0.1.1-rc.2`. The newer `0.1.2` alpha line is not included in the v0.14 compatibility promise.
 
 ```sh
-dsh plugin --profile web add dsh-plugin-genui
+dsh plugin --profile web add dsh-plugin-genui --allow-build=esbuild
 dsh --profile web
 ```
 
-The Web profile supports Inline, Canvas, fullscreen, and localhost links. For a terminal profile, replace `web` with `tui`; TUI returns localhost links and does not embed Canvas. Connect MCP servers to the same profile as usual.
+To upgrade an existing Web profile after reviewing the release notes, run:
 
-The plugin does not download or launch a browser. Every candidate is compiled and checked against the source contracts before it can replace the last working version. The repository CI separately exercises the sandboxed runtime in Chromium; plugin users do not need it.
+```sh
+dsh plugin --profile web add dsh-plugin-genui@0.14.0 --save-exact --allow-build=esbuild
+```
+
+The v0.14 compatibility gate starts from a real v0.13.2 installation and checks that existing apps, semantic task state, grants, and version references remain readable. It does not claim compatibility with every unreleased or older historical build.
+
+The supported surface is the Web profile, including Inline, Canvas, fullscreen, and localhost links. TUI/headless profiles are not supported in v0.14 because the plugin requires the Web host service. Connect MCP servers to the same Web profile as usual.
+
+`--allow-build=esbuild` approves esbuild's platform-native local compiler setup. It does not install, download, launch, or depend on Chrome or Chromium. Every candidate is compiled and checked against the source contracts before it can replace the last working version. The repository CI separately exercises the sandboxed runtime in Chromium; plugin users do not need it.
 
 ## Try It in Two Minutes
 
@@ -145,22 +163,32 @@ The useful proof is not only that an interface appears—it is that the next Age
 
 ## Safety
 
-Generated code runs in a sandbox. Direct API requests are limited to declared, credential-free public HTTPS routes. Temporary links and grants expire after 7 days; saved task state expires 7 days after its last update. Return to the app card in the task to review or remove access.
+Generated code runs in an opaque-origin sandbox. A trusted parent keeps the real task capability token and brokers only state, declared tools, and declared credential-free public HTTPS routes; the generated frame receives no usable bearer token. Temporary links and grants expire after 7 days, and saved task state expires 7 days after its last update. Return to the app card in the task to review or remove access.
+
+This boundary protects host credentials and capabilities, but it cannot make deliberately malicious code safe to trust with data that the user has already authorized it to read. Source checks and CSP are defense in depth. Do not put secrets in generated-app state or grant access to data the app should not display; see [Security](SECURITY.md) for the precise threat model.
 
 The plugin uses DeepSeek Harness + Cordis, React 18 + TypeScript, and esbuild. Repository tests use Playwright and Vitest.
 
 ## Development
 
-Building from source requires pnpm 11.
-
-Chromium is needed only to run the repository's browser end-to-end tests. It is not installed or launched by the plugin.
+Building from source requires pnpm 11. Type-checking and building do not need a separately installed browser:
 
 ```sh
 pnpm install
-pnpm exec playwright install chromium
 pnpm run typecheck
-pnpm test
-pnpm run package:plugin
+pnpm run build
 ```
 
-[Acceptance scenarios](examples/real-user-scenarios.md) · [Contributing](CONTRIBUTING.md) · MIT
+Maintainers running the deterministic browser E2E suite install Playwright's isolated test Chromium separately. This is CI/test tooling only and is not part of the plugin package or user installation:
+
+```sh
+pnpm exec playwright install chromium
+pnpm test
+pnpm run package:plugin
+pnpm run verify:clean-install
+pnpm run verify:upgrade
+```
+
+One public Open-Meteo scenario is intentionally opt-in so ordinary CI does not depend on an external service: `GENUI_LIVE_E2E=1 pnpm exec vitest run tests/browser-verifier.e2e.spec.ts`.
+
+[Acceptance scenarios](examples/real-user-scenarios.md) · [v0.14 community launch guide](docs/community-launch-v0.14.md) · [Contributing](CONTRIBUTING.md) · MIT

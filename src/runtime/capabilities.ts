@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { open, readFile } from 'node:fs/promises'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { TASK_TTL_MS, VERIFICATION_TOKEN_TTL_MS } from '../lifecycle.ts'
@@ -22,6 +22,10 @@ interface Capability {
 }
 
 type AgentResolver = (sessionId: string) => Agent | undefined
+
+export function artifactSessionPrefix(sessionId: string): string {
+  return `s-${createHash('sha256').update(sessionId).digest('hex').slice(0, 12)}-`
+}
 
 async function persistentSecret(path: string): Promise<Buffer> {
   try {
@@ -94,6 +98,13 @@ export class CapabilityStore {
     const token = `${payload}.${this.sign(payload)}`
     if (mode === 'interactive') this.interactiveTokens.set(tokenKey, { token, expiresAt })
     return token
+  }
+
+  issueForSession(artifactId: string, sessionId: string): string | undefined {
+    if (!artifactId.startsWith(artifactSessionPrefix(sessionId))) return undefined
+    const agent = this.agents.get(sessionId) ?? this.resolveAgent?.(sessionId)
+    if (agent === undefined || String(agent.id) !== sessionId) return undefined
+    return this.issue(artifactId, agent)
   }
 
   resolve(token: string, artifactId: string): Capability | undefined {

@@ -40,16 +40,20 @@ export function DesignSettingsCard({ t }: DesignSettingsCardProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
   const [settings, setSettings] = useState<DesignSettings>()
+  const [loading, setLoading] = useState(true)
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string>()
   const [failed, setFailed] = useState(false)
 
   const load = async () => {
+    setLoading(true)
     setFailed(false)
     try {
       setSettings(await readDesignSettings())
     } catch {
       setFailed(true)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -116,7 +120,7 @@ export function DesignSettingsCard({ t }: DesignSettingsCardProps) {
             autoComplete="off"
             translate="no"
             value={settings?.default_design_id ?? ''}
-            disabled={settings === undefined || pending}
+            disabled={settings === undefined || pending || loading}
             onChange={event => { void choose(event.target.value) }}
           >
             <option value="">{t('design.auto')}</option>
@@ -128,11 +132,14 @@ export function DesignSettingsCard({ t }: DesignSettingsCardProps) {
           </p>
           <div className="dsh-genui-design-actions">
             <input ref={inputRef} id={inputId} name="genui-design-import" type="file" accept=".md,text/markdown,text/plain" aria-label={t('design.import')} hidden onChange={event => { void importFile(event) }} />
-            <button type="button" disabled={pending} onClick={() => inputRef.current?.click()}>{t('design.import')}</button>
+            {failed && settings === undefined
+              ? <button type="button" disabled={loading} onClick={() => { void load() }}>{t('design.retry')}</button>
+              : null}
+            <button type="button" disabled={pending || loading} onClick={() => inputRef.current?.click()}>{t('design.import')}</button>
             {settings?.default_design_id == null
               ? <span className="dsh-genui-design-export-disabled" aria-disabled="true">{t('design.export')}</span>
               : <a href={`${settings.export_base}/${encodeURIComponent(settings.default_design_id)}?download=1`} download="DESIGN.md" onClick={() => setMessage(t('design.exported'))}>{t('design.export')}</a>}
-            <span role="status" aria-live="polite">{pending ? t('design.saving') : failed ? t('design.failed') : message}</span>
+            <span role="status" aria-live="polite">{loading ? t('design.loading') : pending ? t('design.saving') : failed ? t(settings === undefined ? 'design.loadFailed' : 'design.failed') : message}</span>
           </div>
         </div>
       ) : null}

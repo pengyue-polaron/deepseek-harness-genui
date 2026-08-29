@@ -67,6 +67,7 @@ export interface ArtifactSessionState {
 }
 
 export interface ArtifactVersion {
+  schemaVersion?: 1
   id: string
   artifactId: string
   parentVersionId?: string
@@ -80,6 +81,7 @@ export interface ArtifactVersion {
 }
 
 export interface ArtifactRecord {
+  schemaVersion?: 1
   id: string
   title: string
   createdAt: string

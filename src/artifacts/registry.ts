@@ -42,6 +42,14 @@ function requirementId(): string {
   return `req-${randomUUID().slice(0, 8)}`
 }
 
+function acceptSchemaVersion(value: { schemaVersion?: 1 }, kind: 'artifact' | 'artifact version'): void {
+  const schemaVersion: unknown = value.schemaVersion
+  if (schemaVersion !== undefined && schemaVersion !== 1) {
+    throw new Error(`unsupported ${kind} schema version: ${String(schemaVersion)}`)
+  }
+  value.schemaVersion = 1
+}
+
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
 
 function normalizeCapabilities(capabilities: ArtifactCapability[]): ArtifactCapability[] {
@@ -115,13 +123,17 @@ export class ArtifactRegistry {
   }
 
   async get(id: string): Promise<ArtifactRecord> {
-    return readJson<ArtifactRecord>(this.recordPath(id))
+    const record = await readJson<ArtifactRecord>(this.recordPath(id))
+    acceptSchemaVersion(record, 'artifact')
+    return record
   }
 
   async getVersion(id: string, versionId?: string): Promise<ArtifactVersion> {
     const record = await this.get(id)
     const selected = versionId ?? record.currentVersionId ?? record.latestVersionId
-    return readJson<ArtifactVersion>(this.versionPath(id, selected))
+    const version = await readJson<ArtifactVersion>(this.versionPath(id, selected))
+    acceptSchemaVersion(version, 'artifact version')
+    return version
   }
 
   async create(input: {
@@ -149,6 +161,7 @@ export class ArtifactRegistry {
       }))
       const version = this.makeCandidate(id, versionId, undefined, input.summary, input.files, requirements, input.capabilities, now)
       const record: ArtifactRecord = {
+        schemaVersion: 1,
         id,
         title: input.title,
         createdAt: now,
@@ -235,6 +248,58 @@ export class ArtifactRegistry {
     })
   }
 
+  async reportRuntimeFailure(id: string, versionId: string): Promise<{
+    failedVersionId: string
+    fallbackVersionId?: string
+  }> {
+    return this.withMutationLock(id, async () => {
+      const record = await this.get(id)
+      const version = await this.getVersion(id, versionId)
+      if (version.status === 'failed' && version.evidence.browser === 'failed') {
+        const fallbackVersionId = record.currentVersionId === versionId ? undefined : record.currentVersionId
+        return {
+          failedVersionId: versionId,
+          ...(fallbackVersionId === undefined ? {} : { fallbackVersionId }),
+        }
+      }
+      if (record.currentVersionId !== versionId || version.status !== 'ready') {
+        throw new Error('runtime failure must target the current ready version')
+      }
+      const diagnostic = 'Runtime error reported by the sandboxed app host.'
+      version.status = 'failed'
+      version.evidence = {
+        ...version.evidence,
+        checkedAt: new Date().toISOString(),
+        browser: 'failed',
+        diagnostics: version.evidence.diagnostics.some(item => item.text === diagnostic)
+          ? version.evidence.diagnostics
+          : [...version.evidence.diagnostics, { severity: 'error', text: diagnostic }],
+        notes: version.evidence.notes.includes('runtime failure quarantined; last-known-good version restored')
+          ? version.evidence.notes
+          : [...version.evidence.notes, 'runtime failure quarantined; last-known-good version restored'],
+      }
+      await atomicJson(this.versionPath(id, versionId), version)
+
+      let fallbackVersionId: string | undefined
+      for (const candidateId of [...record.versions].reverse()) {
+        if (candidateId === versionId) continue
+        const candidate = await this.getVersion(id, candidateId)
+        if (candidate.status === 'ready') {
+          fallbackVersionId = candidate.id
+          break
+        }
+      }
+      if (fallbackVersionId === undefined) delete record.currentVersionId
+      else record.currentVersionId = fallbackVersionId
+      record.updatedAt = new Date().toISOString()
+      await this.saveRecord(record)
+      return {
+        failedVersionId: versionId,
+        ...(fallbackVersionId === undefined ? {} : { fallbackVersionId }),
+      }
+    })
+  }
+
   async readState(id: string, sessionId: string): Promise<ArtifactSessionState | undefined> {
     return this.withMutationLock(id, async () => {
       const record = await this.get(id)
@@ -309,6 +374,7 @@ export class ArtifactRegistry {
   }
 
   private async saveRecord(record: ArtifactRecord): Promise<void> {
+    record.schemaVersion = 1
     const protectedIds = new Set([record.currentVersionId, record.latestVersionId].filter((value): value is string => value !== undefined))
     const newest = [...record.versions].reverse()
     const retained = new Set<string>(protectedIds)
@@ -348,6 +414,7 @@ export class ArtifactRegistry {
     createdAt: string,
   ): ArtifactVersion {
     return {
+      schemaVersion: 1,
       id,
       artifactId,
       ...(parentVersionId === undefined ? {} : { parentVersionId }),

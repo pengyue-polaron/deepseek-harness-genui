@@ -1,11 +1,108 @@
 import { chromium } from 'playwright'
-import type { Browser, BrowserContext } from 'playwright'
+import type { Browser, BrowserContext, Page } from 'playwright'
 import type { BuildDiagnostic } from '../../src/artifacts/types.ts'
 
 export interface BrowserVerificationResult {
   ok: boolean
   diagnostics: BuildDiagnostic[]
   notes: string[]
+}
+
+export async function mountBridgedPreview(page: Page, url: string, title = 'artifact'): Promise<void> {
+  const preview = new URL(url)
+  const fragment = [...new URLSearchParams(preview.hash.slice(1)).entries()]
+  const token = fragment.length === 1 && fragment[0]?.[0] === 'token' ? fragment[0][1] : undefined
+  const marker = '/preview/'
+  const markerAt = preview.pathname.lastIndexOf(marker)
+  if (token === undefined || token === '' || markerAt < 0) throw new Error('browser verification capability is invalid')
+  const previewParts = preview.pathname.slice(markerAt + marker.length).split('/').map(decodeURIComponent)
+  const artifactId = previewParts[0]
+  const versionId = previewParts[1]
+  if (artifactId === undefined || artifactId === '' || versionId === undefined || versionId === '' || previewParts.length !== 2) {
+    throw new Error('browser verification preview route is invalid')
+  }
+  const endpoint = `${preview.origin}${preview.pathname.slice(0, markerAt)}/api/${encodeURIComponent(artifactId)}`
+  const nonce = crypto.randomUUID()
+  preview.hash = new URLSearchParams({ token: 'bridge-v1', bridge_nonce: nonce }).toString()
+  await page.evaluate((frameTitle) => {
+    const frame = document.createElement('iframe')
+    frame.title = frameTitle
+    frame.sandbox.add('allow-scripts', 'allow-modals')
+    frame.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0'
+    document.body.append(frame)
+  }, title)
+  await page.evaluate(({ childUrl, capability, apiEndpoint, artifact, version, expectedNonce, frameTitle }) => {
+    const frame = [...document.querySelectorAll<HTMLIFrameElement>('iframe')].find(item => item.title === frameTitle)
+    if (frame === undefined) throw new Error('verification iframe is missing')
+    const actions = new Set(['state/read', 'state/write', 'tool', 'external'])
+    let port: MessagePort | undefined
+    let started = false
+    let accepted = false
+    const send = (message: Record<string, unknown>) => port?.postMessage({
+      source: 'dsh-genui', bridgeVersion: 1, nonce: expectedNonce, ...message,
+    })
+    window.addEventListener('message', (event) => {
+      const value = event.data as Record<string, unknown> | null
+      if (accepted || port !== undefined || event.source !== frame.contentWindow || event.origin !== 'null'
+        || event.ports.length !== 1 || value === null || value.source !== 'dsh-genui'
+        || value.type !== 'bridge-connect' || value.bridgeVersion !== 1 || value.nonce !== expectedNonce
+        || value.artifactId !== artifact || value.versionId !== version) return
+      const acceptedPort = event.ports[0]
+      if (acceptedPort === undefined) return
+      port = acceptedPort
+      accepted = true
+      acceptedPort.onmessage = (message) => {
+        const request = message.data as Record<string, unknown> | null
+        if (request === null || request.source !== 'dsh-genui' || request.bridgeVersion !== 1
+          || request.nonce !== expectedNonce || request.artifactId !== artifact || request.versionId !== version) return
+        if (request.type === 'preview-loaded') {
+          if (started) return
+          started = true
+          send({ type: 'theme', theme: 'light' })
+          send({ type: 'start-app' })
+          return
+        }
+        if (request.type === 'preview-leaving') {
+          port?.close()
+          port = undefined
+          started = false
+          frame.style.visibility = 'hidden'
+          return
+        }
+        if (request.type !== 'api-request' || !started || typeof request.requestId !== 'string'
+          || request.requestId.length === 0 || request.requestId.length > 128
+          || typeof request.action !== 'string' || !actions.has(request.action)
+          || typeof request.body !== 'object' || request.body === null || Array.isArray(request.body)) return
+        const requestId = request.requestId
+        const action = request.action
+        const body = request.body as Record<string, unknown>
+        const timeout = action === 'tool' ? 65_000 : action === 'external' ? 35_000 : 10_000
+        void fetch(`${apiEndpoint}/${action}`, {
+          method: 'POST',
+          headers: { authorization: `Bearer ${capability}`, 'content-type': 'application/json' },
+          body: JSON.stringify({ ...body, version_id: version }),
+          signal: AbortSignal.timeout(timeout),
+        }).then(async response => ({ ok: response.ok, status: response.status, value: await response.json() }))
+          .then(result => send({ type: 'api-response', requestId, ...result }), error => send({
+            type: 'api-response', requestId, ok: false, status: 502,
+            value: { error: error instanceof Error ? error.message : 'verification request failed' },
+          }))
+      }
+      acceptedPort.start()
+      send({ type: 'bridge-accepted' })
+    })
+    frame.addEventListener('load', () => {
+      if (!started) return
+      port?.close()
+      port = undefined
+      started = false
+      frame.style.visibility = 'hidden'
+    })
+    frame.src = childUrl
+  }, {
+    childUrl: preview.toString(), capability: token, apiEndpoint: endpoint,
+    artifact: artifactId, version: versionId, expectedNonce: nonce, frameTitle: title,
+  })
 }
 
 async function verifyWithBrowser(browser: Browser, url: string): Promise<BrowserVerificationResult> {
@@ -21,8 +118,7 @@ async function verifyWithBrowser(browser: Browser, url: string): Promise<Browser
       if (message.type() === 'warning') diagnostics.push({ severity: 'warning', text: `browser console: ${message.text()}` })
     })
     page.on('pageerror', error => diagnostics.push({ severity: 'error', text: `browser runtime: ${error.message}` }))
-    const safeUrl = url.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;')
-    await page.setContent(`<iframe title="artifact" sandbox="allow-scripts allow-forms allow-modals allow-downloads" src="${safeUrl}" style="position:fixed;inset:0;width:100%;height:100%;border:0"></iframe>`)
+    await mountBridgedPreview(page, url)
     const frame = page.frameLocator('iframe[title="artifact"]')
     try {
       await frame.locator('#root > *').first().waitFor({ state: 'visible', timeout: 10_000 })
@@ -41,6 +137,14 @@ async function verifyWithBrowser(browser: Browser, url: string): Promise<Browser
         })
         return JSON.stringify({ html: element.querySelector('#root')?.innerHTML ?? '', controls })
       })
+
+      const themeSnapshot = () => frame.locator('html').evaluate(() => JSON.stringify(
+        [document.documentElement, document.body, document.getElementById('root')].map(candidate => {
+          if (candidate === null) return null
+          const style = getComputedStyle(candidate)
+          return { color: style.color, backgroundColor: style.backgroundColor, backgroundImage: style.backgroundImage }
+        }),
+      ))
 
       const inspectSurface = async (label: string, accessibility = false) => {
         const report = await frame.locator('html').evaluate((element, includeAccessibility) => {
@@ -67,20 +171,68 @@ async function verifyWithBrowser(browser: Browser, url: string): Promise<Browser
           }
           const unlabeled: string[] = []
           const missingAlt: string[] = []
+          const keyboardIssues: string[] = []
           if (includeAccessibility) {
             const selector = 'button, a[href], input:not([type="hidden"]), select, textarea, summary, [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="switch"], [tabindex]:not([tabindex="-1"])'
             for (const [index, candidate] of [...document.querySelectorAll(selector)].entries()) {
-              if (visible(candidate) && nameOf(candidate).length === 0) {
-                const role = candidate.getAttribute('role')
-                const type = candidate.getAttribute('type')
-                unlabeled.push(`${candidate.tagName.toLowerCase()}${type ? `[type=${type}]` : ''}${role ? `[role=${role}]` : ''} #${index + 1}`)
+              if (!visible(candidate)) continue
+              const role = candidate.getAttribute('role')
+              const type = candidate.getAttribute('type')
+              const label = `${candidate.tagName.toLowerCase()}${type ? `[type=${type}]` : ''}${role ? `[role=${role}]` : ''} #${index + 1}`
+              if (nameOf(candidate).length === 0) unlabeled.push(label)
+              if ((candidate as HTMLElement).tabIndex < 0) {
+                keyboardIssues.push(`${label} is not keyboard reachable`)
+                continue
               }
+              const active = document.activeElement
+              const control = candidate as HTMLElement
+              control.blur()
+              const restingStyle = getComputedStyle(candidate)
+              const resting = {
+                outlineStyle: restingStyle.outlineStyle,
+                outlineWidth: restingStyle.outlineWidth,
+                outlineColor: restingStyle.outlineColor,
+                outlineOffset: restingStyle.outlineOffset,
+                boxShadow: restingStyle.boxShadow,
+                backgroundColor: restingStyle.backgroundColor,
+                backgroundImage: restingStyle.backgroundImage,
+                borderTop: restingStyle.borderTop,
+                borderRight: restingStyle.borderRight,
+                borderBottom: restingStyle.borderBottom,
+                borderLeft: restingStyle.borderLeft,
+              }
+              control.focus()
+              const focusedStyle = getComputedStyle(candidate)
+              const focused = {
+                outlineStyle: focusedStyle.outlineStyle,
+                outlineWidth: focusedStyle.outlineWidth,
+                outlineColor: focusedStyle.outlineColor,
+                outlineOffset: focusedStyle.outlineOffset,
+                boxShadow: focusedStyle.boxShadow,
+                backgroundColor: focusedStyle.backgroundColor,
+                backgroundImage: focusedStyle.backgroundImage,
+                borderTop: focusedStyle.borderTop,
+                borderRight: focusedStyle.borderRight,
+                borderBottom: focusedStyle.borderBottom,
+                borderLeft: focusedStyle.borderLeft,
+              }
+              const outline = focusedStyle.outlineStyle !== 'none' && Number.parseFloat(focusedStyle.outlineWidth) > 0
+                && focusedStyle.outlineColor !== 'transparent' && focusedStyle.outlineColor !== 'rgba(0, 0, 0, 0)'
+                && (focused.outlineStyle !== resting.outlineStyle || focused.outlineWidth !== resting.outlineWidth
+                  || focused.outlineColor !== resting.outlineColor || focused.outlineOffset !== resting.outlineOffset)
+              const shadow = focusedStyle.boxShadow !== 'none' && focused.boxShadow !== resting.boxShadow
+              const background = focused.backgroundColor !== resting.backgroundColor || focused.backgroundImage !== resting.backgroundImage
+              const border = focused.borderTop !== resting.borderTop || focused.borderRight !== resting.borderRight
+                || focused.borderBottom !== resting.borderBottom || focused.borderLeft !== resting.borderLeft
+              if (document.activeElement !== candidate) keyboardIssues.push(`${label} cannot receive focus`)
+              else if (!outline && !shadow && !background && !border) keyboardIssues.push(`${label} has no visible focus indicator`)
+              if (active instanceof HTMLElement) active.focus()
             }
             for (const [index, image] of [...document.querySelectorAll('img')].entries()) {
               if (visible(image) && !image.hasAttribute('alt')) missingAlt.push(`img #${index + 1}`)
             }
           }
-          return { width: element.clientWidth, scrollWidth: element.scrollWidth, unlabeled, missingAlt }
+          return { width: element.clientWidth, scrollWidth: element.scrollWidth, unlabeled, missingAlt, keyboardIssues }
         }, accessibility)
         if (report.scrollWidth > report.width) {
           diagnostics.push({ severity: 'error', text: `${label} viewport overflows horizontally: ${report.scrollWidth}px > ${report.width}px` })
@@ -93,9 +245,13 @@ async function verifyWithBrowser(browser: Browser, url: string): Promise<Browser
         for (const image of report.missingAlt) {
           diagnostics.push({ severity: 'error', text: `visible image is missing alt text: ${image}` })
         }
+        for (const issue of report.keyboardIssues) {
+          diagnostics.push({ severity: 'error', text: `visible interactive control ${issue}` })
+        }
       }
 
       await inspectSurface('light desktop', true)
+      const lightThemeSnapshot = await themeSnapshot()
 
       const primary = await frame.locator('html').evaluate((_, interactiveSelector) => {
         const visible = (candidate: Element): boolean => {
@@ -162,6 +318,22 @@ async function verifyWithBrowser(browser: Browser, url: string): Promise<Browser
       }
 
       await page.emulateMedia({ colorScheme: 'dark' })
+      await page.locator('iframe[title="artifact"]').evaluate((element) => {
+        const frame = element as HTMLIFrameElement
+        frame.contentWindow?.postMessage({ source: 'dsh-genui', type: 'theme', theme: 'light' }, '*')
+      })
+      await page.waitForTimeout(50)
+      const explicitLightThemeSnapshot = await themeSnapshot()
+      if (explicitLightThemeSnapshot !== lightThemeSnapshot) {
+        diagnostics.push({ severity: 'error', text: 'explicit light theme does not override the operating-system dark preference' })
+      }
+      const lightMarker = await frame.locator('html').getAttribute('data-ds-light-theme')
+      if (lightMarker === null) diagnostics.push({ severity: 'error', text: 'artifact runtime did not apply the explicit light theme marker' })
+      await page.locator('iframe[title="artifact"]').evaluate((element) => {
+        const frame = element as HTMLIFrameElement
+        frame.contentWindow?.postMessage({ source: 'dsh-genui', type: 'theme', theme: 'dark' }, '*')
+      })
+      await page.waitForTimeout(50)
       await frame.locator('#root > *').first().waitFor({ state: 'visible', timeout: 5_000 })
       await inspectSurface('dark desktop')
 
@@ -172,6 +344,10 @@ async function verifyWithBrowser(browser: Browser, url: string): Promise<Browser
       await page.setViewportSize({ width: 390, height: 844 })
       await frame.locator('#root > *').first().waitFor({ state: 'visible', timeout: 10_000 })
       await inspectSurface('mobile')
+
+      await page.setViewportSize({ width: 260, height: 720 })
+      await frame.locator('#root > *').first().waitFor({ state: 'visible', timeout: 10_000 })
+      await inspectSurface('compact mobile', true)
     } catch (error) {
       diagnostics.push({ severity: 'error', text: `sandboxed preview did not mount: ${error instanceof Error ? error.message : String(error)}` })
     }

@@ -16,6 +16,7 @@ export function capabilityFingerprint(capability: ArtifactCapability): string {
 }
 
 export function permissionView(capability: ArtifactCapability): PermissionView {
+  const destination = capability.kind === 'external' ? new URL(capability.urlPrefix) : undefined
   return {
     id: capability.id,
     kind: capability.kind,
@@ -23,7 +24,7 @@ export function permissionView(capability: ArtifactCapability): PermissionView {
     reason: capability.reason,
     access: capability.access,
     ...(capability.kind === 'external'
-      ? { destination: new URL(capability.urlPrefix).host, methods: capability.methods }
+      ? { destination: `${destination!.host}${destination!.pathname}${destination!.search}`, methods: capability.methods }
       : {}),
   }
 }
@@ -44,7 +45,12 @@ export function externalCapability(
   return version.capabilities.find(capability => {
     if (capability.kind !== 'external' || !capability.methods.includes(method as never)) return false
     const prefix = new URL(capability.urlPrefix)
-    return url.origin === prefix.origin && url.href.startsWith(prefix.href)
+    if (url.origin !== prefix.origin || url.username !== '' || url.password !== '' || url.hash !== '') return false
+    const pathMatches = prefix.pathname.endsWith('/')
+      ? url.pathname.startsWith(prefix.pathname)
+      : url.pathname === prefix.pathname || url.pathname.startsWith(`${prefix.pathname}/`)
+    const queryMatches = prefix.search === '' || url.search === prefix.search
+    return pathMatches && queryMatches
   })
 }
 

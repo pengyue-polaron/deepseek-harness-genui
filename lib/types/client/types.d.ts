@@ -20,5 +20,10 @@ export interface PermissionRequest {
 export type PermissionStatus = PermissionRequest['permission'] & {
     granted: boolean;
 };
+export interface GenuiMetaRead {
+    meta: GenuiMeta;
+    source: 'presentation' | 'receipt';
+}
+export declare function readMetaResult(block: ToolCallViewProps['block']): GenuiMetaRead | undefined;
 export declare function readMeta(block: ToolCallViewProps['block']): GenuiMeta | undefined;
 //# sourceMappingURL=types.d.ts.map

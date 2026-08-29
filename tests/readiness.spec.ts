@@ -23,6 +23,9 @@ describe('GenUI preview readiness', () => {
 
   it('recognizes runtime failures only from the displayed app', () => {
     expect(isGenuiRuntimeErrorMessage(event(frame, runtimeError), frame, 'camping', 'v-2')).toBe(true)
+    expect(isGenuiRuntimeErrorMessage(event(frame, { ...runtimeError, phase: 'startup' }), frame, 'camping', 'v-2')).toBe(true)
+    expect(isGenuiRuntimeErrorMessage(event(frame, { ...runtimeError, phase: 'interactive' }), frame, 'camping', 'v-2')).toBe(true)
+    expect(isGenuiRuntimeErrorMessage(event(frame, { ...runtimeError, phase: 'invented' }), frame, 'camping', 'v-2')).toBe(false)
     expect(isGenuiRuntimeErrorMessage(event(frame, runtimeError), frame, 'camping', 'v-1')).toBe(false)
     expect(isGenuiReadyMessage(event(frame, runtimeError), frame, 'camping', 'v-2')).toBe(false)
   })

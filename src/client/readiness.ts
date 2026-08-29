@@ -10,6 +10,8 @@ export interface GenuiRuntimeErrorMessage {
   type: 'runtime-error'
   artifactId: string
   versionId: string
+  /** Informational only; the host determines startup vs interactive from its accepted ready signal. */
+  phase?: 'startup' | 'interactive'
 }
 
 function isCurrentFrameMessage(
@@ -38,5 +40,7 @@ export function isGenuiRuntimeErrorMessage(
   artifactId: string,
   versionId: string,
 ): event is MessageEvent<GenuiRuntimeErrorMessage> {
-  return isCurrentFrameMessage(event, frameWindow, artifactId, versionId) && event.data.type === 'runtime-error'
+  return isCurrentFrameMessage(event, frameWindow, artifactId, versionId)
+    && event.data.type === 'runtime-error'
+    && (event.data.phase === undefined || event.data.phase === 'startup' || event.data.phase === 'interactive')
 }
