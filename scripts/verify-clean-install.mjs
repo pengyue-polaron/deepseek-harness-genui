@@ -44,6 +44,8 @@ function runResult(command, args, timeoutMs = 15_000) {
   return new Promise((resolvePromise, reject) => {
     let output = ''
     let timedOut = false
+    let settled = false
+    let timeout
     const child = spawn(command, args, {
       cwd: projectRoot,
       env: environment,
@@ -52,18 +54,31 @@ function runResult(command, args, timeoutMs = 15_000) {
     const onData = chunk => { output += String(chunk) }
     child.stdout?.on('data', onData)
     child.stderr?.on('data', onData)
-    const timeout = setTimeout(() => {
-      timedOut = true
-      child.kill('SIGTERM')
-    }, timeoutMs)
-    child.once('error', error => {
-      clearTimeout(timeout)
-      reject(error)
-    })
-    child.once('exit', (code, signal) => {
+    const finish = (code, signal) => {
+      if (settled) return
+      settled = true
       clearTimeout(timeout)
       resolvePromise({ code, signal, output, timedOut })
-    })
+    }
+    const fail = error => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeout)
+      reject(error)
+    }
+    timeout = setTimeout(() => {
+      timedOut = true
+      void stopChild(child).then(() => {
+        if (child.exitCode === null && child.signalCode === null) {
+          child.stdout?.destroy()
+          child.stderr?.destroy()
+          child.unref()
+        }
+        finish(child.exitCode, child.signalCode)
+      }, fail)
+    }, timeoutMs)
+    child.once('error', fail)
+    child.once('exit', finish)
   })
 }
 
@@ -207,9 +222,14 @@ try {
   if (await pathExists(installedManifestPath)) {
     throw new Error('clean Web profile retained dsh-plugin-genui after removal')
   }
-  const configAfterRemoval = await run(dshBinary, ['--profile', 'web', '--dump-config'], true)
-  if (configAfterRemoval.includes('name: dsh-plugin-genui')) {
-    throw new Error('clean Web profile still activates dsh-plugin-genui after removal')
+  const profileManifestAfterRemoval = JSON.parse(await readFile(join(profileRoot, 'package.json'), 'utf8'))
+  const remainingDependencies = profileManifestAfterRemoval.dependencies ?? {}
+  const remainingBundles = profileManifestAfterRemoval.dsh?.profile?.bundles
+  if (!Array.isArray(remainingBundles)) {
+    throw new Error('clean Web profile has an invalid bundle list after removal')
+  }
+  if (Object.hasOwn(remainingDependencies, manifest.name) || remainingBundles.includes(manifest.name)) {
+    throw new Error('clean Web profile still references dsh-plugin-genui after removal')
   }
   for (const unsupportedProfile of ['tui', 'headless']) {
     await run(dshBinary, ['plugin', '--profile', unsupportedProfile, 'add', tarball, '--save-exact', '--allow-build=esbuild'])
