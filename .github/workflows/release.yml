@@ -222,4 +222,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.preflight.outputs.version }}
-        run: gh release create "v$VERSION" dist/dsh-plugin-genui.tgz dist/dsh-plugin-genui.tgz.sha256 --target "$GITHUB_SHA" --notes-file dist/release-notes.md --title "v$VERSION"
+        run: gh release create "v$VERSION" dist/dsh-plugin-genui.tgz dist/dsh-plugin-genui.tgz.sha256 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --notes-file dist/release-notes.md --title "v$VERSION"
