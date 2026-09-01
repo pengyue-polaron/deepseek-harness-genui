@@ -4,6 +4,7 @@ English | [简体中文](README.zh-CN.md)
 
 [![npm version](https://img.shields.io/npm/v/dsh-plugin-genui?logo=npm)](https://www.npmjs.com/package/dsh-plugin-genui)
 [![Node.js](https://img.shields.io/badge/Node.js-22.19%20%7C%2024-339933?logo=nodedotjs&logoColor=white)](package.json)
+[![Paper](https://img.shields.io/badge/paper-arXiv%3A2608.29387-B31B1B?logo=arxiv)](https://arxiv.org/abs/2608.29387)
 [![dsh.so risk](https://www.dsh.so/badge/deepseek-harness-genui.svg)](https://www.dsh.so/artifact/deepseek-harness-genui/)
 [![License](https://img.shields.io/badge/license-MIT-202124)](LICENSE)
 
@@ -14,6 +15,8 @@ Listed on [dsh-market](https://dshmarket.com/p/pengyue-polaron/deepseek-harness-
 Some tasks are awkward in text. DeepSeek Harness GenUI lets an Agent create a focused interface for the current task: something that explains a difficult relationship or collects a complex user response.
 
 The plugin is code-first. The Coding Agent writes ordinary React + TypeScript, not a component-tree DSL or IR. The interface can save what the user selected, entered, or changed so the next Agent turn can read it and continue the task.
+
+> **Related research:** [*EvoGenUI-Bench: Evaluating LLMs as Multi-Turn Generative UI Assistants*](https://arxiv.org/abs/2608.29387) evaluates whether LLMs can keep one executable interface correct as requirements evolve across multiple turns, spanning information presentation, stateful interaction, and tool-grounded external state. DeepSeek Harness GenUI provides a practical environment for that same lifecycle: task-specific generation, semantic state handoff, capability-scoped tools, and guarded in-place updates.
 
 ## When an Interface Helps
 

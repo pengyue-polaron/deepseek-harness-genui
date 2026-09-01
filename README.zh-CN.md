@@ -4,6 +4,7 @@
 
 [![npm version](https://img.shields.io/npm/v/dsh-plugin-genui?logo=npm)](https://www.npmjs.com/package/dsh-plugin-genui)
 [![Node.js](https://img.shields.io/badge/Node.js-22.19%20%7C%2024-339933?logo=nodedotjs&logoColor=white)](package.json)
+[![论文](https://img.shields.io/badge/%E8%AE%BA%E6%96%87-arXiv%3A2608.29387-B31B1B?logo=arxiv)](https://arxiv.org/abs/2608.29387)
 [![dsh.so risk](https://www.dsh.so/badge/deepseek-harness-genui.svg)](https://www.dsh.so/zh/artifact/deepseek-harness-genui/)
 [![License](https://img.shields.io/badge/license-MIT-202124)](LICENSE)
 
@@ -14,6 +15,8 @@
 有些任务用文字来回描述很别扭。DeepSeek Harness GenUI 让 Agent 可以为当前任务生成一个聚焦界面，用来讲清复杂关系，或收集难以用一段话表达的用户选择。
 
 这个插件走 code-first 路线。Coding Agent 编写普通前端代码——React + TypeScript，而不是组件树 DSL 或 IR。界面可以保存用户的选择、输入和修改，供 Agent 在下一轮读取并继续处理任务。
+
+> **相关研究：** [《EvoGenUI-Bench: Evaluating LLMs as Multi-Turn Generative UI Assistants》](https://arxiv.org/abs/2608.29387)系统评测了 LLM 在需求连续变化时，能否持续维护同一个可执行界面，覆盖信息呈现、有状态交互和工具驱动的外部状态。本插件把同一类生命周期落到 DeepSeek Harness 中：按任务生成界面、交接语义状态、限制工具权限，并对原位更新设置门禁。
 
 ## 什么时候值得生成界面
 
