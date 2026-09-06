@@ -21,11 +21,11 @@ Related research: [*EvoGenUI-Bench: Evaluating LLMs as Multi-Turn Generative UI 
 Requires Node.js `^22.19.0 || ^24.0.0` and a supported DeepSeek Harness Web profile.
 
 ```sh
-dsh plugin --profile web add dsh-plugin-genui --allow-build=esbuild
+dsh plugin --profile web add dsh-plugin-genui
 dsh --profile web
 ```
 
-v0.14 supports Inline, Canvas, fullscreen, and localhost on the tested Harness versions listed in the [release notes](docs/release-notes-v0.14.0.md). TUI/headless profiles are not supported. `--allow-build=esbuild` enables the local compiler; plugin users do not need Chrome or Chromium.
+v0.14 supports Inline, Canvas, fullscreen, and localhost on the tested Harness versions listed in the [release notes](docs/release-notes-v0.14.1.md). TUI/headless profiles are not supported. The local compiler uses WebAssembly and needs no install-script approval. Plugin users do not need Chrome or Chromium.
 
 ## Where It Helps
 
@@ -114,6 +114,6 @@ pnpm test
 pnpm run package:plugin
 ```
 
-[Acceptance scenarios](examples/real-user-scenarios.md) · [Release notes](docs/release-notes-v0.14.0.md) · [Contributing](CONTRIBUTING.md) · MIT
+[Acceptance scenarios](examples/real-user-scenarios.md) · [Release notes](docs/release-notes-v0.14.1.md) · [Contributing](CONTRIBUTING.md) · MIT
 
 Listed on [dsh-market](https://dshmarket.com/p/pengyue-polaron/deepseek-harness-genui/) · [dsh.so](https://www.dsh.so/artifact/deepseek-harness-genui/) · [awesome-dsh-plugin](https://awesome-dsh-plugin.com/p/pengyue-polaron/deepseek-harness-genui/) · [dsh.plus](https://www.dsh.plus/en/plugins/deepseek-harness-genui/)

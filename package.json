@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-genui",
   "description": "Task-specific React apps for DeepSeek Harness with state carried into the next Agent turn",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "keywords": [
     "deepseek-harness",
     "dsh-plugin",
@@ -104,7 +104,7 @@
   "dependencies": {
     "@deepseek-ai/schemastery": "^3.18.0",
     "date-fns": "^4.1.0",
-    "esbuild": "^0.25.12",
+    "esbuild-wasm": "^0.25.12",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
@@ -133,6 +133,7 @@
     "@types/react-dom": "^18.3.7",
     "@modelcontextprotocol/server-everything": "^2026.7.4",
     "dsh-plugin-genui-v0132": "npm:dsh-plugin-genui@0.13.2",
+    "esbuild": "^0.25.12",
     "playwright": "^1.49.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

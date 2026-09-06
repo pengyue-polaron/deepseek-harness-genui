@@ -208,7 +208,7 @@ try {
   const oldSecondMapHash = createHash('sha256').update(oldSecondMapBytes).digest('hex')
   expect(!Object.hasOwn(JSON.parse(oldRecordBytes), 'schemaVersion'), 'v0.13.2 fixture unexpectedly has the new schema marker')
 
-  await run(dshBinary, ['plugin', '--profile', 'web', 'add', tarball, '--save-exact', '--allow-build=esbuild'])
+  await run(dshBinary, ['plugin', '--profile', 'web', 'add', tarball, '--save-exact'])
   const upgradedInstalled = JSON.parse(await readFile(join(profileRoot, 'node_modules', manifest.name, 'package.json'), 'utf8'))
   expect(upgradedInstalled.version === manifest.version, `profile upgraded to ${upgradedInstalled.version}; expected ${manifest.version}`)
   await run('pnpm', ['--dir', profileRoot, 'peers', 'check'])

@@ -82,24 +82,6 @@ function runResult(command, args, timeoutMs = 15_000) {
   })
 }
 
-function workspaceAllowsBuild(workspaceSource, packageName) {
-  const lines = workspaceSource.split(/\r?\n/)
-  let sectionIndent = null
-  for (const line of lines) {
-    const content = line.replace(/\s+#.*$/, '')
-    if (!content.trim()) continue
-    const indent = content.length - content.trimStart().length
-    if (sectionIndent === null) {
-      if (/^allowBuilds:\s*$/.test(content.trim())) sectionIndent = indent
-      continue
-    }
-    if (indent <= sectionIndent) return false
-    const entry = content.trim().match(/^([^:]+):\s*(true|false)\s*$/)
-    if (entry?.[1] === packageName) return entry[2] === 'true'
-  }
-  return false
-}
-
 async function pathExists(path) {
   try {
     await access(path)
@@ -173,12 +155,8 @@ async function startWeb(workspaceRoot) {
 }
 
 try {
-  await run(dshBinary, ['plugin', '--profile', 'web', 'add', tarball, '--save-exact', '--allow-build=esbuild'])
+  await run(dshBinary, ['plugin', '--profile', 'web', 'add', tarball, '--save-exact'])
   const profileRoot = join(dshHome, 'profiles', 'web')
-  const profileWorkspace = await readFile(join(profileRoot, 'pnpm-workspace.yaml'), 'utf8')
-  if (!workspaceAllowsBuild(profileWorkspace, 'esbuild')) {
-    throw new Error('clean profile did not persist allowBuilds.esbuild=true')
-  }
   const installedManifestPath = join(profileRoot, 'node_modules', manifest.name, 'package.json')
   const installedManifest = JSON.parse(await readFile(installedManifestPath, 'utf8'))
   if (installedManifest.version !== manifest.version) {
@@ -189,6 +167,33 @@ try {
   if (forbiddenBrowserRuntime.test(dependencyTree)) {
     throw new Error('production dependency tree unexpectedly contains a browser automation/runtime package')
   }
+  if (/"esbuild"\s*:/.test(dependencyTree)) {
+    throw new Error('production dependency tree unexpectedly contains native esbuild')
+  }
+  // Compile from the installed package: this catches missing WASM assets or
+  // accidental reliance on the checkout's development compiler.
+  await run(process.execPath, ['--input-type=module', '-e', `
+    import { createRequire } from 'node:module'
+    import { dirname } from 'node:path'
+    const require = createRequire(${JSON.stringify(installedManifestPath)})
+    const { build, stop } = require('esbuild-wasm')
+    try {
+      const result = await build({
+        stdin: {
+          contents: "import { createRoot } from 'react-dom/client'; createRoot(document.body).render(<div>clean install</div>)",
+          loader: 'tsx',
+          resolveDir: dirname(require.resolve('react/package.json')),
+        },
+        bundle: true,
+        write: false,
+        jsx: 'automatic',
+        platform: 'browser',
+      })
+      if (!result.outputFiles[0]?.text.includes('clean install')) throw new Error('installed compiler produced no app')
+    } finally {
+      stop()
+    }
+  `])
   await run('pnpm', ['--dir', profileRoot, 'peers', 'check'])
   const dumpedConfig = await run(dshBinary, ['--profile', 'web', '--dump-config'], true)
   if (!dumpedConfig.includes('name: dsh-plugin-genui')) {
@@ -232,7 +237,7 @@ try {
     throw new Error('clean Web profile still references dsh-plugin-genui after removal')
   }
   for (const unsupportedProfile of ['tui', 'headless']) {
-    await run(dshBinary, ['plugin', '--profile', unsupportedProfile, 'add', tarball, '--save-exact', '--allow-build=esbuild'])
+    await run(dshBinary, ['plugin', '--profile', unsupportedProfile, 'add', tarball, '--save-exact'])
     const activation = await runResult(dshBinary, [
       '--profile', unsupportedProfile,
       ...(unsupportedProfile === 'headless' ? ['activation probe'] : []),
@@ -242,7 +247,7 @@ try {
       throw new Error(`${unsupportedProfile} profile did not fail closed on the missing Web host (${activation.signal ?? `exit ${activation.code}`})\n${activation.output}`)
     }
   }
-  console.log(`Clean install and removal verified: ${manifest.name}@${manifest.version}; TUI/headless fail closed; native esbuild approved; no Chrome runtime dependency.`)
+  console.log(`Clean install and removal verified: ${manifest.name}@${manifest.version}; TUI/headless fail closed; no compiler build approval required; no Chrome runtime dependency.`)
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true })
 }

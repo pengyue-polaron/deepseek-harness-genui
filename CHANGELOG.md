@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.14.1 - 2026-09-07
+
+### Fixed
+
+- Use esbuild-wasm for runtime artifact compilation so plugin-market installs succeed without `--allow-build=esbuild` (issue #10). WebAssembly compilation can be slower than the native compiler.
+- Verify clean package installation without compiler build approval and reject native esbuild in production dependencies.
+
 ## 0.14.0 - 2026-08-29
 
 ### Added
