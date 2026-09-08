@@ -1,4 +1,5 @@
 # DeepSeek Harness GenUI
+[![DSH Insights health](https://dsh-insights.com/badge/pengyue-polaron/deepseek-harness-genui.svg)](https://dsh-insights.com/p/pengyue-polaron/deepseek-harness-genui/)
 
 English | [简体中文](README.zh-CN.md)
 
