@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-genui",
   "description": "Task-specific React apps for DeepSeek Harness with state carried into the next Agent turn",
-  "version": "0.14.1",
+  "version": "0.14.2",
   "keywords": [
     "deepseek-harness",
     "dsh-plugin",
@@ -31,6 +31,7 @@
     "verify:bundle": "node scripts/verify-bundle-size.mjs",
     "verify:clean-install": "node scripts/verify-clean-install.mjs",
     "verify:upgrade": "node scripts/verify-upgrade.mjs",
+    "verify:host-import": "node scripts/verify-host-import.mjs",
     "verify:host-compat": "node scripts/verify-host-compat.mjs",
     "prepare:bundle": "node scripts/prepare.mjs",
     "package:plugin": "pnpm run typecheck && pnpm test && pnpm run build && pnpm run verify:bundle && pnpm run prepare:bundle"

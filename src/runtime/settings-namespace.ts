@@ -1,5 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
-import { settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import { DESIGN_SETTINGS_NAMESPACE } from '../settings-namespace.ts'
 
@@ -18,7 +18,9 @@ const DesignSettingsMarker = z.object({})
 export function registerDesignSettingsNamespace(ctx: Context) {
   return ctx.inject(['settings'], settingsCtx => {
     settingsCtx.settings.register(
-      settingsNamespace(DESIGN_SETTINGS_NAMESPACE),
+      // This fixed kebab-case namespace is valid on both old branded-string
+      // APIs and newer hosts that validate strings directly in register().
+      DESIGN_SETTINGS_NAMESPACE as SettingsNamespace,
       DesignSettingsMarker,
     )
   })

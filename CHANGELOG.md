@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.2 - 2026-09-20
+
+### Fixed
+
+- Fix plugin startup on Harness 0.1.5-rc.2 after `CallId` was renamed to `ToolCallId` and `settingsNamespace` was removed, while retaining compatibility with older hosts (issue #13).
+- Derive tool JSON types from the execution API to compile against both old and modern Harness packages.
+- Check the shipped host bundle against the 0.1.5-rc.2 runtime dependencies in CI to catch removed runtime exports.
+
 ## 0.14.1 - 2026-09-07
 
 ### Fixed

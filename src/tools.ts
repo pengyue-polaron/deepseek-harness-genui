@@ -2,12 +2,14 @@ import { createHash } from 'node:crypto'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { JsonValue } from '@deepseek-ai/dsh-tools'
+import type { ToolExecutionSuccess } from '@deepseek-ai/dsh-tools'
 import type { ArtifactRegistry } from './artifacts/registry.ts'
 import { buildArtifact } from './artifacts/builder.ts'
 import type { ArtifactCapability, ArtifactVersion, BuildDiagnostic, FilePatch, SourceFile } from './artifacts/types.ts'
 import type { DesignStore } from './designs/store.ts'
 import { artifactSessionPrefix, type CapabilityStore } from './runtime/capabilities.ts'
+
+type JsonValue = ToolExecutionSuccess['value']
 
 const diagnosticsSchema = {
   type: 'array' as const,

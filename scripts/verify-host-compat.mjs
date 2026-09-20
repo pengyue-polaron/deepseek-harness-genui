@@ -32,6 +32,7 @@ const projectEntries = [
   'docs',
   'examples',
   'src',
+  'lib',
   'tests',
   'scripts',
 ]
@@ -69,6 +70,9 @@ try {
 
   console.log(`Verifying dsh-plugin-genui with DeepSeek Harness ${hostVersion} in ${temporaryProject}`)
   await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['install', '--no-frozen-lockfile'])
+  // Load the shipped bundle before rebuilding against the target host's types.
+  // This catches removed runtime exports even when a fresh build would pass.
+  await run(process.execPath, ['--input-type=module', '-e', "await import('./lib/index.js')"])
   await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['run', 'typecheck'])
   await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['test'])
   await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['run', 'build'])

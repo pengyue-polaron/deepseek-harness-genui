@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import type { ToolExecutionInput } from '@deepseek-ai/dsh-tools'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
@@ -62,7 +62,7 @@ describe('GenUI Harness tool lifecycle', () => {
 
   async function execute(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
     const result = await ctx.tools.execute({
-      callId: CallId(`genui-e2e-${++callCounter}`),
+      callId: `genui-e2e-${++callCounter}` as ToolExecutionInput['callId'],
       name,
       arguments: args,
       agent,

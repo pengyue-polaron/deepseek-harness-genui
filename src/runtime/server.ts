@@ -1,7 +1,7 @@
 import { readFile, stat } from 'node:fs/promises'
 import { extname } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import type { ToolExecutionInput } from '@deepseek-ai/dsh-tools'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ArtifactRegistry } from '../artifacts/registry.ts'
 import { TASK_TTL_MS } from '../lifecycle.ts'
@@ -431,7 +431,9 @@ export function createHttpRuntime(
               return json(res, 403, { code: 'approval_required', permission: permissionView(requested) }, req)
             }
             const result = await ctx.tools.execute({
-              callId: CallId(`genui-${Date.now()}-${Math.random().toString(36).slice(2)}`),
+              // CallId was renamed to ToolCallId in Harness 0.1.5. Both are
+              // string brands; derive the type from the stable execution API.
+              callId: `genui-${Date.now()}-${Math.random().toString(36).slice(2)}` as ToolExecutionInput['callId'],
               name: input.name,
               arguments: input.arguments ?? {},
               agent: capability.agent,

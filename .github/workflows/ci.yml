@@ -33,6 +33,7 @@ jobs:
         run: git ls-files --error-unmatch lib/index.js lib/client.js lib/invariant.js
       - run: pnpm run build
       - run: pnpm run verify:bundle
+      - run: pnpm run verify:host-import
       - name: Verify committed build output
         run: |
           git diff --exit-code -- lib

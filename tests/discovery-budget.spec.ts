@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { ToolExecution } from '@deepseek-ai/dsh-tools'
-import { CallId } from '@deepseek-ai/dsh-llm'
 import { DiscoveryBudget } from '../src/runtime/discovery-budget.ts'
 
 const signal = new AbortController().signal
@@ -12,8 +11,8 @@ function call(name: string, argumentsValue: unknown = {}, callId = name): ToolEx
     agent,
     name,
     arguments: argumentsValue,
-    callId: CallId(callId),
-    rootCallId: CallId(callId),
+    callId: callId as ToolExecution['callId'],
+    rootCallId: callId as ToolExecution['callId'],
     signal,
     token: Symbol() as ToolExecution['token'],
   }

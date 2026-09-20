@@ -21,8 +21,8 @@ function receipt(versionId: string, title: string) {
 }
 
 function nestedBlock(tool: 'genui_create' | 'genui_update', value: ReturnType<typeof receipt>, meta?: unknown): ToolCallViewProps['block'] {
-  return {
-    kind: 'tool-result',
+  const block = {
+    kind: 'tool-result' as const,
     seq: 2,
     time: Date.now(),
     callId: `${tool}-call`,
@@ -35,6 +35,7 @@ function nestedBlock(tool: 'genui_create' | 'genui_update', value: ReturnType<ty
     resultView: null,
     subCalls: [],
   }
+  return block
 }
 
 function encode(value: unknown): string {
