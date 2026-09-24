@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.15.0 - 2026-09-24
+
+### Maintenance
+
+- Require license and release documentation before packaging.
+- Select Node 24 with `.nvmrc` and document frozen dependency installation.
+- Extend the host compatibility matrix to Harness 0.1.5-rc.3, including the shipped bundle, modern-host tests, clean Web installation, and design settings persistence in Chromium.
+- Check upgrades from 0.13.2, 0.14.1, and 0.14.2 for byte-preserving compiled apps, saved state, grants, and version history.
+
+### Changed
+
+- Upgrade generated-app charts from Recharts 2 to Recharts 3.10.1 and tell the Agent to use the current API. Existing compiled apps retain their bundled chart library; rebuilding old source may require migrating removed APIs such as `activeIndex` and `Customized` chart-state props.
+- Add browser regression coverage for responsive bar, line, and pie charts with persisted input.
+
 ## 0.14.2 - 2026-09-20
 
 ### Fixed

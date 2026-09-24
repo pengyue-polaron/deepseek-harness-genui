@@ -2,7 +2,7 @@ import { access, mkdir, readFile, readdir, rm } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 
 const root = new URL('..', import.meta.url)
-const required = ['package.json', 'cordis.patch.yml', 'lib/index.js', 'lib/client.js', 'lib/invariant.js']
+const required = ['package.json', 'cordis.patch.yml', 'LICENSE', 'CHANGELOG.md', 'README.md', 'README.zh-CN.md', 'lib/index.js', 'lib/client.js', 'lib/invariant.js']
 await Promise.all(required.map(path => access(new URL(path, root))))
 const manifest = JSON.parse(await readFile(new URL('package.json', root), 'utf8'))
 if (manifest.name !== 'dsh-plugin-genui' || manifest.dsh?.bundle?.patch !== './cordis.patch.yml') {

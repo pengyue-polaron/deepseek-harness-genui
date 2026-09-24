@@ -26,7 +26,7 @@ dsh plugin --profile web add dsh-plugin-genui
 dsh --profile web
 ```
 
-v0.14 supports Inline, Canvas, fullscreen, and localhost on the tested Harness versions listed in the [release notes](docs/release-notes-v0.14.2.md). TUI/headless profiles are not supported. The local compiler uses WebAssembly and needs no install-script approval. Plugin users do not need Chrome or Chromium.
+v0.15 supports Inline, Canvas, fullscreen, and localhost on the tested Harness versions listed in the [release notes](docs/release-notes-v0.15.0.md). TUI/headless profiles are not supported. The local compiler uses WebAssembly and needs no install-script approval. Plugin users do not need Chrome or Chromium.
 
 ## Where It Helps
 
@@ -115,6 +115,6 @@ pnpm test
 pnpm run package:plugin
 ```
 
-[Acceptance scenarios](examples/real-user-scenarios.md) · [Release notes](docs/release-notes-v0.14.2.md) · [Contributing](CONTRIBUTING.md) · MIT
+[Acceptance scenarios](examples/real-user-scenarios.md) · [Release notes](docs/release-notes-v0.15.0.md) · [Contributing](CONTRIBUTING.md) · MIT
 
 Listed on [dsh-market](https://dshmarket.com/p/pengyue-polaron/deepseek-harness-genui/) · [dsh.so](https://www.dsh.so/artifact/deepseek-harness-genui/) · [awesome-dsh-plugin](https://awesome-dsh-plugin.com/p/pengyue-polaron/deepseek-harness-genui/) · [dsh.plus](https://www.dsh.plus/en/plugins/deepseek-harness-genui/)

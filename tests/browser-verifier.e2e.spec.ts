@@ -156,6 +156,68 @@ createRoot(document.getElementById('root')!).render(<App />)`,
     ])
   }, 60_000)
 
+  it('renders Recharts 3 charts and retains chart inputs across reloads', async () => {
+    const version = await registry.create({
+      id: 'recharts-state', title: 'Saved charts', summary: 'Exercise the supported chart library.',
+      requirements: ['Render responsive charts and preserve their input'], capabilities: [],
+      files: [{ path: 'src/main.tsx', content: `
+import React from 'react'
+import { createRoot } from 'react-dom/client'
+import { ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, XAxis, YAxis, Tooltip } from 'recharts'
+import { useArtifactState } from '@dsh-genui/sdk'
+function App() {
+  const [value, setValue] = useArtifactState('chart-value', 10)
+  const data = [{ name: 'A', value }, { name: 'B', value: 20 }]
+  return <main style={{ width: '100%', maxWidth: 600 }}>
+    <button onClick={() => setValue(value + 1)}>Value {value}</button>
+    <section aria-label="Bar chart" style={{ height: 180 }}><ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data}><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="value" isAnimationActive={false} /></BarChart>
+    </ResponsiveContainer></section>
+    <section aria-label="Line chart" style={{ height: 180 }}><ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data}><XAxis dataKey="name" /><YAxis /><Tooltip /><Line dataKey="value" isAnimationActive={false} /></LineChart>
+    </ResponsiveContainer></section>
+    <section aria-label="Pie chart" style={{ height: 180 }}><ResponsiveContainer width="100%" height="100%">
+      <PieChart><Tooltip /><Pie data={data} dataKey="value" nameKey="name" isAnimationActive={false} /></PieChart>
+    </ResponsiveContainer></section>
+  </main>
+}
+createRoot(document.getElementById('root')!).render(<App />)`, }],
+    })
+    const built = await buildArtifact(version, registry.distPath(version.artifactId, version.id))
+    expect(built.ok, JSON.stringify(built.diagnostics)).toBe(true)
+    await registry.settle(version.artifactId, version.id, {
+      checkedAt: new Date().toISOString(), build: 'passed', browser: 'not-run', diagnostics: [], notes: [],
+    })
+    const token = capabilities.issue(version.artifactId, fakeAgent)
+    const url = `${origin}/genui/preview/${version.artifactId}/${version.id}?lang=en#token=${token}`
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const page = await browser.newPage({ viewport: { width: 600, height: 800 } })
+      const errors: string[] = []
+      page.on('pageerror', error => errors.push(error.message))
+      page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
+      await page.route(`${origin}/chart-test-host`, route => route.fulfill({
+        contentType: 'text/html', body: '<!doctype html><link rel="icon" href="data:,"><body></body>',
+      }))
+      await page.goto(`${origin}/chart-test-host`)
+      await mountBridgedPreview(page, url)
+      const frame = page.frameLocator('iframe[title="artifact"]')
+      await frame.locator('.recharts-bar-rectangle path').first().waitFor({ state: 'visible' })
+      await frame.locator('.recharts-line-curve').waitFor({ state: 'visible' })
+      await frame.locator('.recharts-pie-sector').first().waitFor({ state: 'visible' })
+      await frame.getByRole('button', { name: 'Value 10' }).click()
+      await expect.poll(async () => (await registry.readState(version.artifactId, String(fakeAgent.id)))?.values['chart-value']).toBe(11)
+      await page.reload()
+      await mountBridgedPreview(page, url)
+      await frame.getByRole('button', { name: 'Value 11' }).waitFor({ state: 'visible' })
+      await page.setViewportSize({ width: 260, height: 800 })
+      await expect.poll(() => frame.locator('svg.recharts-surface').first().evaluate(svg => svg.getBoundingClientRect().width)).toBeLessThanOrEqual(260)
+      expect(errors).toEqual([])
+    } finally {
+      await browser.close()
+    }
+  }, 60_000)
+
   it('does not acknowledge an early ready request before the app has mounted', async () => {
     const version = await registry.create({
       id: 'delayed-mount',

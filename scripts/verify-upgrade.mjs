@@ -4,8 +4,23 @@ import { access, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ArtifactRegistry as OldArtifactRegistry, buildArtifact as buildOldArtifact } from 'dsh-plugin-genui-v0132'
 import { ArtifactRegistry } from '../lib/index.js'
+
+// Keep the historical migration and the latest patch upgrade as separate runs.
+const fixtures = { '0.13.2': 'dsh-plugin-genui-v0132', '0.14.1': 'dsh-plugin-genui-v0141', '0.14.2': 'dsh-plugin-genui-v0142' }
+const fromVersion = process.argv[2]
+if (fromVersion === undefined) {
+  for (const version of Object.keys(fixtures)) {
+    await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [fileURLToPath(import.meta.url), version], { stdio: 'inherit' })
+      child.once('error', reject)
+      child.once('exit', code => code === 0 ? resolve() : reject(new Error(`Upgrade from ${version} failed (${code})`)))
+    })
+  }
+  process.exit(0)
+}
+if (!Object.hasOwn(fixtures, fromVersion)) throw new Error('Expected upgrade source 0.13.2, 0.14.1, or 0.14.2')
+const { ArtifactRegistry: OldArtifactRegistry, buildArtifact: buildOldArtifact } = await import(fixtures[fromVersion])
 
 const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)))
 const manifest = JSON.parse(await readFile(join(projectRoot, 'package.json'), 'utf8'))
@@ -144,17 +159,17 @@ const savedState = {
 
 try {
   await mkdir(workspaceRoot)
-  await run(dshBinary, ['plugin', '--profile', 'web', 'add', 'dsh-plugin-genui@0.13.2', '--save-exact', '--allow-build=esbuild'])
+  await run(dshBinary, ['plugin', '--profile', 'web', 'add', `dsh-plugin-genui@${fromVersion}`, '--save-exact', ...(fromVersion === '0.13.2' ? ['--allow-build=esbuild'] : [])])
   const profileRoot = join(dshHome, 'profiles', 'web')
   const oldInstalled = JSON.parse(await readFile(join(profileRoot, 'node_modules', manifest.name, 'package.json'), 'utf8'))
-  expect(oldInstalled.version === '0.13.2', `upgrade fixture installed ${oldInstalled.version}; expected 0.13.2`)
+  expect(oldInstalled.version === fromVersion, `upgrade fixture installed ${oldInstalled.version}; expected ${fromVersion}`)
 
   const oldRegistry = new OldArtifactRegistry(artifactRoot, 1024 * 1024)
   await oldRegistry.init()
   const first = await oldRegistry.create({
     id: artifactId,
     title: 'Upgrade journey',
-    summary: 'A v0.13.2 artifact used by the release compatibility gate.',
+    summary: 'An older artifact used by the release compatibility gate.',
     requirements: ['Keep a route and passenger count across the upgrade.'],
     capabilities: [capability],
     files: [{
@@ -163,9 +178,9 @@ try {
     }],
   })
   const firstBuild = await buildOldArtifact(first, oldRegistry.distPath(artifactId, first.id))
-  expect(firstBuild.ok, `v0.13.2 fixture build failed: ${JSON.stringify(firstBuild.diagnostics)}`)
+  expect(firstBuild.ok, `previous-version fixture build failed: ${JSON.stringify(firstBuild.diagnostics)}`)
   await oldRegistry.settle(artifactId, first.id, {
-    checkedAt: new Date().toISOString(), build: 'passed', browser: 'passed', diagnostics: [], notes: ['v0.13.2 upgrade fixture'],
+    checkedAt: new Date().toISOString(), build: 'passed', browser: 'passed', diagnostics: [], notes: ['upgrade fixture'],
   })
   const second = await oldRegistry.update({
     id: artifactId,
@@ -177,9 +192,9 @@ try {
     }],
   })
   const secondBuild = await buildOldArtifact(second, oldRegistry.distPath(artifactId, second.id))
-  expect(secondBuild.ok, `v0.13.2 update build failed: ${JSON.stringify(secondBuild.diagnostics)}`)
+  expect(secondBuild.ok, `previous-version update build failed: ${JSON.stringify(secondBuild.diagnostics)}`)
   const ready = await oldRegistry.settle(artifactId, second.id, {
-    checkedAt: new Date().toISOString(), build: 'passed', browser: 'passed', diagnostics: [], notes: ['v0.13.2 upgrade fixture update'],
+    checkedAt: new Date().toISOString(), build: 'passed', browser: 'passed', diagnostics: [], notes: ['upgrade fixture update'],
   })
   await oldRegistry.updateState(artifactId, sessionId, () => savedState)
   const now = new Date()
@@ -206,7 +221,7 @@ try {
   const oldSecondMapBytes = await readFile(secondMapPath)
   const oldSecondAppHash = createHash('sha256').update(oldSecondAppBytes).digest('hex')
   const oldSecondMapHash = createHash('sha256').update(oldSecondMapBytes).digest('hex')
-  expect(!Object.hasOwn(JSON.parse(oldRecordBytes), 'schemaVersion'), 'v0.13.2 fixture unexpectedly has the new schema marker')
+  expect(JSON.parse(oldRecordBytes).schemaVersion === (fromVersion === '0.13.2' ? undefined : 1), 'upgrade fixture has an unexpected schema marker')
 
   await run(dshBinary, ['plugin', '--profile', 'web', 'add', tarball, '--save-exact'])
   const upgradedInstalled = JSON.parse(await readFile(join(profileRoot, 'node_modules', manifest.name, 'package.json'), 'utf8'))
@@ -221,15 +236,15 @@ try {
     expect(discovery.ok, `upgraded discovery endpoint returned ${discovery.status}`)
     const app = await fetch(`${web.origin}/genui/app/${artifactId}?lang=en`, { signal: AbortSignal.timeout(5_000) })
     const appHtml = await app.text()
-    expect(app.ok && appHtml.includes(`data-version-id="${second.id}"`), 'upgraded host did not select the v0.13.2 current version')
+    expect(app.ok && appHtml.includes(`data-version-id="${second.id}"`), 'upgraded host did not select the previous current version')
     const preview = await fetch(`${web.origin}/genui/preview/${artifactId}/${second.id}?lang=en`, { signal: AbortSignal.timeout(5_000) })
     expect(preview.ok, `upgraded preview returned ${preview.status}`)
     const appAsset = await fetch(`${web.origin}/genui/assets/${artifactId}/${second.id}/app.js`, { signal: AbortSignal.timeout(5_000) })
     const servedAppBytes = Buffer.from(await appAsset.arrayBuffer())
-    expect(appAsset.ok && servedAppBytes.equals(oldSecondAppBytes), `upgraded host changed the v0.13.2 app.js bytes (expected sha256 ${oldSecondAppHash})`)
+    expect(appAsset.ok && servedAppBytes.equals(oldSecondAppBytes), `upgraded host changed the previous app.js bytes (expected sha256 ${oldSecondAppHash})`)
     const mapAsset = await fetch(`${web.origin}/genui/assets/${artifactId}/${second.id}/app.js.map`, { signal: AbortSignal.timeout(5_000) })
     const servedMapBytes = Buffer.from(await mapAsset.arrayBuffer())
-    expect(mapAsset.ok && servedMapBytes.equals(oldSecondMapBytes), `upgraded host changed the v0.13.2 app.js.map bytes (expected sha256 ${oldSecondMapHash})`)
+    expect(mapAsset.ok && servedMapBytes.equals(oldSecondMapBytes), `upgraded host changed the previous app.js.map bytes (expected sha256 ${oldSecondMapHash})`)
   } finally {
     await stopChild(web.child)
   }
@@ -253,7 +268,7 @@ try {
 
   await registry.updateState(artifactId, sessionId, values => ({ ...values, confirmed: true }))
   const migrated = JSON.parse(await readFile(recordPath, 'utf8'))
-  expect(migrated.schemaVersion === 1, 'the first v0.14 write did not persist schema version 1')
+  expect(migrated.schemaVersion === 1, 'the first current-version write did not persist schema version 1')
   expect(migrated.currentVersionId === second.id && migrated.latestVersionId === second.id, 'migration write changed version references')
   expect(migrated.states[sessionId].values.confirmed === true && migrated.states[sessionId].values.nested.seats[1] === 'A2', 'migration write lost nested state')
   expect(migrated.grants[sessionId][capability.id].fingerprint === fingerprint, 'migration write lost the existing grant')
@@ -264,7 +279,7 @@ try {
   expect((await readFile(secondAppPath)).equals(oldSecondAppBytes), 'migration write changed the current legacy app.js')
   expect((await readFile(secondMapPath)).equals(oldSecondMapBytes), 'migration write changed the current legacy app.js.map')
 
-  console.log(`Upgrade verified: dsh-plugin-genui@0.13.2 -> ${manifest.version}; prefixed apps, compiled bytes, state, grants, and version history preserved; no Chrome runtime dependency.`)
+  console.log(`Upgrade verified: dsh-plugin-genui@${fromVersion} -> ${manifest.version}; prefixed apps, compiled bytes, state, grants, and version history preserved; no Chrome runtime dependency.`)
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true })
 }

@@ -3,9 +3,11 @@ import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { pinnedHostOverrides } from './host-dependencies.mjs'
 
-const supportedVersions = new Set(['0.1.0-rc.7', '0.1.0-rc.8', '0.1.1-rc.1', '0.1.1-rc.2'])
+const supportedVersions = new Set(['0.1.0-rc.7', '0.1.0-rc.8', '0.1.1-rc.1', '0.1.1-rc.2', '0.1.5-rc.3'])
 const hostVersion = process.argv[2]
+const modern = hostVersion === '0.1.5-rc.3'
 if (!hostVersion || !supportedVersions.has(hostVersion)) {
   console.error(`Usage: pnpm run verify:host-compat <${[...supportedVersions].join('|')}>`)
   process.exit(2)
@@ -41,7 +43,7 @@ const run = (command, args) =>
   new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd: temporaryProject,
-      env: { ...process.env, CI: 'true' },
+      env: { ...process.env, CI: 'true', GENUI_HOST_VERSION: hostVersion },
       stdio: 'inherit',
     })
     child.once('error', reject)
@@ -63,8 +65,17 @@ try {
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
   for (const dependency of Object.keys(manifest.devDependencies ?? {})) {
     if (dependency === '@deepseek-ai/dsh' || dependency.startsWith('@deepseek-ai/dsh-')) {
-      manifest.devDependencies[dependency] = hostVersion
+      // Removed upstream; retained only to compile the legacy client type import.
+      manifest.devDependencies[dependency] = modern && dependency === '@deepseek-ai/dsh-client-runtime'
+        ? '0.1.1-rc.2' : hostVersion
     }
+  }
+  if (modern) {
+    // Upstream packages have stable >=0.1.5 peer ranges while the tested host
+    // is a prerelease. Pin the real host dependency graph in this fixture only.
+    const overrides = await pinnedHostOverrides(hostVersion, Object.keys(manifest.devDependencies))
+    const workspacePath = join(temporaryProject, 'pnpm-workspace.yaml')
+    await writeFile(workspacePath, `${await readFile(workspacePath, 'utf8')}\noverrides:\n${Object.entries(overrides).map(([name, version]) => `  '${name}': '${version}'`).join('\n')}\n`)
   }
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
 
@@ -74,11 +85,19 @@ try {
   // This catches removed runtime exports even when a fresh build would pass.
   await run(process.execPath, ['--input-type=module', '-e', "await import('./lib/index.js')"])
   await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['run', 'typecheck'])
-  await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['test'])
+  await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', modern
+    ? ['exec', 'vitest', 'run', '--exclude', 'tests/legacy-bridge.e2e.spec.ts'] : ['test'])
+  // Exercise the shipped baseline build in the real modern host. A rebuild
+  // against modern types must not mask a consumer-facing compatibility error.
+  if (modern) {
+    await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['run', 'prepare:bundle'])
+    await run(process.execPath, ['scripts/verify-modern-web.mjs'])
+  }
   await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['run', 'build'])
   await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['run', 'verify:bundle'])
   await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['run', 'prepare:bundle'])
-  await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['run', 'verify:clean-install'])
+  if (!modern) await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['run', 'verify:clean-install'])
 } finally {
-  await rm(temporaryRoot, { recursive: true, force: true })
+  if (process.env.GENUI_KEEP_HOST_FIXTURE === '1') console.log(`Retained host fixture: ${temporaryProject}`)
+  else await rm(temporaryRoot, { recursive: true, force: true })
 }

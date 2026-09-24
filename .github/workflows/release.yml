@@ -123,7 +123,7 @@ jobs:
           test -z "$(git ls-files --others --exclude-standard -- lib)"
       - name: Verify packed plugin in a clean DSH profile
         run: pnpm run verify:clean-install
-      - name: Verify upgrade from the previous published version
+      - name: Verify upgrades from 0.13.2, 0.14.1, and 0.14.2
         run: pnpm run verify:upgrade
       - name: Prepare immutable release artifact
         run: |

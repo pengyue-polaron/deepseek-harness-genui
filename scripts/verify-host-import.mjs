@@ -2,10 +2,14 @@ import { spawn } from 'node:child_process'
 import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pinnedHostOverrides } from './host-dependencies.mjs'
 
 // The 0.1.5 host no longer publishes dsh-client-runtime. Test the shipped
 // server entry independently of the legacy client build's dependency matrix.
-const hostVersion = '0.1.5-rc.2'
+const hostVersion = process.argv[2] ?? '0.1.5-rc.3'
+if (!['0.1.5-rc.2', '0.1.5-rc.3', '0.1.7-rc.1'].includes(hostVersion)) {
+  throw new Error('Expected Harness 0.1.5-rc.2, 0.1.5-rc.3, or 0.1.7-rc.1')
+}
 const root = new URL('../', import.meta.url)
 const manifest = JSON.parse(await readFile(new URL('package.json', root), 'utf8'))
 const directory = await mkdtemp(join(tmpdir(), 'genui-host-import-'))
@@ -26,6 +30,9 @@ try {
   await writeFile(join(directory, 'package.json'), JSON.stringify({
     private: true,
     type: 'module',
+    overrides: await pinnedHostOverrides(hostVersion, [
+      '@deepseek-ai/dsh-llm', '@deepseek-ai/dsh-session', '@deepseek-ai/dsh-settings', '@deepseek-ai/dsh-tools',
+    ]),
     dependencies: {
       ...manifest.dependencies,
       '@deepseek-ai/dsh-llm': hostVersion,
