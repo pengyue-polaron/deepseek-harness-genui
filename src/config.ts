@@ -12,7 +12,9 @@ export interface ResolvedConfig {
   maxSourceBytes: number
 }
 
-export const Config: z<Config> = z.object({
+// Keep the schema type portable across Schemastery generations; Config above
+// describes the resolved values consumed by the plugin.
+export const Config: z = z.object({
   artifactRoot: z.string().default('.dsh/genui'),
   routePrefix: z.string().default('/genui'),
   maxSourceBytes: z.natural().min(16384).max(16 * 1024 * 1024).default(1024 * 1024),

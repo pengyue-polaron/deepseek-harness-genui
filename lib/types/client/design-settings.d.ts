@@ -1,6 +1,13 @@
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots';
+import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots';
 declare module '@deepseek-ai/dsh-client-ui-slots' {
     interface SlotMap {
+        'settings.plugins.tab': {
+            kind: 'list';
+            scope: 'root';
+            owner: {
+                children?: never;
+            };
+        };
         'settings.plugin.item': {
             kind: 'list';
             scope: 'root';
@@ -10,7 +17,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
         };
     }
 }
-type DesignSettingsCardProps = PropsRuntime<'settings.plugin.item'> & PropsLocale<'genui'>;
+type DesignSettingsCardProps = PropsLocale<'genui'>;
 export declare function designIdForImport(fileName: string, content: string, now?: number): string;
 export declare function DesignSettingsCard({ t }: DesignSettingsCardProps): import("react").JSX.Element;
 export {};

@@ -17,7 +17,13 @@ const DesignSettingsMarker = z.object({})
  */
 export function registerDesignSettingsNamespace(ctx: Context) {
   return ctx.inject(['settings'], settingsCtx => {
-    settingsCtx.settings.register(
+    // 0.1.7 derives forms from Loader entries and no longer has register().
+    // Its client uses settings.plugins.tab, so no marker is needed there.
+    const settings = settingsCtx.settings as unknown as {
+      register?: (namespace: SettingsNamespace, schema: typeof DesignSettingsMarker) => unknown
+    }
+    if (typeof settings.register !== 'function') return
+    settings.register(
       // This fixed kebab-case namespace is valid on both old branded-string
       // APIs and newer hosts that validate strings directly in register().
       DESIGN_SETTINGS_NAMESPACE as SettingsNamespace,

@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { access, mkdir, mkdtemp, readFile, rm, rename } from 'node:fs/promises'
+import { access, mkdir, mkdtemp, readFile, rm, rename, realpath } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { chromium } from 'playwright'
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -15,6 +16,7 @@ const env = { ...process.env, CI: 'true', DSH_HOME: join(directory, 'home'), DSH
 const tarball = join(root, 'dist', `${manifest.name}-${manifest.version}.tgz`)
 let host
 let browser
+let page
 let hiddenRuntime = false
 const legacyRuntime = join(root, 'node_modules', '@deepseek-ai', 'dsh-client-runtime')
 
@@ -39,6 +41,14 @@ async function stop(child) {
 }
 
 try {
+  if (process.env.GENUI_HOST_VERSION === '0.1.7-rc.1') {
+    const requireHost = createRequire(await realpath(join(root, 'node_modules/@deepseek-ai/dsh/package.json')))
+    const { evaluatePluginCompatibility } = await import(pathToFileURL(requireHost.resolve('@deepseek-ai/dsh-app-boot')).href)
+    // Exercise the host's gate, including optional peers, without fixture overrides.
+    const previous = JSON.parse(await readFile(join(root, 'node_modules/dsh-plugin-genui-v0142/package.json'), 'utf8'))
+    assert.ok(evaluatePluginCompatibility(previous, {}, '0.1.7-rc.1'), 'Previous release must reproduce issue #14')
+    assert.equal(evaluatePluginCompatibility(manifest, {}, '0.1.7-rc.1'), undefined, 'Release must pass the real host gate without exemptions')
+  }
   await access(tarball)
   await mkdir(workspace)
   await run(['plugin', '--profile', 'web', 'add', tarball, '--save-exact'])
@@ -82,7 +92,7 @@ try {
   host.stdout.resume()
   host.stderr.resume()
   browser = await chromium.launch({ headless: true })
-  const page = await browser.newPage({ locale: 'en-US' })
+  page = await browser.newPage({ locale: 'en-US' })
   page.setDefaultTimeout(15_000)
   const errors = []
   page.on('pageerror', error => errors.push(error.message))
@@ -92,7 +102,10 @@ try {
   await page.getByRole('button', { name: /^(Continue|继续)$/ }).click()
   await page.getByRole('button', { name: /^(Configure later|稍后配置)$/ }).click()
   await page.getByRole('button', { name: /Settings|设置/ }).first().click()
-  await page.getByRole('button', { name: /Plugins|插件/ }).first().click()
+  await page.getByRole('button', { name: process.env.GENUI_HOST_VERSION === '0.1.7-rc.1' ? /Built-in plugins|内置插件/ : /Plugins|插件/ }).first().click()
+  if (process.env.GENUI_HOST_VERSION === '0.1.7-rc.1') {
+    await page.getByRole('tab', { name: /Generated app design|生成应用的风格/ }).click()
+  }
   const card = page.locator('.dsh-genui-design-card')
   await card.waitFor({ state: 'visible' })
   await card.locator('.dsh-genui-design-head').click()
@@ -102,7 +115,10 @@ try {
   await page.reload()
   await page.getByRole('button', { name: /^(Configure later|稍后配置)$/ }).click()
   await page.getByRole('button', { name: /Settings|设置/ }).first().click()
-  await page.getByRole('button', { name: /Plugins|插件/ }).first().click()
+  await page.getByRole('button', { name: process.env.GENUI_HOST_VERSION === '0.1.7-rc.1' ? /Built-in plugins|内置插件/ : /Plugins|插件/ }).first().click()
+  if (process.env.GENUI_HOST_VERSION === '0.1.7-rc.1') {
+    await page.getByRole('tab', { name: /Generated app design|生成应用的风格/ }).click()
+  }
   await card.waitFor({ state: 'visible' })
   await card.locator('.dsh-genui-design-head').click()
   assert.equal(await select.inputValue(), 'material-3')
@@ -114,6 +130,9 @@ try {
   assert.equal((await designs.json()).default_design_id, 'material-3')
   assert.deepEqual(errors, [], 'Modern Web frontend reported errors')
   console.log(`Modern Harness ${process.env.GENUI_HOST_VERSION}: packed plugin installation, Web startup, settings rendering, saved design after reload, and endpoints passed.`)
+} catch (error) {
+  if (page) console.error('Modern Web page at failure:', (await page.locator('body').innerText().catch(() => '')).slice(0,6000))
+  throw error
 } finally {
   try {
     await browser?.close()

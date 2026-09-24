@@ -9,6 +9,6 @@ export interface ResolvedConfig {
     routePrefix: string;
     maxSourceBytes: number;
 }
-export declare const Config: z<Config>;
+export declare const Config: z;
 export declare function resolveConfig(config?: Config): ResolvedConfig;
 //# sourceMappingURL=config.d.ts.map

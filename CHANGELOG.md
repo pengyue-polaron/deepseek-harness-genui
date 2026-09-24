@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.15.1 - 2026-09-24
+
+### Fixed
+
+- Support Harness 0.1.7-rc.1 and pass its plugin compatibility gate without a version exemption (issue #14). Remove the obsolete, type-only `dsh-client-runtime` peer, which the new gate checked even when absent.
+- Mount design preferences in the new Plugins settings tab and retain the legacy settings card. Avoid the removed namespace registration API on modern hosts.
+- Accept the new tool preparation phase before arguments exist and compile the configuration schema against both old and current host types.
+- Add 0.1.7-rc.1 to CI with real host gate, packed installation, browser settings persistence, and shipped-bundle checks.
+
 ## 0.15.0 - 2026-09-24
 
 ### Maintenance

@@ -1,11 +1,11 @@
 import { Context } from '@deepseek-ai/cordis'
-import { SettingsProvider } from '@deepseek-ai/dsh-settings'
+import SettingsProvider from '@deepseek-ai/dsh-settings'
 import { describe, expect, it } from 'vitest'
 import { registerDesignSettingsNamespace } from '../src/runtime/settings-namespace.ts'
 import { DESIGN_SETTINGS_NAMESPACE } from '../src/settings-namespace.ts'
 
 class MemorySettingsProvider extends SettingsProvider {
-  readonly writable = true
+  get writable() { return true }
 
   protected load(): Promise<Record<string, unknown>> {
     return Promise.resolve({})
@@ -17,7 +17,7 @@ class MemorySettingsProvider extends SettingsProvider {
 }
 
 describe('design settings namespace', () => {
-  it('advertises the namespace used by the keyed client slot', async () => {
+  it.skipIf(!('register' in SettingsProvider.prototype))('advertises the namespace used by the keyed client slot', async () => {
     const ctx = new Context()
     await ctx.plugin(MemorySettingsProvider)
     try {

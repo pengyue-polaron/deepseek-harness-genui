@@ -21,7 +21,7 @@ import { cardCss } from './styles.ts'
 import { readMetaResult } from './types.ts'
 import type { GenuiMeta, PermissionRequest, PermissionStatus } from './types.ts'
 
-interface GenuiToolViewProps extends ToolCallViewProps, PropsLocale<'genui'> {}
+type GenuiToolViewProps = ToolCallViewProps & PropsLocale<'genui'>
 
 function IconAction({ label, className = '', children, ...props }: {
   label: string
@@ -91,7 +91,7 @@ function PendingGenui({ block, t }: {
     : updating
       ? [t('progress.update.prepare'), t('progress.update.build'), t('progress.update.check')]
       : [t('progress.create.prepare'), t('progress.create.build'), t('progress.create.check')]
-  const title = pendingTitle(block.argsRaw) ?? t('app.untitled')
+  const title = pendingTitle('argsRaw' in block ? block.argsRaw : '') ?? t('app.untitled')
 
   useEffect(() => {
     setStage(0)
@@ -839,6 +839,12 @@ export function apply(ctx: ClientContext): void {
       yield ctx.slots.register({ name: 'tool.call.toolview', key }, HiddenGenuiToolView)
     }
   })
+  // 0.1.7 replaces namespace cards with plugin tabs. Slot injection waits for
+  // its declaration, so only the host's supported surface is mounted.
+  ctx.slots.inject('settings.plugins.tab', () => ctx.slots.register({
+    name: 'settings.plugins.tab', id: 'genui-design', order: 30,
+    label: () => ctx.locale.bind(NS)('design.title'), locale: NS,
+  }, DesignSettingsCard))
   ctx.slots.inject('settings.plugin.item', () => ctx.slots.register({
     ...settingsSlotRegistration(),
   }, DesignSettingsCard))

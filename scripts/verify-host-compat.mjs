@@ -5,9 +5,9 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pinnedHostOverrides } from './host-dependencies.mjs'
 
-const supportedVersions = new Set(['0.1.0-rc.7', '0.1.0-rc.8', '0.1.1-rc.1', '0.1.1-rc.2', '0.1.5-rc.3'])
+const supportedVersions = new Set(['0.1.0-rc.7', '0.1.0-rc.8', '0.1.1-rc.1', '0.1.1-rc.2', '0.1.5-rc.3', '0.1.7-rc.1'])
 const hostVersion = process.argv[2]
-const modern = hostVersion === '0.1.5-rc.3'
+const modern = hostVersion === '0.1.5-rc.3' || hostVersion === '0.1.7-rc.1'
 if (!hostVersion || !supportedVersions.has(hostVersion)) {
   console.error(`Usage: pnpm run verify:host-compat <${[...supportedVersions].join('|')}>`)
   process.exit(2)

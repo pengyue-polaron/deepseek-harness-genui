@@ -290,7 +290,7 @@ async function openScenario(browser: Browser, fixture: ShellFixture, scenario: s
   const page = await browser.newPage({ viewport })
   await page.emulateMedia({ colorScheme })
   await page.goto(`${fixture.origin}/app?scenario=${scenario}`)
-  await page.locator('.dsh-genui-card').waitFor({ state: 'visible' })
+  await page.locator(scenario === 'preparing' ? '.dsh-genui-progress' : '.dsh-genui-card').waitFor({ state: 'visible' })
   return page
 }
 
@@ -345,7 +345,16 @@ describe('GenuiToolView browser shell', () => {
                   previewUrl: location.origin + '/genui/preview/' + artifactId + '/' + versionId + '#token=' + scenario,
                 },
               }
-          createRoot(document.getElementById('root')).render(
+          const root = createRoot(document.getElementById('root'))
+          if (scenario === 'preparing') {
+            const renderPending = (block) => root.render(
+              <GenuiToolView block={block} callId="preparing-call" sessionId="fixture-session" t={t} />
+            )
+            renderPending({ callId: 'preparing-call', name: 'genui_create' })
+            window.addEventListener('start-fixture-tool', () => renderPending({
+              callId: 'preparing-call', name: 'genui_create', argsRaw: JSON.stringify({ title: 'Ready to build' }),
+            }))
+          } else root.render(
             <GenuiToolView block={block} callId={'call-' + scenario} sessionId="fixture-session" t={t} />
           )
         `,
@@ -367,6 +376,22 @@ describe('GenuiToolView browser shell', () => {
   afterAll(async () => {
     await browser?.close()
     await fixture?.close()
+  })
+
+  it('renders preparation without arguments, then the dispatched title', async () => {
+    const page = await openScenario(browser, fixture, 'preparing')
+    const errors: string[] = []
+    page.on('pageerror', error => errors.push(error.message))
+    try {
+      const progress = page.locator('.dsh-genui-progress')
+      await progress.waitFor({ state: 'visible' })
+      expect(await progress.locator('strong').textContent()).toBe('Untitled app')
+      await page.evaluate(() => window.dispatchEvent(new Event('start-fixture-tool')))
+      await progress.getByText('Ready to build', { exact: true }).waitFor({ state: 'visible' })
+      expect(errors).toEqual([])
+    } finally {
+      await page.close()
+    }
   })
 
   it('fits the real React shell in a 260px conversation column', async () => {

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import type { PropsLocale, PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
+import type { PropsLocale, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import {
   importDesign, readDesignSettings, setDefaultDesign,
   type DesignSettings,
@@ -8,11 +8,12 @@ import {
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
+    'settings.plugins.tab': { kind: 'list'; scope: 'root'; owner: { children?: never } }
     'settings.plugin.item': { kind: 'list'; scope: 'root'; owner: { children?: never } }
   }
 }
 
-type DesignSettingsCardProps = PropsRuntime<'settings.plugin.item'> & PropsLocale<'genui'>
+type DesignSettingsCardProps = PropsLocale<'genui'>
 
 function designDescription(id: string | null, t: TranslateNS<'genui'>): string {
   switch (id) {
