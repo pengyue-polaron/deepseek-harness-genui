@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
-import { readMeta } from '../src/client/types.ts'
+import { describe, expect, it, vi } from 'vitest'
+import { pendingTitle, readMeta } from '../src/client/types.ts'
 import { renderReceipt } from '../src/tools.ts'
 
 const artifactId = 's-123456789abc-task-map'
@@ -20,7 +19,7 @@ function receipt(versionId: string, title: string) {
   }
 }
 
-function nestedBlock(tool: 'genui_create' | 'genui_update', value: ReturnType<typeof receipt>, meta?: unknown): ToolCallViewProps['block'] {
+function nestedBlock(tool: 'genui_create' | 'genui_update', value: ReturnType<typeof receipt>, meta?: unknown) {
   const block = {
     kind: 'tool-result' as const,
     seq: 2,
@@ -82,8 +81,8 @@ describe('GenUI tool receipt metadata', () => {
   })
 
   it('ignores old prose, malformed markers, unknown versions, and secret-bearing sentinels', () => {
-    const base = nestedBlock('genui_create', receipt(createVersion, 'Task map')) as Extract<ToolCallViewProps['block'], { kind: 'tool-result' }>
-    const withText = (text: string): ToolCallViewProps['block'] => ({ ...base, content: [{ type: 'text', text }] })
+    const base = nestedBlock('genui_create', receipt(createVersion, 'Task map'))
+    const withText = (text: string) => ({ ...base, content: [{ type: 'text', text }] })
     expect(readMeta(withText(`Task map\nhttps://attacker.example/${artifactId}/${createVersion}`))).toBeUndefined()
     expect(readMeta(withText('<!--dsh-genui-receipt:not-base64!-->'))).toBeUndefined()
     expect(readMeta(withText(`<!--dsh-genui-receipt:${encode({
@@ -99,9 +98,30 @@ describe('GenUI tool receipt metadata', () => {
   })
 
   it('rejects ambiguous duplicate receipt markers', () => {
-    const base = nestedBlock('genui_update', receipt(updateVersion, 'Updated task map')) as Extract<ToolCallViewProps['block'], { kind: 'tool-result' }>
+    const base = nestedBlock('genui_update', receipt(updateVersion, 'Updated task map'))
     const content = renderReceipt(receipt(updateVersion, 'Updated task map'))
     const text = (content[0] as { type: 'text'; text: string }).text
     expect(readMeta({ ...base, content: [{ type: 'text', text: `${text}\n${text.split('\n').at(-1)}` }] })).toBeUndefined()
+  })
+})
+
+describe('pending tool title', () => {
+  it('uses the bounded lazy host view without reading the full source payload', () => {
+    const textPrefix = vi.fn(() => 'Streaming app')
+    const block = {
+      args: { textPrefix },
+      get argsRaw(): string { throw new Error('Full arguments must not be parsed') },
+    }
+    expect(pendingTitle(block)).toBe('Streaming app')
+    expect(textPrefix).toHaveBeenCalledWith('title', 256)
+  })
+
+  it('supports legacy JSON and incomplete preparation without a title', () => {
+    expect(pendingTitle({ argsRaw: '{"title":"Legacy app"}' })).toBe('Legacy app')
+    expect(pendingTitle({ argsRaw: '{"title":' })).toBeUndefined()
+    expect(pendingTitle({ args: { textPrefix: () => undefined } })).toBeUndefined()
+    expect(pendingTitle({ argsRaw: '{"title":"  "}' })).toBeUndefined()
+    expect(pendingTitle(null)).toBeUndefined()
+    expect(readMeta(null)).toBeUndefined()
   })
 })

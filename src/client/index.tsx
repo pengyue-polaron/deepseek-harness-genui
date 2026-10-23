@@ -18,7 +18,7 @@ import { enqueuePermission, settlePermission } from './permission-queue.ts'
 import { isGenuiReadyMessage, isGenuiRuntimeErrorMessage } from './readiness.ts'
 import { settingsSlotRegistration } from './settings-slot.ts'
 import { cardCss } from './styles.ts'
-import { readMetaResult } from './types.ts'
+import { pendingTitle, readMetaResult } from './types.ts'
 import type { GenuiMeta, PermissionRequest, PermissionStatus } from './types.ts'
 
 type GenuiToolViewProps = ToolCallViewProps & PropsLocale<'genui'>
@@ -47,16 +47,6 @@ function Receipt({ meta, t, onOpen }: {
   )
 }
 
-function pendingTitle(argsRaw: string): string | undefined {
-  try {
-    const value: unknown = JSON.parse(argsRaw)
-    if (typeof value !== 'object' || value === null) return undefined
-    const title = (value as Record<string, unknown>).title
-    return typeof title === 'string' && title.trim() !== '' ? title : undefined
-  } catch {
-    return undefined
-  }
-}
 
 function currentHostTheme(): 'dark' | 'light' {
   if (typeof document === 'undefined') return 'light'
@@ -91,7 +81,7 @@ function PendingGenui({ block, t }: {
     : updating
       ? [t('progress.update.prepare'), t('progress.update.build'), t('progress.update.check')]
       : [t('progress.create.prepare'), t('progress.create.build'), t('progress.create.check')]
-  const title = pendingTitle('argsRaw' in block ? block.argsRaw : '') ?? t('app.untitled')
+  const title = pendingTitle(block) ?? t('app.untitled')
 
   useEffect(() => {
     setStage(0)

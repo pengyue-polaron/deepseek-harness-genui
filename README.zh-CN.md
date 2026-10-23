@@ -25,7 +25,7 @@ dsh plugin --profile web add dsh-plugin-genui
 dsh --profile web
 ```
 
-v0.15 在[发布说明](docs/release-notes-v0.15.1.md)所列 Harness 版本中支持 Inline、Canvas、全屏和 localhost；不支持 TUI/headless。本地编译器使用 WebAssembly，无需批准安装脚本；插件用户不需要安装 Chrome 或 Chromium。
+v0.15.2 支持 Harness `0.2.1-rc.2`（2026-10-23 核实的 npm `latest`）和 `0.2.1-rc.3`（`next`），同时保留此前验证过的宿主版本。验证范围及源码安装方法见[兼容性报告](docs/compatibility-2026-10-23.md)。支持 Inline、Canvas、全屏和 localhost；不支持 TUI/headless。本地编译器使用 WebAssembly，无需批准安装脚本；插件用户不需要安装 Chrome 或 Chromium。
 
 ## 适用场景
 
@@ -93,7 +93,7 @@ Inline、Canvas、全屏和 localhost 是同一份任务状态的不同入口。
 
 ## DESIGN.md
 
-打开 **设置 → 插件 → 插件配置**，可以自动选择设计，使用 `material-3`、`apple-human-interface` 或 `shadcn-ui`，也可以导入自定义 `DESIGN.md`。它只控制视觉语言，不限制 React 为任务实现所需的页面结构和交互。
+新版宿主打开 **设置 → 内置插件 → 生成应用的风格**（旧版为 **设置 → 插件 → 插件配置**），可以自动选择设计，使用 `material-3`、`apple-human-interface` 或 `shadcn-ui`，也可以导入自定义 `DESIGN.md`。它只控制视觉语言，不限制 React 为任务实现所需的页面结构和交互。
 
 ## 安全
 
@@ -113,6 +113,6 @@ pnpm test
 pnpm run package:plugin
 ```
 
-[验收场景](examples/real-user-scenarios.md) · [发布说明](docs/release-notes-v0.15.1.md) · [参与贡献](CONTRIBUTING.md) · MIT
+[验收场景](examples/real-user-scenarios.md) · [发布说明](docs/release-notes-v0.15.2.md) · [参与贡献](CONTRIBUTING.md) · MIT
 
 已收录：[dsh-market](https://dshmarket.com/p/pengyue-polaron/deepseek-harness-genui/) · [dsh.so](https://www.dsh.so/zh/artifact/deepseek-harness-genui/) · [awesome-dsh-plugin](https://awesome-dsh-plugin.com/p/pengyue-polaron/deepseek-harness-genui/) · [dsh.plus](https://www.dsh.plus/en/plugins/deepseek-harness-genui/)

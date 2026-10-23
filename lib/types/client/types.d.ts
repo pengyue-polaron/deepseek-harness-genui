@@ -1,4 +1,3 @@
-import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client';
 export interface GenuiMeta {
     artifactId: string;
     title: string;
@@ -24,6 +23,8 @@ export interface GenuiMetaRead {
     meta: GenuiMeta;
     source: 'presentation' | 'receipt';
 }
-export declare function readMetaResult(block: ToolCallViewProps['block']): GenuiMetaRead | undefined;
-export declare function readMeta(block: ToolCallViewProps['block']): GenuiMeta | undefined;
+export declare function readMetaResult(block: unknown): GenuiMetaRead | undefined;
+export declare function readMeta(block: unknown): GenuiMeta | undefined;
+/** Read only the displayed field on DSH 0.2.1; retain complete-JSON support for older hosts. */
+export declare function pendingTitle(block: unknown): string | undefined;
 //# sourceMappingURL=types.d.ts.map

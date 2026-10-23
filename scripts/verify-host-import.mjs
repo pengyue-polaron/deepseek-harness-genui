@@ -6,9 +6,9 @@ import { pinnedHostOverrides } from './host-dependencies.mjs'
 
 // The 0.1.5 host no longer publishes dsh-client-runtime. Test the shipped
 // server entry independently of the legacy client build's dependency matrix.
-const hostVersion = process.argv[2] ?? '0.1.5-rc.3'
-if (!['0.1.5-rc.2', '0.1.5-rc.3', '0.1.7-rc.1'].includes(hostVersion)) {
-  throw new Error('Expected Harness 0.1.5-rc.2, 0.1.5-rc.3, or 0.1.7-rc.1')
+const hostVersion = process.argv[2] ?? '0.2.1-rc.2'
+if (!['0.1.5-rc.2', '0.1.5-rc.3', '0.1.7-rc.1', '0.2.1-rc.2', '0.2.1-rc.3'].includes(hostVersion)) {
+  throw new Error('Expected Harness 0.1.5-rc.2, 0.1.5-rc.3, 0.1.7-rc.1, 0.2.1-rc.2, or 0.2.1-rc.3')
 }
 const root = new URL('../', import.meta.url)
 const manifest = JSON.parse(await readFile(new URL('package.json', root), 'utf8'))

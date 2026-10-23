@@ -201,11 +201,11 @@ jobs:
         run: |
           set -euo pipefail
           published_url=
-          for attempt in $(seq 1 20); do
-            if published_url=$(npm view "dsh-plugin-genui@$VERSION" dist.tarball --registry=https://registry.npmjs.org 2>/tmp/genui-npm-view); then
+          for attempt in $(seq 1 60); do
+            if published_url=$(npm view "dsh-plugin-genui@$VERSION" dist.tarball --registry=https://registry.npmjs.org --prefer-online 2>/tmp/genui-npm-view); then
               break
             fi
-            if [ "$attempt" -eq 20 ]; then
+            if [ "$attempt" -eq 60 ]; then
               cat /tmp/genui-npm-view
               echo "::error::npm metadata did not become readable after publication"
               exit 1

@@ -351,6 +351,10 @@ describe('GenuiToolView browser shell', () => {
               <GenuiToolView block={block} callId="preparing-call" sessionId="fixture-session" t={t} />
             )
             renderPending({ callId: 'preparing-call', name: 'genui_create' })
+            window.addEventListener('stream-fixture-title', () => renderPending({
+              callId: 'preparing-call', name: 'genui_create', phase: 'preparing',
+              args: { textPrefix: () => 'Streaming app title' },
+            }))
             window.addEventListener('start-fixture-tool', () => renderPending({
               callId: 'preparing-call', name: 'genui_create', argsRaw: JSON.stringify({ title: 'Ready to build' }),
             }))
@@ -386,6 +390,8 @@ describe('GenuiToolView browser shell', () => {
       const progress = page.locator('.dsh-genui-progress')
       await progress.waitFor({ state: 'visible' })
       expect(await progress.locator('strong').textContent()).toBe('Untitled app')
+      await page.evaluate(() => window.dispatchEvent(new Event('stream-fixture-title')))
+      await progress.getByText('Streaming app title', { exact: true }).waitFor({ state: 'visible' })
       await page.evaluate(() => window.dispatchEvent(new Event('start-fixture-tool')))
       await progress.getByText('Ready to build', { exact: true }).waitFor({ state: 'visible' })
       expect(errors).toEqual([])

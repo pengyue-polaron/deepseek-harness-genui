@@ -26,7 +26,7 @@ dsh plugin --profile web add dsh-plugin-genui
 dsh --profile web
 ```
 
-v0.15 supports Inline, Canvas, fullscreen, and localhost on the tested Harness versions listed in the [release notes](docs/release-notes-v0.15.1.md). TUI/headless profiles are not supported. The local compiler uses WebAssembly and needs no install-script approval. Plugin users do not need Chrome or Chromium.
+v0.15.2 supports Harness `0.2.1-rc.2` (npm `latest` checked on 2026-10-23) and `0.2.1-rc.3` (`next`), alongside the previously tested hosts. See the [compatibility report](docs/compatibility-2026-10-23.md) for validation and source-install instructions. Inline, Canvas, fullscreen, and localhost are supported. TUI/headless profiles are not supported. The local compiler uses WebAssembly and needs no install-script approval. Plugin users do not need Chrome or Chromium.
 
 ## Where It Helps
 
@@ -95,7 +95,7 @@ The trade-off is deliberate: generated code is more expressive than a fixed comp
 
 ## DESIGN.md
 
-Open **Settings → Plugins → Plugin configuration** to choose automatic design selection, use `material-3`, `apple-human-interface`, or `shadcn-ui`, or import a custom `DESIGN.md`. The file controls visual language, not page structure; React remains free to implement the interaction the task needs.
+Open **Settings → Built-in plugins → Generated app design** on current hosts (or **Settings → Plugins → Plugin configuration** on older hosts) to choose automatic design selection, use `material-3`, `apple-human-interface`, or `shadcn-ui`, or import a custom `DESIGN.md`. The file controls visual language, not page structure; React remains free to implement the interaction the task needs.
 
 ## Safety
 
@@ -115,6 +115,6 @@ pnpm test
 pnpm run package:plugin
 ```
 
-[Acceptance scenarios](examples/real-user-scenarios.md) · [Release notes](docs/release-notes-v0.15.1.md) · [Contributing](CONTRIBUTING.md) · MIT
+[Acceptance scenarios](examples/real-user-scenarios.md) · [Release notes](docs/release-notes-v0.15.2.md) · [Contributing](CONTRIBUTING.md) · MIT
 
 Listed on [dsh-market](https://dshmarket.com/p/pengyue-polaron/deepseek-harness-genui/) · [dsh.so](https://www.dsh.so/artifact/deepseek-harness-genui/) · [awesome-dsh-plugin](https://awesome-dsh-plugin.com/p/pengyue-polaron/deepseek-harness-genui/) · [dsh.plus](https://www.dsh.plus/en/plugins/deepseek-harness-genui/)

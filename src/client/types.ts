@@ -1,5 +1,3 @@
-import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
-
 export interface GenuiMeta {
   artifactId: string
   title: string
@@ -92,14 +90,35 @@ function receiptMeta(content: unknown): GenuiMeta | undefined {
   return markers.length === 1 ? decodeReceipt(markers[0] ?? '') : undefined
 }
 
-export function readMetaResult(block: ToolCallViewProps['block']): GenuiMetaRead | undefined {
-  if (!('kind' in block) || block.isError) return undefined
-  const presented = directMeta(block.meta)
+export function readMetaResult(block: unknown): GenuiMetaRead | undefined {
+  if (typeof block !== 'object' || block === null || !('kind' in block)
+    || !('isError' in block) || block.isError) return undefined
+  const presented = directMeta('meta' in block ? block.meta : undefined)
   if (presented !== undefined) return { meta: presented, source: 'presentation' }
-  const receipt = receiptMeta(block.content)
+  const receipt = receiptMeta('content' in block ? block.content : undefined)
   return receipt === undefined ? undefined : { meta: receipt, source: 'receipt' }
 }
 
-export function readMeta(block: ToolCallViewProps['block']): GenuiMeta | undefined {
+export function readMeta(block: unknown): GenuiMeta | undefined {
   return readMetaResult(block)?.meta
+}
+
+/** Read only the displayed field on DSH 0.2.1; retain complete-JSON support for older hosts. */
+export function pendingTitle(block: unknown): string | undefined {
+  if (typeof block !== 'object' || block === null) return undefined
+  let title: unknown
+  if ('args' in block && typeof block.args === 'object' && block.args !== null
+    && 'textPrefix' in block.args && typeof block.args.textPrefix === 'function') {
+    // The host caches field reads and can supply a title while source files are
+    // still streaming. Avoid parsing the full, potentially large tool payload.
+    title = block.args.textPrefix('title', 256)
+  } else if ('argsRaw' in block && typeof block.argsRaw === 'string') {
+    try {
+      const value: unknown = JSON.parse(block.argsRaw)
+      if (typeof value === 'object' && value !== null && 'title' in value) title = value.title
+    } catch {
+      return undefined
+    }
+  }
+  return typeof title === 'string' && title.trim() !== '' ? title.slice(0, 256) : undefined
 }

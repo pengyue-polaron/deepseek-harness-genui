@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.2 - 2026-10-23
+
+- Support Harness `0.2.1-rc.2` (`latest` on 2026-10-23) and `0.2.1-rc.3` (`next`), retaining the previously supported host versions. Add both to CI and make the standalone host import check target the current release.
+- Read streamed app titles through the host's bounded lazy argument view, avoiding repeated parsing of the full generated-source payload; retain legacy JSON argument support.
+- Decouple receipt parsing from the host's evolving tool-record type and validate unknown input at the parsing boundary.
+- Allow up to five minutes for npm metadata propagation after publication and prefer a fresh registry read before verifying the served tarball.
+- Update real Web verification for the 0.2 account menu and onboarding flow. Wait for asynchronous settings to finish loading before checking persistence after reload, and include an accessibility snapshot on failure.
+
 ## 0.15.1 - 2026-09-24
 
 ### Fixed

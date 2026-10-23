@@ -8,6 +8,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { chromium } from 'playwright'
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
+const hostVersion = process.env.GENUI_HOST_VERSION
+const accountMenu = hostVersion?.startsWith('0.2.') === true
+const pluginTabs = hostVersion === '0.1.7-rc.1' || hostVersion?.startsWith('0.2.') === true
 const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
 const cli = join(root, 'node_modules', '.bin', process.platform === 'win32' ? 'dsh.cmd' : 'dsh')
 const directory = await mkdtemp(join(tmpdir(), 'genui-modern-web-'))
@@ -40,14 +43,26 @@ async function stop(child) {
   }
 }
 
+async function openDesignSettings() {
+  if (accountMenu) {
+    await page.getByRole('dialog', { name: /Get started|开始使用/ }).getByRole('button', { name: /Close|关闭/ }).click()
+    await page.getByRole('button', { name: /Account menu|账户菜单/ }).click()
+  } else await page.getByRole('button', { name: /^(Configure later|稍后配置)$/ }).click()
+  await page.getByRole(accountMenu ? 'menuitem' : 'button', { name: /Settings|设置/ }).first().click()
+  await page.getByRole('button', { name: pluginTabs ? /Built-in plugins|内置插件/ : /Plugins|插件/ }).first().click()
+  if (pluginTabs) {
+    await page.getByRole('tab', { name: /Generated app design|生成应用的风格/ }).click()
+  }
+}
+
 try {
-  if (process.env.GENUI_HOST_VERSION === '0.1.7-rc.1') {
+  if (pluginTabs) {
     const requireHost = createRequire(await realpath(join(root, 'node_modules/@deepseek-ai/dsh/package.json')))
     const { evaluatePluginCompatibility } = await import(pathToFileURL(requireHost.resolve('@deepseek-ai/dsh-app-boot')).href)
     // Exercise the host's gate, including optional peers, without fixture overrides.
     const previous = JSON.parse(await readFile(join(root, 'node_modules/dsh-plugin-genui-v0142/package.json'), 'utf8'))
-    assert.ok(evaluatePluginCompatibility(previous, {}, '0.1.7-rc.1'), 'Previous release must reproduce issue #14')
-    assert.equal(evaluatePluginCompatibility(manifest, {}, '0.1.7-rc.1'), undefined, 'Release must pass the real host gate without exemptions')
+    assert.ok(evaluatePluginCompatibility(previous, {}, hostVersion), 'Previous release must be rejected by the host compatibility gate')
+    assert.equal(evaluatePluginCompatibility(manifest, {}, hostVersion), undefined, 'Release must pass the real host gate without exemptions')
   }
   await access(tarball)
   await mkdir(workspace)
@@ -100,12 +115,7 @@ try {
   await page.goto(address)
   // The first-run flow has no model credentials; this smoke test does not use inference.
   await page.getByRole('button', { name: /^(Continue|继续)$/ }).click()
-  await page.getByRole('button', { name: /^(Configure later|稍后配置)$/ }).click()
-  await page.getByRole('button', { name: /Settings|设置/ }).first().click()
-  await page.getByRole('button', { name: process.env.GENUI_HOST_VERSION === '0.1.7-rc.1' ? /Built-in plugins|内置插件/ : /Plugins|插件/ }).first().click()
-  if (process.env.GENUI_HOST_VERSION === '0.1.7-rc.1') {
-    await page.getByRole('tab', { name: /Generated app design|生成应用的风格/ }).click()
-  }
+  await openDesignSettings()
   const card = page.locator('.dsh-genui-design-card')
   await card.waitFor({ state: 'visible' })
   await card.locator('.dsh-genui-design-head').click()
@@ -113,14 +123,13 @@ try {
   await select.selectOption('material-3')
   await page.waitForFunction(() => document.querySelector('.dsh-genui-design-card [role="status"]')?.textContent?.match(/saved|已保存/i))
   await page.reload()
-  await page.getByRole('button', { name: /^(Configure later|稍后配置)$/ }).click()
-  await page.getByRole('button', { name: /Settings|设置/ }).first().click()
-  await page.getByRole('button', { name: process.env.GENUI_HOST_VERSION === '0.1.7-rc.1' ? /Built-in plugins|内置插件/ : /Plugins|插件/ }).first().click()
-  if (process.env.GENUI_HOST_VERSION === '0.1.7-rc.1') {
-    await page.getByRole('tab', { name: /Generated app design|生成应用的风格/ }).click()
-  }
+  await openDesignSettings()
   await card.waitFor({ state: 'visible' })
   await card.locator('.dsh-genui-design-head').click()
+  await page.waitForFunction(() => {
+    const select = document.querySelector('select[name="genui-default-design"]')
+    return select instanceof HTMLSelectElement && !select.disabled && select.value === 'material-3'
+  })
   assert.equal(await select.inputValue(), 'material-3')
   const discovery = await page.request.get(new URL('/.well-known/dsh-genui', address).href)
   assert.equal(discovery.status(), 200)
@@ -131,7 +140,7 @@ try {
   assert.deepEqual(errors, [], 'Modern Web frontend reported errors')
   console.log(`Modern Harness ${process.env.GENUI_HOST_VERSION}: packed plugin installation, Web startup, settings rendering, saved design after reload, and endpoints passed.`)
 } catch (error) {
-  if (page) console.error('Modern Web page at failure:', (await page.locator('body').innerText().catch(() => '')).slice(0,6000))
+  if (page) console.error('Modern Web page at failure:', (await page.locator('body').ariaSnapshot().catch(() => '')).slice(0,10000))
   throw error
 } finally {
   try {
