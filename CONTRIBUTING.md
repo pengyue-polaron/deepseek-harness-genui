@@ -14,10 +14,11 @@ pnpm run build
 
 The Playwright-managed Chromium above is only for repository browser tests. Plugin users do not install it.
 
-Run `pnpm run verify:host-compat 0.2.1-rc.2` to check the current Harness Web
+Run `pnpm run verify:host-compat 0.2.2-rc.1` to check the current Harness Web
 host in an isolated project. This runs the shipped entry, typecheck, tests,
 installed Web frontend, settings persistence, and a rebuild. Also run
-`pnpm run verify:host-compat 0.2.1-rc.3` for the tested npm `next` release.
+`pnpm run verify:host-compat 0.2.2-rc.3` (the Desktop runtime) and
+`pnpm run verify:host-compat 0.2.2-rc.5` for the tested npm `next` release.
 The default development dependencies intentionally retain the oldest supported
 host; the isolated fixtures pin the target host and its transitive packages.
 The published 0.13.2 fixture imports removed host exports, so its legacy bridge test runs

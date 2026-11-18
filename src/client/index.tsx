@@ -658,7 +658,7 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
           <span>{t('app.canvasReturn')}</span>
         </button>
       ) : null}
-      <section ref={setCardElement} tabIndex={-1} className="dsh-genui-card" data-genui-theme={hostTheme} data-collapsed={collapsed} data-surface={canvasOpen ? 'canvas' : 'inline'} data-canvas-layout={canvasOpen ? canvasSurface.mode : undefined} aria-labelledby={titleId}>
+      <section ref={setCardElement} tabIndex={-1} className="dsh-genui-card" data-genui-theme={hostTheme} data-collapsed={collapsed} data-surface={canvasOpen ? 'canvas' : 'inline'} data-canvas-layout={canvasOpen ? canvasSurface.mode : undefined} data-window-drag-exclude={canvasOpen ? '' : undefined} aria-labelledby={titleId}>
         <style>{cardCss}</style>
         <header className="dsh-genui-head" data-genui-modal-background aria-hidden={modalOpen || undefined}>
           {previewUrl === undefined ? null : (

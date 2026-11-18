@@ -13,6 +13,7 @@ import { ArtifactRegistry } from '../src/artifacts/registry.ts'
 import { buildArtifact } from '../src/artifacts/builder.ts'
 import { cardCss } from '../src/client/styles.ts'
 import { BrowserVerifier, mountBridgedPreview, verifyArtifactInBrowser } from './support/browser-verifier.ts'
+import { loadToolExecutor } from './support/tool-executor.ts'
 import { DesignStore } from '../src/designs/store.ts'
 import { CapabilityStore } from '../src/runtime/capabilities.ts'
 import { createHttpRuntime } from '../src/runtime/server.ts'
@@ -44,6 +45,7 @@ describe('sandboxed browser verification', () => {
     ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await loadToolExecutor(ctx)
     ctx.tools.register(defineTool({
       name: 'test_echo',
       description: 'Echo a test message.',

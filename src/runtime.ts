@@ -33,11 +33,28 @@ export async function apply(ctx: Context, config: Config): Promise<() => void> {
   ctx.systemPrompt.section({ name: 'behavior:genui', order: 1, text: GENUI_BEHAVIOR_PROMPT })
   ctx.systemPrompt.section({ name: 'tool:genui', order: 118, text: () => genuiSystemPrompt(designs.defaultId()) })
   registerDiscoveryBudget(ctx)
-  const previewOrigin = `http://127.0.0.1:${ctx.webServer.port}`
+  const previewOrigin = webServerOrigin(ctx)
   registerGenuiTools(ctx, registry, designs, capabilities, resolved.routePrefix, previewOrigin)
   ctx.logger.info(`GenUI artifacts: ${registry.root}`)
 
   return () => {
     capabilities.clear()
   }
+}
+
+/**
+ * Harness 0.2.2 types the listening port as optional and adds `getOrigin()`,
+ * which also reports the real protocol and bind host; prefer it and keep the
+ * loopback form for hosts that only expose a port.
+ */
+function webServerOrigin(ctx: Context): string {
+  const webServer = ctx.webServer as { port?: number; getOrigin?: () => string }
+  if (typeof webServer.getOrigin === 'function') {
+    try {
+      return webServer.getOrigin()
+    } catch {
+      // Read before the listener binds; the port form reports the same state.
+    }
+  }
+  return `http://127.0.0.1:${String(webServer.port)}`
 }

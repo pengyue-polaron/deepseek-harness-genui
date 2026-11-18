@@ -5,7 +5,6 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { ToolExecutionInput } from '@deepseek-ai/dsh-tools'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
@@ -13,6 +12,8 @@ import { ArtifactRegistry } from '../src/artifacts/registry.ts'
 import { DesignStore } from '../src/designs/store.ts'
 import { CapabilityStore } from '../src/runtime/capabilities.ts'
 import { createHttpRuntime } from '../src/runtime/server.ts'
+import { invokeTool } from '../src/runtime/tool-invocation.ts'
+import { loadToolExecutor } from './support/tool-executor.ts'
 import { registerGenuiTools } from '../src/tools.ts'
 
 describe('GenUI Harness tool lifecycle', () => {
@@ -21,7 +22,6 @@ describe('GenUI Harness tool lifecycle', () => {
   let registry: ArtifactRegistry
   let agent: Agent
   let closeServer: () => Promise<void>
-  let callCounter = 0
   let lastRenderedContent: unknown
   let lastConcludesTurn: true | undefined
 
@@ -29,6 +29,7 @@ describe('GenUI Harness tool lifecycle', () => {
     ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await loadToolExecutor(ctx)
     root = await mkdtemp(join(tmpdir(), 'dsh-genui-tools-'))
     registry = new ArtifactRegistry(root, 128 * 1024)
     await registry.init()
@@ -61,17 +62,11 @@ describe('GenUI Harness tool lifecycle', () => {
   })
 
   async function execute(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
-    const result = await ctx.tools.execute({
-      callId: `genui-e2e-${++callCounter}` as ToolExecutionInput['callId'],
-      name,
-      arguments: args,
-      agent,
-      signal: AbortSignal.timeout(30_000),
-    })
-    if (result.isError) throw result.error
-    lastRenderedContent = result.content
-    lastConcludesTurn = result.concludesTurn
-    return result.value as Record<string, unknown>
+    const invocation = await invokeTool(ctx.tools, { name, arguments: args, agent, signal: AbortSignal.timeout(30_000) })
+    if (!invocation.ok) throw new Error(invocation.error.message)
+    lastRenderedContent = invocation.result.content
+    lastConcludesTurn = invocation.result.concludesTurn
+    return invocation.result.value as Record<string, unknown>
   }
 
   it('repairs an initial failure, updates, inspects, and rolls back', async () => {

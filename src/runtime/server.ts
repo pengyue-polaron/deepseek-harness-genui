@@ -1,7 +1,6 @@
 import { readFile, stat } from 'node:fs/promises'
 import { extname } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { ToolExecutionInput } from '@deepseek-ai/dsh-tools'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ArtifactRegistry } from '../artifacts/registry.ts'
 import { TASK_TTL_MS } from '../lifecycle.ts'
@@ -13,6 +12,7 @@ import {
   capabilityById, capabilityFingerprint, externalCapability, isGranted, permissionView, toolCapability,
 } from './permissions.ts'
 import { BRIDGE_RUNTIME } from './bridge.ts'
+import { invokeTool } from './tool-invocation.ts'
 import { ARTIFACT_RUNTIME_VERSION, STANDALONE_RUNTIME, standaloneHtml } from './standalone.ts'
 
 const CSP_BASE = [
@@ -73,6 +73,10 @@ async function body(req: IncomingMessage, limit = 256 * 1024): Promise<Record<st
   const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('request body must be an object')
   return parsed as Record<string, unknown>
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function bearer(req: IncomingMessage): string | undefined {
@@ -430,17 +434,14 @@ export function createHttpRuntime(
             if (!isGranted(record!, capability.sessionId, requested)) {
               return json(res, 403, { code: 'approval_required', permission: permissionView(requested) }, req)
             }
-            const result = await ctx.tools.execute({
-              // CallId was renamed to ToolCallId in Harness 0.1.5. Both are
-              // string brands; derive the type from the stable execution API.
-              callId: `genui-${Date.now()}-${Math.random().toString(36).slice(2)}` as ToolExecutionInput['callId'],
+            const invocation = await invokeTool(ctx.tools, {
               name: input.name,
-              arguments: input.arguments ?? {},
+              arguments: isRecord(input.arguments) ? input.arguments : {},
               agent: capability.agent,
               signal: AbortSignal.timeout(60_000),
             })
-            if (result.isError) return json(res, 502, { error: result.error.message, code: result.error.info?.code }, req)
-            json(res, 200, result.value, req)
+            if (!invocation.ok) return json(res, 502, { error: invocation.error.message, code: invocation.error.code }, req)
+            json(res, 200, invocation.result.value, req)
             return
           }
           if (action === 'external') {

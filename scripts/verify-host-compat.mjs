@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pinnedHostOverrides } from './host-dependencies.mjs'
 
-const supportedVersions = new Set(['0.1.0-rc.7', '0.1.0-rc.8', '0.1.1-rc.1', '0.1.1-rc.2', '0.1.5-rc.3', '0.1.7-rc.1', '0.2.1-rc.2', '0.2.1-rc.3'])
+const supportedVersions = new Set(['0.1.0-rc.7', '0.1.0-rc.8', '0.1.1-rc.1', '0.1.1-rc.2', '0.1.5-rc.3', '0.1.7-rc.1', '0.2.1-rc.2', '0.2.1-rc.3', '0.2.2-rc.1', '0.2.2-rc.3', '0.2.2-rc.5'])
 const hostVersion = process.argv[2]
 const modern = hostVersion === '0.1.5-rc.3' || hostVersion === '0.1.7-rc.1' || hostVersion?.startsWith('0.2.') === true
 if (!hostVersion || !supportedVersions.has(hostVersion)) {
@@ -69,6 +69,12 @@ try {
       manifest.devDependencies[dependency] = modern && dependency === '@deepseek-ai/dsh-client-runtime'
         ? '0.1.1-rc.2' : hostVersion
     }
+  }
+  if (hostVersion.startsWith('0.2.2')) {
+    // 0.2.2 delegates tools.execute to a separately mounted executor, so the
+    // tool fixtures need the native one; earlier hosts execute inline and
+    // never publish this package.
+    manifest.devDependencies['@deepseek-ai/dsh-tool-executor-native'] = hostVersion
   }
   if (modern) {
     // Upstream packages have stable >=0.1.5 peer ranges while the tested host

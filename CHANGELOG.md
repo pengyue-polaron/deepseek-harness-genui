@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.3 - 2026-11-19
+
+- Support Harness `0.2.2-rc.1` (`latest` on 2026-11-19), `0.2.2-rc.3` (the Desktop runtime), and `0.2.2-rc.5` (`next`), retaining the previously supported host versions. Add all three to CI and move the standalone host import check and docs to the current release.
+- Run connected actions through the new batch tool API. Harness 0.2.2 replaced `execute({ callId, … })` with `execute({ calls, signal, agent })` settling `{ results }`; a single runtime marker selects the shape so one bundle still serves every supported host.
+- Mount the native tool executor in tool fixtures on 0.2.2 hosts, which delegate `tools.execute` to a separately loaded executor.
+- Prefer `webServer.getOrigin()` when available so `app_url` reflects the real protocol and bind host, retaining the loopback form on hosts that only expose a port.
+- Declare the Canvas overlay's visible viewport as a macOS window-drag exclusion, which 0.2.2-rc.1 requires of custom client overlays covering the draggable header.
+
 ## 0.15.2 - 2026-10-23
 
 - Support Harness `0.2.1-rc.2` (`latest` on 2026-10-23) and `0.2.1-rc.3` (`next`), retaining the previously supported host versions. Add both to CI and make the standalone host import check target the current release.

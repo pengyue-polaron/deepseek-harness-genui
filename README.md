@@ -26,7 +26,7 @@ dsh plugin --profile web add dsh-plugin-genui
 dsh --profile web
 ```
 
-v0.15.2 supports Harness `0.2.1-rc.2` (npm `latest` checked on 2026-10-23) and `0.2.1-rc.3` (`next`), alongside the previously tested hosts. See the [compatibility report](docs/compatibility-2026-10-23.md) for validation and source-install instructions. Inline, Canvas, fullscreen, and localhost are supported. TUI/headless profiles are not supported. The local compiler uses WebAssembly and needs no install-script approval. Plugin users do not need Chrome or Chromium.
+v0.15.3 supports Harness `0.2.2-rc.1` (npm `latest` checked on 2026-11-19), `0.2.2-rc.3` (the Desktop runtime), and `0.2.2-rc.5` (`next`), alongside the previously tested hosts. See the [compatibility report](docs/compatibility-2026-11-19.md) for validation and source-install instructions. Inline, Canvas, fullscreen, and localhost are supported. TUI/headless profiles are not supported. The local compiler uses WebAssembly and needs no install-script approval. Plugin users do not need Chrome or Chromium.
 
 ## Where It Helps
 
@@ -115,6 +115,6 @@ pnpm test
 pnpm run package:plugin
 ```
 
-[Acceptance scenarios](examples/real-user-scenarios.md) · [Release notes](docs/release-notes-v0.15.2.md) · [Contributing](CONTRIBUTING.md) · MIT
+[Acceptance scenarios](examples/real-user-scenarios.md) · [Release notes](docs/release-notes-v0.15.3.md) · [Contributing](CONTRIBUTING.md) · MIT
 
-Listed on [dsh-market](https://dshmarket.com/p/pengyue-polaron/deepseek-harness-genui/) · [dsh.so](https://www.dsh.so/artifact/deepseek-harness-genui/) · [awesome-dsh-plugin](https://awesome-dsh-plugin.com/p/pengyue-polaron/deepseek-harness-genui/) · [dsh.plus](https://www.dsh.plus/en/plugins/deepseek-harness-genui/)
+Listed on [dsh-market](https://dshmarket.com/p/pengyue-polaron/deepseek-harness-genui/) · [dsh.so](https://www.dsh.so/artifact/deepseek-harness-genui/) · [awesome-dsh-plugin](https://awesome-dsh-plugin.com/p/pengyue-polaron/deepseek-harness-genui/) · [dsh.plus](https://www.dsh.plus/en/plugins/deepseek-harness-genui/) · [DSH Directory](https://dsh.directory/plugins/pengyue-polaron/deepseek-harness-genui)

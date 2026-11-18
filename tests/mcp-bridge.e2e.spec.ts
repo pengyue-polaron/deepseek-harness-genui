@@ -16,6 +16,7 @@ import { DesignStore } from '../src/designs/store.ts'
 import { artifactSessionPrefix, CapabilityStore } from '../src/runtime/capabilities.ts'
 import { createHttpRuntime } from '../src/runtime/server.ts'
 import { ARTIFACT_RUNTIME_VERSION } from '../src/runtime/standalone.ts'
+import { loadToolExecutor } from './support/tool-executor.ts'
 
 describe('real MCP artifact bridge', () => {
   let ctx: Context
@@ -35,9 +36,14 @@ describe('real MCP artifact bridge', () => {
     ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await loadToolExecutor(ctx)
 
     const require = createRequire(import.meta.url)
     const packageDir = dirname(require.resolve('@modelcontextprotocol/server-everything/package.json'))
+    // Harness 0.2.2 requires closeTimeoutMs and expandTemplates; earlier hosts
+    // default them and reject the keys on their own Config type. Assert the
+    // parameter type so one fixture compiles against either generation, and
+    // pass the documented defaults so hosts without the fields ignore them.
     await applyMcp(ctx, {
       transport: 'stdio',
       serverName: 'everything',
@@ -46,8 +52,10 @@ describe('real MCP artifact bridge', () => {
       env: {},
       cwd: '',
       toolCallTimeoutMs: 30_000,
+      closeTimeoutMs: 5_000,
+      expandTemplates: false,
       failOnStartupError: true,
-    })
+    } as Parameters<typeof applyMcp>[1])
 
     root = await mkdtemp(join(tmpdir(), 'dsh-genui-mcp-'))
     registry = new ArtifactRegistry(root, 128 * 1024)
