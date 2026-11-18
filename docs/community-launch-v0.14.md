@@ -4,6 +4,21 @@
 >
 > 调研与链接核对日期：2026-08-29。社区规则和竞品能力会变化，正式发布当天应再打开原始链接确认。
 
+## 收录状态复核（2026-09-07）
+
+本次仅复核 GitHub 收录状态及 DSH Directory 页面，不代表重新核对下文的社区规则。合并日期以 GitHub `mergedAt` 为准，不以最后评论时间判断新合并。
+
+| 渠道 | 状态 | 证据与后续 |
+| --- | --- | --- |
+| DSH Directory | 9 月 7 日维护者确认上线，申请已关闭 | [申请 #79](https://github.com/alexchenzl/dsh-plugin-directory/issues/79)；[上线页面](https://dsh.directory/plugins/pengyue-polaron/deepseek-harness-genui)已显示 0.14.1 和当前安装命令，中英文 README 已补链接。 |
+| awesome-generative-ui | PR 仍开放，无 review | [#13](https://github.com/narrowin/awesome-generative-ui/pull/13)；8 月 29 日已补充 v0.14.0 Release 与测试报告。 |
+| awesome-deepseek-harness | PR 仍开放，无 review | [#22](https://github.com/libukai/awesome-deepseek-harness/pull/22)；8 月 29 日已补充 v0.14.0 Release 与测试报告。 |
+| awesome-dsh-plugin | 收录与截图均在 8 月 16 日合并 | [收录 #736](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/736)、[截图 #942](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/942)；8 月 26 日是后续截图维护评论，不是新合并。 |
+| OpenHarness Plugins | 8 月 18 日合并，第三方提交 | [#84](https://github.com/MicroSpotlight/openharness-plugins/pull/84)。 |
+| awesome-omni-dsh-plugins | 8 月 19 日合并，第三方提交 | [#28](https://github.com/diegosouzapw/awesome-omni-dsh-plugins/pull/28)。 |
+| Open Design | 8 月 16 日合并，第三方提交 | [#6945](https://github.com/nexu-io/open-design/pull/6945)包含本项目的设计插件展示条目。 |
+| dsh-index | 批量收录 PR 仍开放 | [#34](https://github.com/Sunrisepeak/dsh-index/pull/34)的待收录名单包含本项目；尚不能算已收录。 |
+
 ## 目标与边界
 
 v0.14 的发布目标不是制造一次短期曝光，而是让潜在用户在几分钟内验证这条完整链路：
@@ -92,8 +107,8 @@ v0.14 的发布目标不是制造一次短期曝光，而是让潜在用户在�
 ### T+1 至 T+2 天：进入更广的 DeepSeek 与开发者社区
 
 1. 在 [r/DeepSeek](https://www.reddit.com/r/DeepSeek/)以真实任务和使用结果为中心分享。该社区要求自荐遵循 1/10 原则、提供项目价值与用例、使用直接源码链接、避免宣传式标题并选择正确 flair。
-2. 只在已有的 [narrowin/awesome-generative-ui #13](https://github.com/narrowin/awesome-generative-ui/pull/13) 和 [libukai/awesome-deepseek-harness #22](https://github.com/libukai/awesome-deepseek-harness/pull/22)各追加一次最终 Release 与测试报告链接；两者当前都是开放 PR，不新建重复 PR，也不在发布前再次催促。
-3. 在已有的 [dsh-plugin-directory #79](https://github.com/alexchenzl/dsh-plugin-directory/issues/79)补一次已发布版本信息，并按各目录维护方式请求刷新。优先修正旧版本、错误安装方式和旧 Chromium/Playwright 步骤，而不是继续追求更多自动收录站。
+2. **已于 2026-08-29 完成版本补充**：在已有的 [narrowin/awesome-generative-ui #13](https://github.com/narrowin/awesome-generative-ui/pull/13) 和 [libukai/awesome-deepseek-harness #22](https://github.com/libukai/awesome-deepseek-harness/pull/22)已各追加一次 v0.14.0 Release 与测试报告链接；截至 2026-09-07，两者仍为开放 PR，暂不重复提交或催促。
+3. **DSH Directory 已于 2026-09-07 确认上线**：[dsh-plugin-directory #79](https://github.com/alexchenzl/dsh-plugin-directory/issues/79)已关闭，页面已同步 0.14.1，无需重复申请刷新。其他目录按各自维护方式检查版本信息。优先修正旧版本、错误安装方式和旧 Chromium/Playwright 步骤，而不是继续追求更多自动收录站。
 4. 在 [V2EX 分享创造](https://www.v2ex.com/go/create)分享开发过程和技术取舍。根据 [V2EX 节点规则](https://www.v2ex.com/help/node)，独立开发者新作适合“分享创造”；公司式营销应进入“推广”节点。
 
 已经合并的收录不要重复提交：[awesome-dsh-plugin #736](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/736)已经合并，配套截图也已有单独记录。此类列表在发布后只需要等待或请求其数据源刷新。
