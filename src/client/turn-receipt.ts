@@ -119,16 +119,28 @@ interface DefinitionRegistryHost {
 
 /**
  * Publish the Turn's receipts for the turn-tail card.
+ *
+ * `uiConversation` is not in this plugin's static `inject` list: the 0.1.0
+ * hosts do not provide it, and a required dependency that never appears would
+ * keep the whole client plugin from activating there. A scoped injection waits
+ * for it where it exists and stays pending otherwise.
  * @param ctx - client plugin root.
  */
 export function registerGenuiTurnReceipts(ctx: ClientContext): void {
-  const events = (ctx as unknown as DefinitionRegistryHost).uiConversation?.events
-  if (typeof events?.register !== 'function') return
-  try {
-    ctx.effect(() => events.register!(genuiTurnDefinition) as () => void, 'genui: turn receipts')
-  } catch {
-    // A composition without the Definition registry keeps the tool-row card.
+  const host = ctx as unknown as {
+    inject?(deps: string[], callback: (scoped: unknown) => void): unknown
+    get?(name: string): unknown
   }
+  const attempt = (service: unknown): void => {
+    const events = (service as { events?: { register?: (definition: unknown) => unknown } } | undefined)?.events
+    if (typeof events?.register !== 'function') return
+    ctx.effect(() => events.register!(genuiTurnDefinition) as () => void, 'genui: turn receipts')
+  }
+  if (typeof host.inject === 'function') {
+    host.inject(['uiConversation'], scoped => attempt((scoped as { uiConversation?: unknown }).uiConversation))
+    return
+  }
+  attempt(typeof host.get === 'function' ? host.get('uiConversation') : undefined)
 }
 
 /**

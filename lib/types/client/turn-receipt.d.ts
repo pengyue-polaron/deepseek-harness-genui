@@ -54,6 +54,11 @@ export declare const genuiTurnDefinition: {
 };
 /**
  * Publish the Turn's receipts for the turn-tail card.
+ *
+ * `uiConversation` is not in this plugin's static `inject` list: the 0.1.0
+ * hosts do not provide it, and a required dependency that never appears would
+ * keep the whole client plugin from activating there. A scoped injection waits
+ * for it where it exists and stays pending otherwise.
  * @param ctx - client plugin root.
  */
 export declare function registerGenuiTurnReceipts(ctx: ClientContext): void;
