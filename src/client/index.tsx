@@ -19,9 +19,28 @@ import { isGenuiReadyMessage, isGenuiRuntimeErrorMessage } from './readiness.ts'
 import { settingsSlotRegistration } from './settings-slot.ts'
 import { cardCss } from './styles.ts'
 import { pendingTitle, readMetaResult } from './types.ts'
+import { genuiTurnReceipts, registerGenuiTurnCard, registerGenuiTurnReceipts } from './turn-receipt.ts'
 import type { GenuiMeta, PermissionRequest, PermissionStatus } from './types.ts'
 
-type GenuiToolViewProps = ToolCallViewProps & PropsLocale<'genui'>
+/** A settled result synthesized from Turn data, or the Host's own tool-call block. */
+type GenuiCardBlock = ToolCallViewProps['block'] | {
+  kind: 'tool-result'
+  isError: false
+  meta?: unknown
+  content?: unknown
+}
+
+/**
+ * Card input shared by the tool row and the turn-tail surface. Both pass the
+ * same receipt; only the mount identity differs so the card ledger keeps them
+ * apart.
+ */
+interface GenuiCardProps {
+  block: GenuiCardBlock
+  callId: string
+  sessionId: unknown
+  t: TranslateNS<'genui'>
+}
 
 function IconAction({ label, className = '', children, ...props }: {
   label: string
@@ -108,7 +127,7 @@ function PendingGenui({ block, t }: {
   )
 }
 
-export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProps) {
+export function GenuiToolView({ block, callId, sessionId, t }: GenuiCardProps) {
   const canvasSessionId = String(sessionId)
   const parsedMeta = readMetaResult(block)
   const receiptAccessKey = parsedMeta?.source === 'receipt'
@@ -815,6 +834,36 @@ export function GenuiToolView({ block, callId, sessionId, t }: GenuiToolViewProp
   )
 }
 
+/**
+ * Keep a completed Turn's app visible below the answer, outside the fold that
+ * hides its tool row. The card ledger already elects one primary card, so the
+ * folded row degrades to a receipt line on its own.
+ */
+function GenuiTurnCard({ turn, sessionId, t }: GenuiTurnCardProps) {
+  const receipts = genuiTurnReceipts(turn)
+  if (receipts.length === 0) return null
+  return (
+    <>
+      {receipts.map(receipt => {
+        const block: GenuiCardBlock = {
+          kind: 'tool-result',
+          isError: false,
+          ...receipt.meta === undefined ? {} : { meta: receipt.meta },
+          ...receipt.content === undefined ? {} : { content: receipt.content },
+        }
+        // A distinct mount identity separates this surface from the folded row.
+        return <GenuiToolView key={receipt.callId} block={block} callId={`${receipt.callId}:turn`} sessionId={sessionId} t={t} />
+      })}
+    </>
+  )
+}
+
+interface GenuiTurnCardProps {
+  turn: unknown
+  sessionId: unknown
+  t: TranslateNS<'genui'>
+}
+
 export const inject = ['slots', 'locale']
 
 export function apply(ctx: ClientContext): void {
@@ -829,6 +878,10 @@ export function apply(ctx: ClientContext): void {
       yield ctx.slots.register({ name: 'tool.call.toolview', key }, HiddenGenuiToolView)
     }
   })
+  registerGenuiTurnReceipts(ctx)
+  // A completed Turn keeps its app visible below the answer, outside the fold
+  // that hides the process rows. Old hosts without this slot keep the row card.
+  registerGenuiTurnCard(ctx, GenuiTurnCard)
   // 0.1.7 replaces namespace cards with plugin tabs. Slot injection waits for
   // its declaration, so only the host's supported surface is mounted.
   ctx.slots.inject('settings.plugins.tab', () => ctx.slots.register({

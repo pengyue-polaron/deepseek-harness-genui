@@ -23,6 +23,12 @@ the previously supported hosts.
 - Declare the Canvas overlay's visible viewport as a macOS window-drag
   exclusion, which 0.2.2-rc.1 requires of custom client overlays covering the
   draggable header.
+- Keep a completed Turn's generated app visible. Chat folds the process rows of
+  a finished Turn and does not render folded rows, so an app that only lived in
+  its tool row disappeared until that row was expanded. The Turn's last
+  successful receipt is now republished on the Turn and rendered below the
+  answer through `conversation.chat.turnTail`.
+
 
 ## Install or upgrade
 
@@ -44,6 +50,9 @@ and 144 applicable tests on each of `0.2.2-rc.1`, `0.2.2-rc.3`, and
 `0.2.2-rc.5`, plus typechecking, builds, bundle budgets, and the packed
 tarball. The plugin installed into a running Desktop `0.2.2-rc.3` profile
 through the host compatibility gate without a version exemption.
+
+The turn-tail surface raises the raw bundle ceiling from 260 KiB to 272 KiB;
+the gzip ceiling stays at 72 KiB, so the transfer size is unchanged.
 
 Release preflight additionally requires successful CI on the exact commit,
 the live HTTPS scenario, clean installation/removal, and upgrades from

@@ -11,7 +11,11 @@ const budgets = [
   { path: 'lib/client.js', raw: 128 * kib, gzip: 30 * kib },
   { path: 'lib/invariant.js', raw: 4 * kib, gzip: 2 * kib },
 ]
-const totalBudget = { raw: 260 * kib, gzip: 72 * kib }
+// v0.15.3 adds the turn-tail surface that keeps a completed Turn's app visible
+// after Chat folds the process rows. It costs about 5 KiB raw and no measurable
+// gzip growth (66.5 of 72 KiB used), so the raw ceiling moves with it while the
+// gzip ceiling stays put.
+const totalBudget = { raw: 272 * kib, gzip: 72 * kib }
 
 const format = bytes => `${(bytes / kib).toFixed(1)} KiB`
 const failures = []
