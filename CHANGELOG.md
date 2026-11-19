@@ -7,6 +7,7 @@
 - Mount the native tool executor in tool fixtures on 0.2.2 hosts, which delegate `tools.execute` to a separately loaded executor.
 - Prefer `webServer.getOrigin()` when available so `app_url` reflects the real protocol and bind host, retaining the loopback form on hosts that only expose a port.
 - Declare the Canvas overlay's visible viewport as a macOS window-drag exclusion, which 0.2.2-rc.1 requires of custom client overlays covering the draggable header.
+- Dispose the plugin's HTTP routes with its fiber. They were registered outside an effect, so a reload left `/genui` on the server and the next activation failed with `duplicate prefix route "/genui"`, marking the plugin row as failed until the app restarted.
 - Keep a completed Turn's app visible. Chat folds the process rows of a finished Turn and folded rows are not rendered, so an app that only lived in its tool row disappeared until the row was expanded. The last successful receipt of each Turn is now republished on the Turn and re-rendered by a `conversation.chat.turnTail` entry below the answer; hosts that declare that slot as a chain entry keep the previous behaviour.
 
 ## 0.15.2 - 2026-10-23

@@ -23,6 +23,9 @@ the previously supported hosts.
 - Declare the Canvas overlay's visible viewport as a macOS window-drag
   exclusion, which 0.2.2-rc.1 requires of custom client overlays covering the
   draggable header.
+- Dispose the plugin's HTTP routes when it unloads. They were registered outside
+  an effect, so reloading left `/genui` on the server and the next activation
+  failed with `duplicate prefix route "/genui"` until the app restarted.
 - Keep a completed Turn's generated app visible. Chat folds the process rows of
   a finished Turn and does not render folded rows, so an app that only lived in
   its tool row disappeared until that row was expanded. The Turn's last

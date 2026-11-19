@@ -28,8 +28,18 @@ export async function apply(ctx: Context, config: Config): Promise<() => void> {
     sessionId => ctx.agents.get(SessionId(sessionId)),
   )
   const http = createHttpRuntime(ctx, registry, designs, capabilities, resolved.routePrefix)
-  ctx.webServer.register({ kind: 'prefix', path: resolved.routePrefix, handler: http.handler })
-  ctx.webServer.register({ kind: 'exact', path: '/.well-known/dsh-genui', handler: http.handler })
+  // Routes belong to this plugin instance: registering them outside an effect
+  // left them on the server after a reload, so the next activation failed with
+  // `duplicate prefix route "/genui"` and the plugin row showed a failure.
+  ctx.effect(() => {
+    const removeRoutes = [
+      ctx.webServer.register({ kind: 'prefix', path: resolved.routePrefix, handler: http.handler }),
+      ctx.webServer.register({ kind: 'exact', path: '/.well-known/dsh-genui', handler: http.handler }),
+    ]
+    return () => {
+      for (const remove of removeRoutes.reverse()) remove()
+    }
+  }, 'genui: http routes')
   ctx.systemPrompt.section({ name: 'behavior:genui', order: 1, text: GENUI_BEHAVIOR_PROMPT })
   ctx.systemPrompt.section({ name: 'tool:genui', order: 118, text: () => genuiSystemPrompt(designs.defaultId()) })
   registerDiscoveryBudget(ctx)
