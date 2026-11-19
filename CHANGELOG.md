@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.4 - 2026-11-19
+
+- Give the plugin a display name, a Chinese description, and an icon in Plugin Manager and Settings. The bundle now exports `./locale/*.json` and `./icon`, with `meta.title` and `meta.description` in English and Chinese, so the row reads "生成式页面" (Generative UI) instead of the package name and shows its own artwork.
+
 ## 0.15.3 - 2026-11-19
 
 - Support Harness `0.2.2-rc.1` (`latest` on 2026-11-19), `0.2.2-rc.3` (the Desktop runtime), and `0.2.2-rc.5` (`next`), retaining the previously supported host versions. Add all three to CI and move the standalone host import check and docs to the current release.
